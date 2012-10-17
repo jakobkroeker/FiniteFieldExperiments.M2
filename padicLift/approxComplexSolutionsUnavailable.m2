@@ -1,19 +1,38 @@
 
-approxComplexSolutions = method (Options=>{});
+
 approxComplexSolutionsOld = method (Options=>{});
 approxComplexSolutionsOld (Ideal, Matrix, List) := opts->(inputIdeal, solutionPoint, unknownList)->
 (
    return null;
 )
 
-
--- idealPointsApproxData: creates result data structure (a hash table)
---precondition: root coordinates corresponds to unknown list entries and unknownList is the same as gens ring equationsIdeal
-idealPointsApproxData=( inputIdeal, solutionPoint, minPolyTable, approxSolutions, mergedLiftInfo, unknownList )->
+approxComplexSolutionsOld (HashTable, Matrix, List) := opts->(systemData, solutionPoint, unknownList)->
 (
    return null;
 )
 
+
+--idealPointsApproxData = method (Options=>{});
+
+-- idealPointsApproxData: creates result data structure (a hash table)
+--precondition: root coordinates corresponds to unknown list entries and unknownList is the same as gens ring equationsIdeal
+
+--idealPointsApproxData=( inputIdeal, solutionPoint, minPolyTable, approxSolutions, mergedLiftInfo, unknownList )->
+--(
+--   return null;
+--)
+
+idealPointsApproxData=( systemData, solutionPoint, minPolyTable, approxSolutions, mergedLiftInfo, unknownList )->
+(
+   return null;
+)
+
+
+approxComplexSolutions = method (Options=>{});
+approxComplexSolutions (HashTable, Matrix) := opts->( systemData, solutionPoint)->
+(   
+   return null;
+)
 
 approxComplexSolutions (Ideal, Matrix) := opts->(inputIdeal, solutionPoint)->
 (   

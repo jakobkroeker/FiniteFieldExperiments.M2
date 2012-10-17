@@ -52,7 +52,8 @@ export{
     computeRootsWithGP,
     createLiftOptions,
     pariGpIsPresent,
-    clearCoeffDenominators
+    clearCoeffDenominators,
+    systemBlackBoxFromIdeal
 }
     
  --protect the symbols for checking package correctness: no symbol variables should be overwritten by accident!
@@ -85,6 +86,13 @@ padicLiftProtect = ()->
     protect liftOptions;
     protect tolerance;
     protect decimalPrecision;
+    protect jacobianAt;
+    protect jacobianMatrix;
+    protect transposedJacobianAt;
+    protect transposedJacobian;
+    protect equationsAt;
+    protect unknownIsValid;
+    protect getUnknowns;
 )
 
 padicLiftExport = ()->
@@ -114,6 +122,13 @@ padicLiftExport = ()->
     exportMutable( liftOptions);
     exportMutable( tolerance);
     exportMutable( decimalPrecision);  
+    exportMutable( jacobianAt);
+    exportMutable( jacobianMatrix);
+    exportMutable( transposedJacobian);
+    exportMutable( transposedJacobianAt);
+    exportMutable( equationsAt);
+    exportMutable( unknownIsValid);    
+    exportMutable( getUnknowns);    
 )
 
 undocumented { 
@@ -245,6 +260,56 @@ testRemoveConstantFactors=()->
     assert(#monicPol==1);
 )
 
+-- todo: how to check, if 'ring equationsIdeal' is not a quotient ring?
+systemBlackBoxFromIdeal  = (equationsIdeal)->
+(
+	if  ((coefficientRing ring equationsIdeal ) =!= ZZ) then error " systemBlackBoxFromIdeal() expects equationsIdeal in ZZ";
+     blackBox := new MutableHashTable;
+
+     transposedJacobian := jacobian gens equationsIdeal;
+     jacobianMatrix := transpose transposedJacobian;
+
+     --transposedJacobian := symbol transposedJacobian;
+
+   
+     blackBox.transposedJacobian=() ->
+     (
+       return transposedJacobian;
+     );
+
+     blackBox.jacobianMatrix = () ->
+     (
+       return jacobianMatrix;
+     );
+
+     blackBox.jacobianAt = (point)->
+     (
+        jacobianMatrixAt:= sub( jacobianMatrix , point);
+        --get rid of map degree information
+	jacobianMatrixAt = sub( jacobianMatrixAt, ring point);
+        jacobianMatrixAt = sub(sub(jacobianMatrixAt, ZZ), ring point);
+        return jacobianMatrixAt;
+     );
+
+     blackBox.equationsAt = (point)->
+     (
+         return gens sub( equationsIdeal , point);   
+     );
+
+     -- should be different if the ideal is over Fp
+     blackBox.getUnknowns =()->
+     (
+         return gens ring equationsIdeal;
+     );
+  
+     blackBox.unknownIsValid = (unknown)->
+     (
+        if not ( ring equationsIdeal === ring unknown) then error "the unknown is not element of the equations ideal ring";
+        return true;
+     );
+
+     return new HashTable from blackBox;
+)
 
 liftStepOld = (equationsIdeal, TransposedJacobian, vanishingCoordinates ) ->
 (
@@ -307,25 +372,22 @@ liftStepOld = (equationsIdeal, TransposedJacobian, vanishingCoordinates ) ->
 --Returns:
 -- 'nextVanishingCoordinates': element of a vanishing set of ideal mod (prime^k)^2  =>  'sub( equationsIdeal, nextVanishingCoordinates )' will be zero.
 -- 
-liftStep = (equationsIdeal, TransposedJacobian, vanishingCoordinates ) ->
-(
-    assert( sub( equationsIdeal, vanishingCoordinates)==0 );
 
-    if  ((coefficientRing ring TransposedJacobian ) =!= ZZ) then error " liftStep works correctly only for ideals in ZZ";
+liftStep = ( systemData, vanishingCoordinates ) ->
+(
+    assert( systemData.equationsAt(vanishingCoordinates)==0 );
+
+    --if  ((coefficientRing ring TransposedJacobian ) =!= ZZ) then error " liftStep works correctly only for ideals in ZZ";
     currchar := char ring vanishingCoordinates;
     nextchar := currchar*currchar;
     nextLiftDestRing := ZZ[]/nextchar; 
     localVanishingCoordinates := sub( vanishingCoordinates, nextLiftDestRing );
-
-
-    --TransposedJacobianAtSolution := sub( TransposedJacobian , localVanishingCoordinates);
-    TransposedJacobianAtSolution  := sub( TransposedJacobian , vanishingCoordinates); -- this is sufficient
-    JacobianAtSolution := sub(transpose TransposedJacobianAtSolution, nextLiftDestRing);
-    JacobianAtSolution = sub(sub(JacobianAtSolution,ZZ),nextLiftDestRing); --get rid of degree information
+  
+    JacobianAtSolution := systemData.jacobianAt(localVanishingCoordinates); --get rid of degree information
 
     prime := ( factor currchar)#0#0;
    
-    rightHandSide := transpose gens sub( equationsIdeal, localVanishingCoordinates );
+    rightHandSide := transpose systemData.equationsAt( localVanishingCoordinates );
 
     rightHandSide = sub(sub(rightHandSide,ZZ),nextLiftDestRing); -- get rid of degree information
 
@@ -343,10 +405,11 @@ liftStep = (equationsIdeal, TransposedJacobian, vanishingCoordinates ) ->
     --secondCorrectionPart := currchar_nextLiftDestField*randomvector*(transpose JacobianKernelAtSolution);
     
    nextVanishingCoordinates :=  -special  + localVanishingCoordinates;
-    assert( sub( equationsIdeal, nextVanishingCoordinates)==0 );
+    assert( systemData.equationsAt( nextVanishingCoordinates)==0 );
 
     return   nextVanishingCoordinates;
 )
+
 
 
 -- polynomialLCMDenominator computes the least common multiple of the denominators of the polynomial (rational) cofficients.
@@ -490,7 +553,7 @@ testLiftStep = ()->
     assert( sub(IFZ, solution1) ==0 );   
     assert( sub(IFZ, solution2 ) ==0);        
 
-    nextApprox := nextLift(IFZ,solution2);
+    nextApprox := nextLift( systemBlackBoxFromIdeal(IFZ),solution2);
     assert (sub (IFZ, nextApprox)==0);       
 
     nonsolution := matrix{ {2_K , 2_K} }; 
@@ -510,7 +573,7 @@ testLiftStep = ()->
     assert( sub(IFZ, solution1) ==0 );   
     assert( sub(IFZ, solution2 ) ==0);        
 
-    nextApprox = nextLift(IFZ,solution2);
+    nextApprox = nextLift( systemBlackBoxFromIdeal(IFZ) ,solution2);
     assert (sub (IFZ, nextApprox)==0);       
 
 )
@@ -525,33 +588,41 @@ testLiftStep = ()->
 --
 nextLift =method();
 
-nextLift (Ideal,Matrix, Matrix)  := Matrix=> (equationsIdeal, TransposedJacobianOfEquations , vanishingCoordinates) -> (
-    assert( sub( equationsIdeal,vanishingCoordinates ) == 0 );
+nextLift (HashTable, Matrix)  := Matrix=> (systemData , vanishingCoordinates) -> (
+    assert( systemData.equationsAt(vanishingCoordinates ) == 0 );
     assert( (char ring vanishingCoordinates ) != 0 );
-    nextVanishingCoordinates := liftStep(equationsIdeal, TransposedJacobianOfEquations, vanishingCoordinates);
+    nextVanishingCoordinates := liftStep( systemData, vanishingCoordinates);
     --print(nextVanishingCoordinates);
-    assert( sub( equationsIdeal, nextVanishingCoordinates)==0 );
+    assert( systemData.equationsAt( nextVanishingCoordinates)==0 );
     return nextVanishingCoordinates;
 )
 
+nextLift (Ideal, Matrix)  := Matrix=> (equationsIdeal , vanishingCoordinates) ->
+(
+        if  ((coefficientRing ring equationsIdeal ) =!= ZZ) then error " nextLift() expects equationsIdeal in ZZ";
+	return nextLift(systemBlackBoxFromIdeal(equationsIdeal), vanishingCoordinates);
+)
+
+
+
 
 -- todo: change second parameter type to vector?
-nextLift (Ideal,Matrix) :=  Matrix=> (equationsIdeal,  vanishingCoordinates) -> (
-    return nextLift(equationsIdeal,jacobian equationsIdeal, vanishingCoordinates);
-)
+--nextLift (Ideal,Matrix) :=  Matrix=> (equationsIdeal,  vanishingCoordinates) -> (
+--    return nextLift(equationsIdeal,jacobian equationsIdeal, vanishingCoordinates);
+--)
 
 doc ///
     Key
         nextLift        
+        (nextLift, HashTable,Matrix)
         (nextLift, Ideal,Matrix)
-        (nextLift, Ideal,Matrix,Matrix)
     Headline
         lift a solution point mod prime^k to  mod (prime^k)^2  
     Usage   
-        nextLift(equationsIdeal,solutionPoint)
+        nextLift( equationsIdeal, solutionPoint)
     Inputs
-        equationsIdeal: Ideal
-             ideal with integer coefficient ring.
+        equationsData: HashTable
+             an equation system blackbox (see systemBlackBoxFromIdeal() )
         vanishingCoordinates: Matrix
              element of the ideal vanishing set over a finite field in matrix form
     Outputs
@@ -583,7 +654,7 @@ doc ///
         Text    
             \break 4. compute next padic approximation
         Example
-            nextApprox = nextLift(IFZ,vanishingElem2)
+            nextApprox = nextLift(systemBlackBoxFromIdeal(IFZ),vanishingElem2)
             sub (IFZ, nextApprox)
             assert (sub (IFZ, nextApprox)==0);                 
 ///
@@ -596,18 +667,25 @@ doc ///
 -- vanishingCoordinates:  element of the vanishing set of ideal IZ  mod a 'prime'; 
 -- numLiftDepth: solution is lifted to  ZZ/(prime^(2^numLiftDepth))
 --  
-liftPoint = (equationsIdeal,  vanishingCoordinates , numLiftDepth) -> (
+liftPoint =method();
+
+liftPoint (Ideal, Matrix, ZZ)  := Matrix=> (equationsIdeal , vanishingCoordinates,numLiftDepth) ->
+(
+        if  ((coefficientRing ring equationsIdeal ) =!= ZZ) then error " liftPoint() expects equationsIdeal in ZZ";
+	return liftPoint(systemBlackBoxFromIdeal(equationsIdeal), vanishingCoordinates,numLiftDepth);
+)
+
+liftPoint (HashTable, Matrix, ZZ)  := Matrix=>  ( systemData,  vanishingCoordinates , numLiftDepth) -> (
     --assert(isPrime char ring vanishingCoordinates);
     assert((char ring vanishingCoordinates) !=0 ); 
     -- if characteristic was zero, the next test (factor char...) could also crash Macaulay2 (factoring zero. bug?)
     assert(#(factor char ring vanishingCoordinates) == 1 ); -- characteristic of the solution is a power of the prime
-    assert( sub (equationsIdeal, vanishingCoordinates ) == 0 );
-    IdealTransposedJacobian := jacobian equationsIdeal;
+    assert( systemData.equationsAt( vanishingCoordinates ) == 0 );
     currLiftDepth := 0;
     localVanishingCoordinates := vanishingCoordinates;
     while currLiftDepth < numLiftDepth do
     (
-        localVanishingCoordinates = nextLift( equationsIdeal, IdealTransposedJacobian, localVanishingCoordinates);
+        localVanishingCoordinates = nextLift( systemData, localVanishingCoordinates);
         --print(localVanishingCoordinates);
         currLiftDepth = currLiftDepth + 1;
     );
@@ -621,8 +699,8 @@ doc ///
     Usage   
         liftPoint( I, P, liftPrecision)
     Inputs
-        I: Ideal 
-	     over ZZ.
+        systemData: HashTable 
+	     system blackbox, see systemBlackBoxFromIdeal
         P: Matrix
              coordiantes of an isolated smooth point in V(I) over a finite field F_p 
         liftPrecision: ZZ 
@@ -662,7 +740,7 @@ doc ///
             \break 6. compute the padic approximation  mod p^{2^4}. 
         Example
                 liftPrecision := 4;
-                liftResult = liftPoint( IZZ, point, liftPrecision )
+                liftResult = liftPoint( systemBlackBoxFromIdeal(IZZ), point, liftPrecision )
                 sub (IZZ, liftResult)                
 ///
 
@@ -689,7 +767,7 @@ testLiftPoint = ()->
     assert( sub(IFZ, solution2 ) ==0);        
 
     liftDepth:=10;
-    nextApprox := liftPoint(IFZ,solution2 ,liftDepth);
+    nextApprox := liftPoint( systemBlackBoxFromIdeal(IFZ) ,solution2 ,liftDepth);
     assert (prime^(2^liftDepth)==char ring nextApprox);
 
     assert (sub (IFZ, nextApprox)==0);       
@@ -713,7 +791,7 @@ testLiftPoint = ()->
     assert( sub(IFZ, solution1) ==0 );   
     assert( sub(IFZ, solution2 ) ==0);        
 
-    nextApprox = liftPoint(IFZ,solution2,liftDepth);
+    nextApprox = liftPoint( IFZ, solution2, liftDepth);
     assert (prime^(2^liftDepth)==char ring nextApprox);
     assert (sub (IFZ, nextApprox)==0);       
 
@@ -818,7 +896,7 @@ constructLLLInputFromLiftWithoutSyz = (unknown, liftResult, currentLatticeDim )-
 ------------------------------------------------------------------------------------------
 
 
-if (pariGpIsPresent()) then 
+if ( pariGpIsPresent() ) then 
 (
   load "./padicLift/univarPolRoots.m2";
   load "./padicLift/rootPairing.m2";
@@ -1269,27 +1347,34 @@ latticeBasisVectorToPolynomial(Matrix,RingElement) := RingElement => (latticeBas
 -- TODO: Type safety?
 
 computeSingleMinPolyEx = method (Options=>{"options"=>new LiftOptions});
+
 computeSingleMinPolyEx (Ideal, Matrix, RingElement,RingElement) := 
-ReducedPadicLiftResult => opts -> (IZ, solution, unknown, resultPolynomialVariable ) ->
+ReducedPadicLiftResult => opts -> ( equationsIdeal, solution, unknown, resultPolynomialVariable )->
+(
+   return computeSingleMinPolyEx( systemBlackBoxFromIdeal(equationsIdeal), solution, unknown, resultPolynomialVariable ,"options"=>opts#"options");
+)
+
+computeSingleMinPolyEx (HashTable, Matrix, RingElement,RingElement) := 
+ReducedPadicLiftResult => opts -> (systemData, solution, unknown, resultPolynomialVariable ) ->
 (    
     --
     -- checking function parameters:
     checkLiftOptions (opts#"options");
-    if not ( ring IZ === ring unknown) then error "an unknown is not element of the equations ideal ring";
-    if not ( sub(IZ, solution) == 0)   then error "the given solution is not an element of the equations ideal vanishing set";
+    --if not ( ring IZ === ring unknown) then error "an unknown is not element of the equations ideal ring";
+    if not ( systemData.unknownIsValid(unknown) ) then error "an unknown is not element of the equations ideal ring";
+    if not ( systemData.equationsAt(solution) == 0)   then error "the given solution is not an element of the equations ideal vanishing set";
 
     liftOptions:= opts#"options";
     initialLiftDepth := liftOptions#"initialLiftDepth"; 
     maxLiftDepth    := liftOptions#"maxLiftDepth";
     verbose := liftOptions#"verbose";
 
-    jacobianIZ := jacobian IZ;
     --
     currLiftDepth := 0;
     reducedLatticeBasis := null;
     liftResult := solution;
     latticeBasisVectorNormsList := null;
-    nextLiftResult :=     nextLift( IZ, jacobianIZ, liftResult);
+    nextLiftResult :=     nextLift( systemData, liftResult);
     foundMinPolynomialCandidate := false;
     currentLatticeDim := -1;
     --
@@ -1316,7 +1401,7 @@ ReducedPadicLiftResult => opts -> (IZ, solution, unknown, resultPolynomialVariab
         currLiftDepth = currLiftDepth+1;    
 
         liftResult = nextLiftResult;
-        nextLiftResult =     nextLift(IZ, jacobianIZ, liftResult);
+        nextLiftResult =     nextLift( systemData, liftResult);
     );
 
     if (verbose) then print "reducedLatticeBasis";
@@ -1343,7 +1428,7 @@ ReducedPadicLiftResult => opts -> (IZ, solution, unknown, resultPolynomialVariab
     {
        localLiftOptions := copy opts#"options";
        localLiftOptions#"initialLatticeDim" = localLiftOptions#"initialLatticeDim"-#prepolynomialFactors+1;
-        return computeSingleMinPolyEx(IZ, solution, unknown, resultPolynomialVariable ,"options"=>localLiftOptions);
+        return computeSingleMinPolyEx( systemData, solution, unknown, resultPolynomialVariable ,"options"=>localLiftOptions);
     };
     result.polynomial= value prepolynomialFactors;
     result.liftInfo = createLiftInfo( currLiftDepth, currentLatticeDim, (degree result.polynomial)#0 + 1 );
@@ -1386,12 +1471,17 @@ testComputeSingleMinPolyEx=()->
 computeMinPolys = method (Options=>{"options"=>new LiftOptions});
 computeMinPolys (Ideal, Matrix, List) := opts->(equationsIdeal, solutionPoint, unknownList)->
 (
+	return computeMinPolys( systemBlackBoxFromIdeal(equationsIdeal),solutionPoint,unknownList);
+)
+
+computeMinPolys (HashTable, Matrix, List) := opts->(systemData, solutionPoint, unknownList)->
+(
     checkLiftOptions (opts#"options");
 
     solutionChar := char ring solutionPoint;
     assert(solutionChar>0);
 
-    SZ := ring equationsIdeal;
+    --SZ := ring equationsIdeal;
     --betti gens equationsIdeal
 
     varsnum := #unknownList;
@@ -1426,7 +1516,7 @@ computeMinPolys (Ideal, Matrix, List) := opts->(equationsIdeal, solutionPoint, u
             localOptions#"initialLatticeDim"=liftInfo#"requiredLatticeDimension";
         
         -- todo: investigate: if a local variable 'localOptions' is defined, (symbol localOptions) has different behaviour
-        liftResult = computeSingleMinPolyEx( equationsIdeal, solutionPoint, unknown, polResVar, "options"=>localOptions );
+        liftResult = computeSingleMinPolyEx( systemData, solutionPoint, unknown, polResVar, "options"=>localOptions );
         liftInfo = mergeLiftInfo(liftInfo, liftResult.liftInfo );
         minimalPolynomialsTable#unknown = ( polResVar, liftResult.polynomial );
     ));
@@ -1436,10 +1526,15 @@ computeMinPolys (Ideal, Matrix, List) := opts->(equationsIdeal, solutionPoint, u
 
 
 computeSingleMinPoly = method (Options=>{"options"=>new LiftOptions});
-computeSingleMinPoly (Ideal, Matrix, RingElement) :=  ReducedPadicLiftResult =>  opts->(IZ, solution, unknown ) ->
-(
-    --return computeMinPolys(IZ, solution, unknown , "options"=>new LiftOptions); 
 
+computeSingleMinPoly (Ideal, Matrix, RingElement) :=  ReducedPadicLiftResult =>  opts->(equationsIdeal, solution, unknown ) ->
+(
+  return computeMinPolys( systemBlackBoxFromIdeal(equationsIdeal), solution, unknown );
+)
+
+
+computeSingleMinPoly (HashTable, Matrix, RingElement) :=  ReducedPadicLiftResult =>  opts->(systemData, solution, unknown ) ->
+(
       polResVar := GlobalInternalPadicLiftResultVariable;
 
         -- if the current unknown is a generator of the equations ideal ring, use the unknown as indeterminate for the minimal polynomial.
@@ -1447,14 +1542,15 @@ computeSingleMinPoly (Ideal, Matrix, RingElement) :=  ReducedPadicLiftResult => 
         if (#select(gens ring unknown, (curr)->(return (curr==unknown);))>0) then
             polResVar = unknown;
 
-    return computeSingleMinPolyEx(IZ, solution, unknown , polResVar, "options"=>opts#"options");
+    return computeSingleMinPolyEx( systemData, solution, unknown , polResVar, "options"=>opts#"options");
 )
 
 
 doc ///
     Key
         computeSingleMinPoly
-        (computeSingleMinPoly ,Ideal,Matrix,RingElement)
+--        (computeSingleMinPoly ,Ideal,Matrix,RingElement)
+      (computeSingleMinPoly ,HashTable, Matrix, RingElement )
     Headline
         compute a lift to a extension  of  QQ for a single unknown 
     Inputs
@@ -1505,7 +1601,7 @@ doc ///
         Text    
             \break do it
         Example          
-            liftResult2 = computeSingleMinPoly (IFZ, solution2, (gens ring IFZ)#0 );
+            liftResult2 = computeSingleMinPoly ( systemBlackBoxFromIdeal(IFZ), solution2, (gens ring IFZ)#0 );
         Text
             \break check lifted result correctness
         Example          
@@ -1554,19 +1650,19 @@ testComputeMinPolys = ()->
     -- a test, where startingLatticeDim is to big
     liftOptions := new LiftOptions;
     liftOptions#"initialLatticeDim"=6;
-    result = computeMinPolys( IFZ, solution, {  x  },"options"=>liftOptions );
+    result = computeMinPolys( systemBlackBoxFromIdeal(IFZ), solution, {  x  },"options"=>liftOptions );
     assert(result#0#x#1==2*x+3);
 
     liftOptions  = new LiftOptions;
     liftOptions#"initialLatticeDim"=3;
-    result = computeMinPolys( IFZ, solution, {  x  },"options"=>liftOptions );
+    result = computeMinPolys( systemBlackBoxFromIdeal(IFZ), solution, {  x  },"options"=>liftOptions );
     assert(result#0#x#1==2*x+3);
 
 
-    result = computeMinPolys( IFZ, solution, {    } );
+    result = computeMinPolys( systemBlackBoxFromIdeal(IFZ), solution, {    } );
 
     -- root gluing test:
-    result = approxComplexSolutions( IFZ, solution  );
+    result = approxComplexSolutions( systemBlackBoxFromIdeal(IFZ), solution  );
 )
 
 
@@ -1648,7 +1744,7 @@ doc ///
             \break Compute minimal polynomial for x:
         Example        
             unknown = (gens RZ)#0
-            ( minimalPolynomialsTable , liftInfo )  = computeMinPolys  ( IFZ, solutionPoint, {unknown} );
+            ( minimalPolynomialsTable , liftInfo )  = computeMinPolys  ( systemBlackBoxFromIdeal(IFZ), solutionPoint, {unknown} );
         Text
             \break The roots of the polynomial {\tt minimalPolynomialsTable#unknown }  are solutions for variable {\tt unknown}. \break
             Compare with factored initial polynomial FZ!

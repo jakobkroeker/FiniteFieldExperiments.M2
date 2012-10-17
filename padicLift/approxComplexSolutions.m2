@@ -1,6 +1,8 @@
 
-approxComplexSolutions = method (Options=>{"options"=>new LiftOptions,"decimalPrecision"=>10});
+
+
 approxComplexSolutionsOld = method (Options=>{"options"=>new LiftOptions,"decimalPrecision"=>10});
+
 approxComplexSolutionsOld (Ideal, Matrix, List) := opts->(inputIdeal, solutionPoint, unknownList)->
 (
 
@@ -91,10 +93,10 @@ approxComplexSolutionsOld (Ideal, Matrix, List) := opts->(inputIdeal, solutionPo
 
 -- idealPointsApproxData: creates result data structure (a hash table)
 --precondition: root coordinates corresponds to unknown list entries and unknownList is the same as gens ring equationsIdeal
-idealPointsApproxData=( inputIdeal, solutionPoint, minPolyTable, approxSolutions, mergedLiftInfo, unknownList )->
+idealPointsApproxData=( systemData, solutionPoint, minPolyTable, approxSolutions, mergedLiftInfo, unknownList )->
 (
     approxSolutionData := new MutableHashTable;
-    approxSolutionData#"inputIdeal"  =  inputIdeal ;
+    approxSolutionData#"systemData"  =  systemData ;
     approxSolutionData#"solutionPoint"     =  solutionPoint ;
 
     approxSolutionData#"approxVanishingSetElems"  =  approxSolutions ;
@@ -121,13 +123,19 @@ idealPointsApproxData=( inputIdeal, solutionPoint, minPolyTable, approxSolutions
     return new HashTable from approxSolutionData;
 )
 
+approxComplexSolutions = method (Options=>{"options"=>new LiftOptions,"decimalPrecision"=>10});
 
-
--- may have problems in case unknownList is different from (gens ring inputIdeal order). Therefore removed the parameter for a moment.
 approxComplexSolutions (Ideal, Matrix) := opts->(inputIdeal, solutionPoint)->
 (   
+	return approxComplexSolutions( systemBlackBoxFromIdeal(inputIdeal), solutionPoint );
+)
 
-    unknownList := gens ring inputIdeal;
+-- may have problems in case unknownList is different from (gens ring inputIdeal order). Therefore removed the parameter for a moment.
+approxComplexSolutions (HashTable, Matrix) := opts->( systemData, solutionPoint)->
+(   
+
+    --unknownList := gens ring inputIdeal;
+    unknownList := systemData.getUnknowns();
 
     if (not pariGpIsPresent() ) then 
         error "please install Pari/GP or build Macaulay2 with pari (add 'pari' to the --enable-build-libraries configure parameter. ) to use 'approxComplexSolutions'";
@@ -140,7 +148,7 @@ approxComplexSolutions (Ideal, Matrix) := opts->(inputIdeal, solutionPoint)->
     characteristic:=char ring solutionPoint;
 
 
-    (minimalPolynomialsTable, mergedLiftInfo ) := computeMinPolys(inputIdeal, solutionPoint, unknownList, 
+    (minimalPolynomialsTable, mergedLiftInfo ) := computeMinPolys( systemData, solutionPoint, unknownList, 
                                     "options" => opts#"options" );
 
     pairedRootRootList := new MutableList;
@@ -152,7 +160,7 @@ approxComplexSolutions (Ideal, Matrix) := opts->(inputIdeal, solutionPoint)->
     if (mergedLiftInfo#"requiredLatticeDimension"===null) then  
     (
         return null;
-        --return idealPointsApproxData( inputIdeal, solutionPoint, minimalPolynomialsTable, {}  , mergedLiftInfo, unknownList );
+        --return idealPointsApproxData( systemData, solutionPoint, minimalPolynomialsTable, {}  , mergedLiftInfo, unknownList );
     );
       
       --opts.logger(1, "------------------------pairing part---------------------------") ;
@@ -197,7 +205,7 @@ approxComplexSolutions (Ideal, Matrix) := opts->(inputIdeal, solutionPoint)->
             opts#"options"#"maxLatticeDim" =  1+ (#preApproxSolutions)*( #(rootListList#unknownIdx) ) ;
           
             --opts.logger(1, Concatenation("opts.maxLatticeDim: ", String(opts.maxLatticeDim ) ) ) ;
-           (compatibilityMinimalPolynomials, compatLiftInfo ) := computeMinPolys(inputIdeal, solutionPoint, {newUnknown}, 
+           (compatibilityMinimalPolynomials, compatLiftInfo ) := computeMinPolys( systemData, solutionPoint, {newUnknown}, 
                             "options" => opts#"options");
             
            if (compatLiftInfo#"requiredLatticeDimension"===null) then continue; --failed
@@ -257,7 +265,7 @@ approxComplexSolutions (Ideal, Matrix) := opts->(inputIdeal, solutionPoint)->
 
     preApproxSolutions    = apply(preApproxSolutions, i-> matrix{i} );
     
-    return idealPointsApproxData(  inputIdeal, solutionPoint, minimalPolynomialsTable, preApproxSolutions  , mergedLiftInfo, unknownList );
+    return idealPointsApproxData(  systemData, solutionPoint, minimalPolynomialsTable, preApproxSolutions  , mergedLiftInfo, unknownList );
     
     --return approxComplexSolutionData;
 )
@@ -267,6 +275,7 @@ doc ///
     Key
         approxComplexSolutions
         (approxComplexSolutions ,Ideal, Matrix)
+        (approxComplexSolutions ,HashTable, Matrix)
     Headline
         given a solution over a prime field for a system of equations, compute the corresponding complex solutions
     Inputs
