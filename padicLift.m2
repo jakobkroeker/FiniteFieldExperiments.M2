@@ -573,50 +573,53 @@ doc ///
     Key
         liftPoint
     Headline
-          lift a vanishingElem of the  equationsIdeal ( mod p) to  mod p^{2^{numLiftDepth}}.
+          lift an isolated smooth finite field solution to arbitrary precision
     Usage   
-        liftPoint( equationsIdeal, vanishingElem, numLiftDepth)
+        liftPoint( I, P, liftPrecision)
     Inputs
-        equationsIdeal: Ideal
-        vanishingElem: Matrix
-             element of the ideal vanishing set over a finite field in matrix form
-        numLiftDepth: ZZ 
-            If the input vanishingElem is an element of the ideal vanishing set mod p, 
-            the result is a an element of the ideal vanishing set mod p^{2^{numLiftDepth}}.
+        I: Ideal 
+	     over ZZ.
+        P: Matrix
+             coordiantes of an isolated smooth point in V(I) over a finite field F_p 
+        liftPrecision: ZZ 
+            If P is a point over F_p a solution mod p^{2^{liftPrecision}} is calculated.
     Outputs
         : Matrix
-            lifted vanishingElem. If the input vanishingElem is a element of the ideal vanishing set mod p, 
-            the result is a vanishingElem mod p^{2^{numLiftDepth}}.
+            a lift of P mod p^{2^{liftPrecision}}.
     Description
         Example          
         Text
-           \break  Example: lift a finite field vanishingElem of an ideal in QQ (here IFQ)
-           1. formulate the problem 
+           \break  Example: lift a isolated point of an ideal over QQ
+           \break\break 1. formulate the problem 
         Example          
-            RQ = QQ[x,y];
-            FQ = 33/4*x^3+19/4*x^2-81/4*x-1;          
-            IFQ = ideal FQ;
+            RQQ = QQ[x];
+            FQQ = 33/4*x^3+19/4*x^2-81/4*x-1;          
+            IQQ = ideal FQQ
         Text
-           \break 2. reformulate the equations in  IFQ without denominators - mandatory for {\tt liftPoint }
+           \break 2. clear denominators - mandatory for {\tt liftPoint }
         Example          
-            IFZ = disposeRationalCoeffs(IFQ)
+            IZZ = disposeRationalCoeffs(IQQ)
             
         Text
-           \break 3. the vanishingElems over a finite field can be found via "brute force" -  omitted here
+           \break 3. the solutions over a finite field can be found via "brute force" (omitted here)
         Example          
-            K = ZZ/11;
-            vanishingElem1 = matrix{ {1_K , 1_K} }; vanishingElem2 = matrix{ {5_K, 1_K} };
+            Fp = ZZ/11;
+            point = matrix{ {5_Fp} }
         Text
-           \break 4. check that the points are elements of the ideal vanishing set mod 11:
+           \break 4. check wether this is really a solution mod 11. 
         Example
-            assert( sub(IFZ, vanishingElem1) ==0 );   assert( sub(IFZ, vanishingElem2 ) ==0);
+            sub(IZZ, point)
+	Text
+           \break 5. check wether this is a smooth isolated solution mod 11. 
+        Example
+	    JZZ = jacobian IZZ 
+            rank sub(JZZ, point)==1
         Text    
-            \break 5. compute the padic approximation  mod prime^(2^4). 
+            \break 6. compute the padic approximation  mod p^{2^4}. 
         Example
-                liftDepth := 4;
-                liftResult = liftPoint( IFZ, vanishingElem2, liftDepth )
-                sub (IFZ, liftResult)
-                assert ( sub (IFZ, liftResult)==0 );                 
+                liftPrecision := 4;
+                liftResult = liftPoint( IZZ, point, liftPrecision )
+                sub (IZZ, liftResult)                
 ///
 
 
@@ -1885,31 +1888,6 @@ doc ///
             Given a solution  over a prime field for an equation system, compute the corresponding complex solutions approximation.\break
             The function uses @TO computeMinPolys@ , @TO computeRootsWithGP@ and  @TO computeRootCompatibility@ . \break
             See also the article ... with the algorithm description on arXiv.    
-        Example          
-        Text
-           \break  Example: find (subset of the) vanishing set for an ideal (here IFZ)
-        Example          
-            RQ = QQ[x,y];
-            FQ = { x-1/3, y-1/5 };          
-            IFQ = ideal FQ;        
-            equationsIdeal =  disposeRationalCoeffs IFQ
-        Text
-           \break the solutions over a finite field can be found via "brute force" -  omitted here
-        Example          
-            K = ZZ/11;
-            solutionModPrime = matrix{ {4_K , -2_K} };  
-            assert( sub(equationsIdeal, solutionModPrime) ==0 );   
-        Text    
-            \break compute the corresponding complex approximate solutions
-        Example          
-            complexSolutionsData = approxComplexSolutions( equationsIdeal, solutionModPrime, "decimalPrecision"=>20 );
-            peek complexSolutionsData
-            rootList =complexSolutionsData#"approxVanishingSetElems";
-        Text
-            \break check result correctness
-        Example          
-            complexRing := ring rootList#0[ gens ring IFQ ] ;
-            sub( equationsIdeal, sub( rootList#0, complexRing ))
     Caveat
             as ideal coefficient ring currently only integers (ZZ) are supported and the solution set has to be 0-dimensional. 
 ///

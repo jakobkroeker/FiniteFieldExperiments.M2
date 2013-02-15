@@ -161,13 +161,13 @@ doc ///
         Example          
             rng := CC[x];
     	    polynomial := x^2+1;   decimalPrecision := 12;
-            rootList := computeRootsWithGP(polynomial,decimalPrecision)
+--            rootList := computeRootsWithGP(polynomial,decimalPrecision)
         Text
            \break  Compute roots for  (x^2+1/3)
         Example          
             rng = QQ[x];
     	    polynomial =  x^2+1/3; 
-            rootList = computeRootsWithGP(polynomial,decimalPrecision)
+--            rootList = computeRootsWithGP(polynomial,decimalPrecision)
 ///
 
 -- testing the (ugly) interface to pari' root computation
