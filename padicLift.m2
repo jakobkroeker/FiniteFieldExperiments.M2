@@ -245,20 +245,8 @@ testRemoveConstantFactors=()->
     assert(#monicPol==1);
 )
 
--- 'liftStep':   lifts an element of the vanishing set of the ideal sub(equationsIdeal,  ZZ[]/currchar)
--- to ZZ[]/currchar*currchar with currchar=char ring solution; see Hensel lifting for p-adic numbers. 
--- The default case is that the jacobian(ideal) is square and has full rank. 
--- Other cases are not considered in full extent, even if Hensel lifting would work for a specific case in theory.
--- The computation expects an ideal (polynomials) with integer coefficients; for ideals with rational coefficients 
--- use clearCoeffDenominators() first!
--- Parameters:
--- equationsIdeal: equations ideal with integer coefficient ring ,
--- TransposedJacobian ( in Macaulay the jacobian is always transposed)
--- 'vanishingCoordinates' : element of a vanishing set of ideal mod prime^k  -  'sub( equationsIdeal, vanishingCoordinates )' should be zero.
---Returns:
--- 'nextVanishingCoordinates': element of a vanishing set of ideal mod (prime^k)^2  =>  'sub( equationsIdeal, nextVanishingCoordinates )' will be zero.
--- 
-liftStep = (equationsIdeal, TransposedJacobian, vanishingCoordinates ) ->
+
+liftStepOld = (equationsIdeal, TransposedJacobian, vanishingCoordinates ) ->
 (
     assert( sub( equationsIdeal, vanishingCoordinates)==0 );
 
@@ -299,6 +287,62 @@ liftStep = (equationsIdeal, TransposedJacobian, vanishingCoordinates ) ->
     --secondCorrectionPart := currchar_nextLiftDestField*randomvector*(transpose JacobianKernelAtSolution);
     
     nextVanishingCoordinates :=  firstCorrectionPart  + localVanishingCoordinates;
+    assert( sub( equationsIdeal, nextVanishingCoordinates)==0 );
+
+    return   nextVanishingCoordinates;
+)
+
+
+
+-- 'liftStep':   lifts an element of the vanishing set of the ideal sub(equationsIdeal,  ZZ[]/currchar)
+-- to ZZ[]/currchar*currchar with currchar=char ring solution; see Hensel lifting for p-adic numbers. 
+-- The default case is that the jacobian(ideal) is square and has full rank. 
+-- Other cases are not considered in full extent, even if Hensel lifting would work for a specific case in theory.
+-- The computation expects an ideal (polynomials) with integer coefficients; for ideals with rational coefficients 
+-- use clearCoeffDenominators() first!
+-- Parameters:
+-- equationsIdeal: equations ideal with integer coefficient ring ,
+-- TransposedJacobian ( in Macaulay the jacobian is always transposed)
+-- 'vanishingCoordinates' : element of a vanishing set of ideal mod prime^k  -  'sub( equationsIdeal, vanishingCoordinates )' should be zero.
+--Returns:
+-- 'nextVanishingCoordinates': element of a vanishing set of ideal mod (prime^k)^2  =>  'sub( equationsIdeal, nextVanishingCoordinates )' will be zero.
+-- 
+liftStep = (equationsIdeal, TransposedJacobian, vanishingCoordinates ) ->
+(
+    assert( sub( equationsIdeal, vanishingCoordinates)==0 );
+
+    if  ((coefficientRing ring TransposedJacobian ) =!= ZZ) then error " liftStep works correctly only for ideals in ZZ";
+    currchar := char ring vanishingCoordinates;
+    nextchar := currchar*currchar;
+    nextLiftDestRing := ZZ[]/nextchar; 
+    localVanishingCoordinates := sub( vanishingCoordinates, nextLiftDestRing );
+
+
+    --TransposedJacobianAtSolution := sub( TransposedJacobian , localVanishingCoordinates);
+    TransposedJacobianAtSolution  := sub( TransposedJacobian , vanishingCoordinates); -- this is sufficient
+    JacobianAtSolution := sub(transpose TransposedJacobianAtSolution, nextLiftDestRing);
+    JacobianAtSolution = sub(sub(JacobianAtSolution,ZZ),nextLiftDestRing); --get rid of degree information
+
+    prime := ( factor currchar)#0#0;
+   
+    rightHandSide := transpose gens sub( equationsIdeal, localVanishingCoordinates );
+
+    rightHandSide = sub(sub(rightHandSide,ZZ),nextLiftDestRing); -- get rid of degree information
+
+
+    if ( 0 != (rightHandSide % JacobianAtSolution) )
+           then return {};
+    special :=  transpose ( rightHandSide // JacobianAtSolution); 
+
+    JacobianInverseAtSolution := null;
+        
+    --JacobianKernelAtSolution  := syz transpose TransposedJacobianAtSolution;
+    --kerdim := rank source JacobianKernelAtSolution;
+    --randomvector := matrix { apply(kerdim, i->(random(char nextLiftDestField))_nextLiftDestField ) };
+    --randomvector =sub (randomvector, nextLiftDestField);
+    --secondCorrectionPart := currchar_nextLiftDestField*randomvector*(transpose JacobianKernelAtSolution);
+    
+   nextVanishingCoordinates :=  -special  + localVanishingCoordinates;
     assert( sub( equationsIdeal, nextVanishingCoordinates)==0 );
 
     return   nextVanishingCoordinates;
