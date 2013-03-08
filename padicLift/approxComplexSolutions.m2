@@ -279,8 +279,8 @@ doc ///
     Headline
         given a solution over a prime field for a system of equations, compute the corresponding complex solutions
     Inputs
-        equationsIdeal: Ideal 
-            the equations ideal ( only integer coefficient ring is supported )
+        systemData: HashTable 
+            a system blackbox (see @TOsystemBlackBoxFromIdeal@ ) or the equations ideal ( only integer coefficient ring is supported ) 
         solutionModPrime: Matrix
             an element of the ideal vanishing set over a prime field
         "options"=> LiftOptions
@@ -294,8 +294,8 @@ doc ///
             contains complex solutions {\tt 'approxVanishingSetElems'} and intermediate result {\tt 'minPolyTable'}, 
             the minimal polynomials for the unknowns
     Usage
-         complexSolutionsData = approxComplexSolutions( equationsIdeal, solutionModPrime, unknowns )
-         complexSolutionsData = approxComplexSolutions( equationsIdeal, solutionModPrime, unknowns,"options"=>options, "decimalPrecision"=> decimalPrecision )
+         complexSolutionsData = approxComplexSolutions( systemData, solutionModPrime, unknowns )
+         complexSolutionsData = approxComplexSolutions( systemData, solutionModPrime, unknowns,"options"=>options, "decimalPrecision"=> decimalPrecision )
 
     Description
         Text
