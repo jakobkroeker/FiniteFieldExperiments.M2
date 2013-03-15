@@ -127,7 +127,7 @@ approxComplexSolutions = method (Options=>{"options"=>new LiftOptions,"decimalPr
 
 approxComplexSolutions (Ideal, Matrix) := opts->(inputIdeal, solutionPoint)->
 (   
-	return approxComplexSolutions( systemBlackBoxFromIdeal(inputIdeal), solutionPoint );
+	return approxComplexSolutions( varietyBlackBoxFromIdeal(inputIdeal), solutionPoint );
 )
 
 -- may have problems in case unknownList is different from (gens ring inputIdeal order). Therefore removed the parameter for a moment.
@@ -279,8 +279,8 @@ doc ///
     Headline
         given a solution over a prime field for a system of equations, compute the corresponding complex solutions
     Inputs
-        systemData: HashTable 
-            a system blackbox (see @TOsystemBlackBoxFromIdeal@ ) or the equations ideal ( only integer coefficient ring is supported ) 
+        varietyBlackBox: HashTable 
+            a variety blackbox (see @TO createVarietyBlackBox@ ) or the equations ideal ( only integer coefficient ring is supported ) 
         solutionModPrime: Matrix
             an element of the ideal vanishing set over a prime field
         "options"=> LiftOptions
