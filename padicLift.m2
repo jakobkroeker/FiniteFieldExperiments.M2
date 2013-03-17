@@ -95,8 +95,9 @@ padicLiftProtect = ()->
     protect getUnknowns;
     protect createVarietyBlackBox;
     protect getEquations;
-
-
+    protect sourceRank;
+    protect imageRank;
+    protect contains;
 )
 
 padicLiftExport = ()->
@@ -135,6 +136,11 @@ padicLiftExport = ()->
     exportMutable( getUnknowns);
     exportMutable( createVarietyBlackBox);
     exportMutable( getEquations);                
+
+    exportMutable( imageRank);
+    exportMutable( sourceRank);            
+
+    exportMutable( contains);      
 
 
 )
@@ -269,6 +275,12 @@ testRemoveConstantFactors=()->
 )
 
 
+
+
+
+
+
+
 -- todo: how to check, if 'ring equationsIdeal' is not a quotient ring?
 varietyBlackBoxFromIdeal  = (equationsIdeal)->
 (
@@ -287,10 +299,19 @@ varietyBlackBoxFromIdeal  = (equationsIdeal)->
      (
          return gens ring equationsIdeal;
      );
+
+     blackBox.sourceRank = ()->
+     (
+        return rank source gens equationsIdeal;
+     );
   
      blackBox.unknownIsValid = (unknown)->
      (
-        if not ( ring equationsIdeal === ring unknown) then error "the unknown is not element of the equations ideal ring";
+        if not ( ring equationsIdeal === ring unknown) then 
+        ( 
+            print "the unknown is not element of the equations ideal ring";
+	    return false;
+        );
         return true;
      );
 
@@ -321,7 +342,12 @@ varietyBlackBoxFromIdeal  = (equationsIdeal)->
 
      equationsAt := (point)->
      (
-         return gens sub( equationsIdeal , point);   
+         return transpose gens sub( equationsIdeal , point);   
+     );
+
+     blackBox.contains = (point)->
+     (
+         return equationsAt(point)==0;   
      );
 
 
@@ -338,8 +364,13 @@ varietyBlackBoxFromIdeal  = (equationsIdeal)->
 
      checkCoeffRing := (point)->
      (
-        if coeffRing =!= ZZ and  ring point =!= coeffRing  then 
-           error ("  variety is defined over "| toString coeffRing | "and not over " | toString ring point |"!" );
+        errorMsg := "  variety is defined over "| toString coeffRing | "and not over " | toString ring point |"!" ;
+        if coeffRing =!= ZZ  
+           and ring point =!= coeffRing
+           then 
+	   (
+		try ( if coefficientRing ring point=!= coeffRing then error errorMsg )  then () else ( error (errorMsg) );
+           );
      );
 
      if coeffRing === ZZ then 
@@ -364,6 +395,8 @@ varietyBlackBoxFromIdeal  = (equationsIdeal)->
 
      return new HashTable from blackBox;
 )
+
+
 
 
 testVarietyBlackBoxFromIdeal =()->
@@ -398,8 +431,130 @@ testVarietyBlackBoxFromIdeal =()->
         error("testVarietyBlackBoxFromIdeal: jacobianAt should succeed  due the coefficient ring of the point matrix matches the ideal coefficient ring ");
    );  
    assert( IFPBlackBox.jacobianAt(point)==sub(transpose jacobian IFP,point) );
-   assert( IFPBlackBox.equationsAt(point)==gens sub(  IFP, point ) );
+   assert( IFPBlackBox.equationsAt(point)==transpose gens sub(  IFP, point ) );
 )
+
+
+varietyBlackBoxFromEvaluation  = (evaluation)->
+(
+
+     blackBox := new MutableHashTable;
+ 
+     unknowns := evaluation.getUnknowns() ;
+     assert( #unknowns>0 );
+     unknownRng := ring unknowns#0;
+     apply(unknowns, unknown->assert(ring unknown===unknownRng ) );
+
+     blackBox.getUnknowns =()->
+     (
+         return evaluation.getUnknowns();
+     );
+
+     blackBox.unknownIsValid = (unknown)->
+     (
+         
+        return evaluation.unknownIsValid(unknown);
+     );
+
+     blackBox.coefficientRing = () ->
+     (
+        return evaluation.coefficientRing();
+     );
+
+     blackBox.equationsAt = (point)->
+     (
+         return evaluation.equationsAt( point);   
+     );
+
+     blackBox.contains = (point)->
+     (
+         return blackBox.equationsAt(point)==0;   
+     );
+
+
+     blackBox.sourceRank = ()->
+     (
+         return evaluation.sourceRank(  );   
+     );
+
+     blackBox.jacobianAt = (point)->
+     (
+        -- here comes the magic.
+        unknowns := evaluation.getUnknowns() ;
+        
+        
+        if (not ( evaluation.equationsAt( point )==0))  then  error("point does not belong to the variety ! ");
+
+
+        eps := null;
+        eps = symbol eps;
+        epsRng := ( evaluation.coefficientRing() )[eps]/eps^2;
+        eps = (gens epsRng)#0;
+
+        jacobianMatrixAt := mutableMatrix( evaluation.coefficientRing() ,  evaluation.sourceRank(  ), #unknowns );
+        for unknownIdx  in 0..(#unknowns-1) do
+        (
+             newpoint := new MutableMatrix from sub( point,epsRng );
+   
+             newpoint_(unknownIdx,0) = newpoint_(unknownIdx,0)+eps;
+             valueVec := evaluation.equationsAt( matrix newpoint );  
+             for rowIdx in 0..numRows valueVec-1 do
+             (
+                coordinateValue := last coefficients (valueVec_(rowIdx,0), Monomials=>{1 , eps } );
+                if ( not (coordinateValue)_(0,0) ==0) then error("error in jacobianAt. please contact the developers");
+                jacobianMatrixAt_(rowIdx,unknownIdx) = sub( (coordinateValue)_(1,0) , evaluation.coefficientRing())  ;
+             );
+        );
+        return matrix jacobianMatrixAt;
+     );
+    return blackBox;
+)
+
+testVarietyBlackBoxFromEvaluation = ()->
+(
+    x  := null;
+    x  = symbol x;
+    rng := ZZ/7[x];
+    coeffRng := coefficientRing rng;
+    x = (gens rng)#0;
+
+
+    RP := ZZ/7[x];
+    IFP := ideal ( 3*x^2+1, 5*x-1 );      
+
+    rank source gens IFP;
+  
+    evaluation := varietyBlackBoxFromIdeal( IFP );
+  
+    evalBlackBox := varietyBlackBoxFromEvaluation (evaluation);
+
+    point := matrix {{3_(ZZ/7)}} ;
+    assert( evaluation.contains( point ) );
+    assert( evaluation.getUnknowns()=={x} );
+    assert( evaluation.equationsAt( point ) == evalBlackBox.equationsAt( point ) );
+    assert( evaluation.jacobianAt( point ) == evalBlackBox.jacobianAt( point ) );
+
+    assert( evaluation.sourceRank() ==evalBlackBox.sourceRank() );
+
+    outerPoint := matrix {{2_(ZZ/7)}} ;
+
+    assert( evaluation.equationsAt( outerPoint ) == evalBlackBox.equationsAt( outerPoint ) );
+
+    assert( not evaluation.contains( outerPoint ) );
+
+    assert( evaluation.coefficientRing() === coeffRng);
+
+    assert( evaluation.unknownIsValid ( ( gens ring IFP )#0 ));
+
+    y  := null;    y  = symbol y;
+    rngy := ZZ/7[y];
+    y = (gens rng)#0;
+
+    assert( not evaluation.unknownIsValid (  y ) );
+
+);
+
+
 
 doc ///
    Key
@@ -1978,6 +2133,12 @@ TEST ///
 debug padicLift
 padicLiftProtect()
 testVarietyBlackBoxFromIdeal()
+///
+
+TEST ///
+debug padicLift
+padicLiftProtect()
+testVarietyBlackBoxFromEvaluation
 ///
 
 TEST ///
