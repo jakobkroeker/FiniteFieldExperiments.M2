@@ -190,7 +190,7 @@ blackBoxIdeal  = (equationsIdeal)->
 
   
 
-     remove( blackBox, getSymbol "setImageRank" );
+
 
 
      blackBox.transposedJacobian=() ->
@@ -241,6 +241,7 @@ blackBoxIdeal  = (equationsIdeal)->
    --blackBox.setImageRank(rank image gens equationsIdeal);
     tmppoint := matrix { apply(blackBox.sourceRank(), i-> 0_(blackBox.coefficientRing()) ) };
      blackBox.setImageRank(numRows blackBox.valuesAt( tmppoint ));
+     remove( blackBox, getSymbol "setImageRank" );
 
 
      blackBox.internalRegisterPointProperty( "jacobianAt" , blackBox.jacobianAt );
@@ -289,7 +290,7 @@ testBlackBoxIdeal=()->
    assert( IFPBlackBox.valuesAt(point)==transpose gens sub(  IFP, point ) );
 )
 
-blackBoxIdealFromEvaluation  :=method();
+blackBoxIdealFromEvaluation  =method();
 
 blackBoxIdealFromEvaluation( Ring, Function )  := HashTable=> ( rng, valuesAt )->
 (
