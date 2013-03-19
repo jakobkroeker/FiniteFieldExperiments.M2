@@ -380,7 +380,7 @@ blackBoxIdealFromEvaluation(ZZ, Ring, Function) := HashTable => ( numVariables, 
 (
     assert ( numVariables>0 );
     a := null;
-    a = getSymbol a;
+    a = symbol a;
     
     rng := coeffRing[a_1..a_numVariables];
     return blackBoxIdealFromEvaluation(rng,valuesAt);
@@ -550,16 +550,17 @@ evalLinePlusConic = point -> (
 	  {ePoint#0,ePoint#1,0},
 	  {ePoint#1,ePoint#2,ePoint#3}
 	  };
-     matrix{{det M_{0,1},det M_{0,2},det M_{1,2}}}
+      transpose matrix{{det M_{0,1},det M_{0,2},det M_{1,2}}}
      )
 
 B2 = blackBoxIdealFromEvaluation(4,ZZ,evalLinePlusConic)
 
 apply(100,i->(
 	  r = random(K^1,K^4)
-	  assert (B2.isZero(r) == B.isZero(r))
-	  assert (B2.valuesAt(r) == B.valuesAt(r))
-	  assert (B2.jacobianAt(r) == B.jacobianAt(r))
+	  assert (B2.isZeroAt(r) == B.isZeroAt(r));
+	  assert (B2.valuesAt(r) == B.valuesAt(r));
+      if B2.isZeroAt(r) then 
+	  assert (B2.jacobianAt(r) == B.jacobianAt(r));
      ))
 
 assert B2.isZeroAt(line)
