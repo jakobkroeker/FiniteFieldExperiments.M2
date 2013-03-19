@@ -53,7 +53,8 @@ export{
     createLiftOptions,
     pariGpIsPresent,
     clearCoeffDenominators,
-    varietyBlackBoxFromIdeal
+    blackBoxIdeal,
+    blackBoxIdealFromEvaluation
 }
     
  --protect the symbols for checking package correctness: no symbol variables should be overwritten by accident!
@@ -90,19 +91,21 @@ padicLiftProtect = ()->
     protect jacobianMatrix;
     protect transposedJacobianAt;
     protect transposedJacobian;
-    protect equationsAt;
+    protect valuesAt;
     protect unknownIsValid;
     protect getUnknowns;
-    protect createVarietyBlackBox;
+    protect createBlackBoxIdeal;
+ 
+
     protect getEquations;
     protect sourceRank;
     protect imageRank;
-    protect contains;
+    protect isZeroAt;
     protect getPointProperties;
     protect setRing;
     protect registerPointProperty;
     protect internalRegisterPointProperty;
-    protect setEquationsAt;
+    protect setValuesAt;
     protect setImageRank;
     protect checkCoeffRing;
 
@@ -140,24 +143,26 @@ padicLiftExport = ()->
     exportMutable( jacobianMatrix);
     exportMutable( transposedJacobian);
     exportMutable( transposedJacobianAt);
-    exportMutable( equationsAt);
+    exportMutable( valuesAt);
     exportMutable( unknownIsValid);    
     exportMutable( getUnknowns);
-    exportMutable( createVarietyBlackBox);
+    exportMutable( createBlackBoxIdeal);
     exportMutable( getEquations);                
 
     exportMutable( imageRank);
     exportMutable( sourceRank);            
 
-    exportMutable( contains);      
+    exportMutable( isZeroAt);      
 
     exportMutable( getPointProperties);  
     exportMutable( setRing);  
     exportMutable( registerPointProperty);  
     exportMutable( internalRegisterPointProperty);
-    exportMutable( setEquationsAt);    
+    exportMutable( setValuesAt);    
     exportMutable(  checkCoeffRing);
     exportMutable( setImageRank );
+ 
+
 )
 
 undocumented { 
@@ -208,6 +213,7 @@ GlobalInternalPadicLiftResultVariable = (gens (ZZ[GlobalInternalPadicLiftResultV
 
 beginDocumentation()
 
+load "./varietyBlackBoxes.m2";
 
 load "./padicLift/univarPolRootsLoader.m2";
 
@@ -292,485 +298,6 @@ testRemoveConstantFactors=()->
 
 
 
-
-
-createBasicBlackBox = () ->
-(
-    
-   blackBox := new MutableHashTable;
-      
- 
-
-   pointProperties := new HashTable  ;
-
-   blackBox.getPointProperties=()->
-   (  
-      return pointProperties;
-   );
-
-    
-     rng := null;
-
-     blackBox.ring = () ->
-     (
-       print ("orig blackBox.ring  called");
-        --error "error:  blackBox.ring() not implemented";
-        return rng;
-     );
-
-  
-     blackBox.setRing = (parrng) ->
-     ( 
-        rng =  parrng;
-     );
-
-     blackBox.coefficientRing = () ->
-     (
-       return  coefficientRing blackBox.ring();
-     );
-
-     blackBox.checkCoeffRing = (point)->
-     (
-        errorMsg := "  variety is defined over "| toString  blackBox.coefficientRing() | "and not over " | toString ring point |"!" ;
-        if blackBox.coefficientRing() =!= ZZ  
-           and ring point =!= blackBox.coefficientRing()
-           then 
-	   (
-		try ( if coefficientRing ring point=!= blackBox.coefficientRing() then error errorMsg )  then () else ( error (errorMsg) );
-           );
-     );
-
-     blackBox.getUnknowns =()->
-     (
-         return gens blackBox.ring();
-     );
-
-     blackBox.unknownIsValid = (unknown)->
-     (
-        if not ( blackBox.ring() === ring unknown) then 
-        ( 
-            print "the unknown is not element of the equations ideal ring";
-	    return false;
-        );
-        return true;
-     );
-
-     blackBox.sourceRank = ()->
-     (
-        --return rank source  blackBox.getUnknowns();
-        return #(blackBox.getUnknowns());
-     );
-
-    blackBox.registerPointProperty = method();
-   blackBox.registerPointProperty(String, Function, Function) := Thing => ( propertyName, propertyMethod, preconditionsTest )->
-   (
-
-      preconditionsTest(blackBox); -- e.g. check for method presence or test an example.
-      
-      pointProperties = new MutableHashTable from pointProperties;
-
-      propertySymbol := getSymbol propertyName;
-      if  ( not  pointProperties#?propertySymbol  and  not  pointProperties#?propertyName 
-      and not  blackBox#?propertySymbol          and   not  blackBox#?propertyName  ) then 
-      (
-         pointProperties#propertySymbol = (point )-> (return  propertyMethod( blackBox,point); );
-         pointProperties#propertyName   = (point )-> (return  propertyMethod( blackBox,point); );
-         blackBox#propertySymbol        = (point )-> (return  propertyMethod( blackBox,point); );
-         blackBox#propertyName          = (point )-> (return  propertyMethod( blackBox,point); );
-         return new HashTable from blackBox;
-      )
-      else "error: method "| propertyName |" is already registered";
- 
-      pointProperties = new HashTable from pointProperties;
-
-     -- error "not yet implemented"; -- idea :  propertyMethod takes two parameters; first one is the variety black box, second one is point
-   );
-
-   -- how to hide this method?
-   blackBox.registerPointProperty(String, Function) := Thing =>( propertyName, propertyMethod )->
-   (
-      blackBox.registerPointProperty( propertyName, propertyMethod, ()->() )
-   );
-
-   -- how to hide this method?
-   blackBox.internalRegisterPointProperty = method();
-   blackBox.internalRegisterPointProperty (String, Function, Function) := Thing => ( propertyName, propertyMethod, preconditionsTest )->
-   (
-
-      preconditionsTest(blackBox); -- e.g. check for method presence or test an example.
-
-      pointProperties = new MutableHashTable from pointProperties;
-      propertySymbol := getSymbol propertyName;
-      if not  pointProperties#?propertySymbol  and  not  pointProperties#?propertyName then 
-      (
-         pointProperties#propertySymbol = (point )-> (return  propertyMethod(point); );
-         pointProperties#propertyName = (point )-> (return  propertyMethod(point); );
-      )
-      else "error: method "| propertyName |" is already registered";
- 
-      pointProperties = new HashTable from pointProperties;
-      return null;
-   );
-
-   blackBox.internalRegisterPointProperty(String, Function) := Thing => ( propertyName, propertyMethod )->
-   (
-      blackBox.internalRegisterPointProperty( propertyName, propertyMethod, (variety)->() );
-      return null;
-   );
-
-   equationsAt := null;
-
-   blackBox.equationsAt = (point) ->
-   (
-      blackBox.checkCoeffRing(point);
-      return equationsAt(point);
-   );
-
-   imageRank := null;
-
-   blackBox.imageRank = ()->
-   (
-       return imageRank;
-       --point := matrix { apply(blackBox.sourceRank(), i-> 0_(blackBox.coefficientRing()) ) };
-       --return #blackBox.equationsAt( point );
-   );
-
-
-   blackBox.setImageRank = (pImageRank)->
-   (
-      imageRank = pImageRank;
-   );
-
-
-    blackBox.setEquationsAt = (pEquationsAt) ->
-     ( 
-        equationsAt =  pEquationsAt;
-     );
-
-
-   blackBox.contains = (point)->
-   (
-       return blackBox.equationsAt(point)==0;   
-   );
-
-
-   blackBox.internalRegisterPointProperty( "contains" , blackBox.contains );
-
-   return new HashTable from blackBox;
-)
-
-
-
-
-
-
--- todo: how to check, if 'ring equationsIdeal' is not a quotient ring?
-varietyBlackBoxFromIdeal  = (equationsIdeal)->
-(
-     blackBox := new MutableHashTable from createBasicBlackBox();
-
-     transposedJacobian := jacobian gens equationsIdeal;
-     jacobianMatrix := transpose transposedJacobian;
-
-     --transposedJacobian := symbol transposedJacobian;
-
-     -- should be different if the ideal is over Fp
-
-      blackBox.setRing(ring equationsIdeal);
-      remove( blackBox, getSymbol "setRing" );
-
-  
-
-     remove( blackBox, getSymbol "setImageRank" );
-
-
-     blackBox.transposedJacobian=() ->
-     (
-       return transposedJacobian;
-     );
-
-     --blackBox.jacobianMatrix = () ->
-     --(
-     --  return jacobianMatrix;
-     --);
-
-   blackBox.jacobian = () ->
-     (
-       return jacobianMatrix;
-     );
-
-     blackBox.getEquations = ()->
-     (
-         return gens  equationsIdeal;   
-     );
-
-     equationsAt := (point)->
-     (
-         return transpose gens sub( equationsIdeal , point);   
-     );
-
-     blackBox.setEquationsAt(equationsAt);
-     remove( blackBox, getSymbol "setEquationsAt" );
-     blackBox.internalRegisterPointProperty( "equationsAt" , blackBox.equationsAt );
-
-     jacobianAt := (point)->
-     (
-        jacobianMatrixAt:= sub( jacobianMatrix , point);
-        --get rid of map degree information
-	jacobianMatrixAt = sub( jacobianMatrixAt, ring point);
-        jacobianMatrixAt = sub(sub(jacobianMatrixAt, ZZ), ring point);
-        return jacobianMatrixAt;
-     );
-
-       
-    blackBox.jacobianAt= (point)->
-    (
-        blackBox.checkCoeffRing(point);
-        return jacobianAt(point);
-    );      
-     
-   --blackBox.setImageRank(rank image gens equationsIdeal);
-    tmppoint := matrix { apply(blackBox.sourceRank(), i-> 0_(blackBox.coefficientRing()) ) };
-     blackBox.setImageRank(numRows blackBox.equationsAt( tmppoint ));
-
-
-     blackBox.internalRegisterPointProperty( "jacobianAt" , blackBox.jacobianAt );
-  
-     return new HashTable from blackBox;
-)
-
-
-
-
-testVarietyBlackBoxFromIdeal =()->
-(
-   x  := null;
-   x  = symbol x;
-   rng := ZZ/7[x];
-   coeffRng := coefficientRing rng;
-   x = (gens rng)#0;
-
-   RP := ZZ/7[x];
-   IFP := ideal { 3*x^2+1, 5*x-1 };        
-   IFPBlackBox := varietyBlackBoxFromIdeal( IFP );
-   point := matrix {{3}};
-   rng13 := ZZ/13;
-   assert( IFPBlackBox.getUnknowns()=={x} );
-   assert( IFPBlackBox.getEquations()==gens IFP);
-   assert( IFPBlackBox.jacobian()==transpose jacobian IFP);
-   
-
-   point = matrix {{3}};
-   try {    IFPBlackBox.jacobianAt(point) } then 
-   (
-     error("testVarietyBlackBoxFromIdeal: jacobianAt should fail due the coefficient ring of the point matrix does not match the ideal coefficient ring and also the ideal coefficients are not integers ");
-   )   else
-   ();
-   point = sub( point, coeffRng ) ;
-   try {    IFPBlackBox.jacobianAt(point) } then 
-   (    
-   ) else
-   (
-        error("testVarietyBlackBoxFromIdeal: jacobianAt should succeed  due the coefficient ring of the point matrix matches the ideal coefficient ring ");
-   );  
-    IFPBlackBox.ring();
-    IFPBlackBox.equationsAt(point) ;
-    assert(   IFPBlackBox.contains( point ) );
-   assert( IFPBlackBox.jacobianAt(point)==sub(transpose jacobian IFP,point) );
-   assert( IFPBlackBox.equationsAt(point)==transpose gens sub(  IFP, point ) );
-)
-
-
-varietyBlackBoxFromEvaluation  = ( rng, equationsAt )->
-(
-
-     blackBox := new MutableHashTable from createBasicBlackBox();
- 
-      blackBox.setRing(rng);
-      remove( blackBox, getSymbol "setRing" );
-
-     blackBox.ring = ()->
-     (         
-        print ("new blackBox.ring  called");
-        return rng;
-     );
-
-    
-     blackBox.setEquationsAt(equationsAt);
-     remove( blackBox, getSymbol "setEquationsAt" );
-
-     blackBox.equationsAt = (point)->
-     (
-         print ("new blackBox.equationsAt never called");
-         return equationsAt( point);   
-     );
- 
-  
-     tmppoint := matrix { apply(blackBox.sourceRank(), i-> 0_(blackBox.coefficientRing()) ) };
-     blackBox.setImageRank(numRows blackBox.equationsAt( tmppoint ));
-     remove( blackBox, getSymbol "setImageRank" );
-
-     blackBox.contains = (point)->
-     (
-         return blackBox.equationsAt(point)==0;   
-     );
-
-     check := ()->
-     (
-         sourceRank :=  blackBox.sourceRank();
-
-         point := matrix { apply(sourceRank, i-> 0_(blackBox.coefficientRing()) ) };
-         blackBox.equationsAt( point );
-         blackBox.contains( point );
-     );
-
-     check();
-
-     -- here comes the magic:
-     blackBox.jacobianAt = (point)->
-     (
-       
-        unknowns := blackBox.getUnknowns() ;      
-        
-        if (not ( blackBox.equationsAt( point )==0))  then  error("point does not belong to the variety ! ");
-
-
-        eps := null;
-        eps = symbol eps;
-        epsRng := ( blackBox.coefficientRing() )[eps]/eps^2;
-        eps = (gens epsRng)#0;
-
-        jacobianMatrixAt := mutableMatrix( blackBox.coefficientRing() ,  blackBox.imageRank(  ), #unknowns );
-        for unknownIdx  in 0..(#unknowns-1) do
-        (
-             newpoint := new MutableMatrix from sub( point,epsRng );
-   
-             newpoint_(unknownIdx,0) = newpoint_(unknownIdx,0)+eps;
-             valueVec := blackBox.equationsAt( matrix newpoint );  
-             for rowIdx in 0..numRows valueVec-1 do
-             (
-                coordinateValue := last coefficients (valueVec_(rowIdx,0), Monomials=>{1 , eps } );
-                if ( not (coordinateValue)_(0,0) ==0) then error("error in jacobianAt. please contact the developers");
-                jacobianMatrixAt_(rowIdx,unknownIdx) = sub( (coordinateValue)_(1,0) , blackBox.coefficientRing())  ;
-             );
-        );
-        return matrix jacobianMatrixAt;
-     );
-
-   
-    blackBox.internalRegisterPointProperty("jacobianAt" , blackBox.jacobianAt );
-    blackBox.internalRegisterPointProperty("equationsAt" , blackBox.equationsAt );
-  
-
-    return  new HashTable from blackBox;
-)
-
-testVarietyBlackBoxFromEvaluation = ()->
-(
-    x  := null;
-    x  = symbol x;
-    rng := ZZ/7[x];
-    coeffRng := coefficientRing rng;
-    x = (gens rng)#0;
-
-
-    RP := ZZ/7[x];
-    IFP := ideal ( 3*x^2+1, 5*x-1 );      
-
-    rank source gens IFP;
-  
-   evaluation := varietyBlackBoxFromIdeal( IFP );
-    --evaluation := createBasicBlackBox();
-  
-    evalBlackBox := varietyBlackBoxFromEvaluation ( evaluation.ring(), evaluation.equationsAt );
-
-    point := matrix {{3_(ZZ/7)}} ;
-    assert( evaluation.contains( point ) );
-    assert( evaluation.getUnknowns()=={x} );
-    assert( evaluation.equationsAt( point ) == evalBlackBox.equationsAt( point ) );
-    assert( evaluation.jacobianAt( point ) == evalBlackBox.jacobianAt( point ) );
-
-    assert( evaluation.sourceRank() ==evalBlackBox.sourceRank() );
-
-    outerPoint := matrix {{2_(ZZ/7)}} ;
-
-    assert( evaluation.equationsAt( outerPoint ) == evalBlackBox.equationsAt( outerPoint ) );
-
-    assert( not evaluation.contains( outerPoint ) );
-
-    assert( evaluation.coefficientRing() === coeffRng);
-
-    assert( evaluation.unknownIsValid ( ( gens ring IFP )#0 ));
-
-    y  := null;    y  = symbol y;
-    rngy := ZZ/7[y];
-    y = (gens rng)#0;
-
-    assert( not evaluation.unknownIsValid (  y ) );
-
-);
-
-
-
-doc ///
-   Key
-        varietyBlackBoxFromIdeal
-   Headline
-        create a blackbox describing a variety from an ideal with integer coefficient ring
-   Usage   
-        varietyBlackBoxFromIdeal(IdealInZZ)
-   Inputs  
-        IdealInZZ:Ideal
-             with integer coefficients
-   Outputs
-        : HashTable
-             a variety black box with methods  \break
-            \,\, \bullet \, { \tt getEquations()}, \break
-            \,\, \bullet \, { \tt getUnknowns(point)},\break
-            \,\, \bullet \, { \tt jacobian()}, \break
-            \,\, \bullet \, { \tt equationsAt(point)},\break
-            \,\, \bullet \, { \tt jacobianAt(point) }.
-   Description
-        Text
-            Creates a blackbox describing a variety from an ideal with integer coefficient ring
-        Example          
-        Text
-           \break  Example:  create a variety black box object from an ideal:
-        Example          
-            RQ := QQ[x];
-            IFQ := ideal { 1/3*x^2+1, 1/5*x+2 };        
-            IFZ := clearCoeffDenominators(IFQ)
-            IFZBlackBox := varietyBlackBoxFromIdeal(IFZ);
-        Text
-            \break Now access some variety propeties via the black box interface:
-        Example          
-            keys IFZBlackBox
-            IFZBlackBox.getUnknowns()
-            IFZBlackBox.getEquations()
-            IFZBlackBox.jacobian()
-            point := matrix { {1} };
-            IFZBlackBox.equationsAt(point)
-            IFZBlackBox.jacobianAt(point)            
-   Caveat
-        does not check if the ideal ring is a quotient ring (not supported)
-///
-
-doc ///
-   Key
-       createVarietyBlackBox
-   Headline
-        create a blackbox describing a variety
-   Usage   
-        varietyBlackBoxFromIdeal( IdealInZZ )
-   Description
-       Text
-           See @TO varietyBlackBoxFromIdeal@( IdealInZZ ) \break \break
-           The generic interface consists of methods \break
-            \,\, \bullet \, { \tt getUnknowns()}, \break
-            \,\, \bullet \, { \tt equationsAt(point)},\break
-            \,\, \bullet \, { \tt jacobianAt(point) }.
-///
-
 liftStepOld = (equationsIdeal, TransposedJacobian, vanishingCoordinates ) ->
 (
     assert( sub( equationsIdeal, vanishingCoordinates)==0 );
@@ -835,7 +362,7 @@ liftStepOld = (equationsIdeal, TransposedJacobian, vanishingCoordinates ) ->
 
 liftStep = ( systemData, vanishingCoordinates ) ->
 (
-    assert( systemData.equationsAt(vanishingCoordinates)==0 );
+    assert( systemData.valuesAt(vanishingCoordinates)==0 );
 
     --if  ((coefficientRing ring TransposedJacobian ) =!= ZZ) then error " liftStep works correctly only for ideals in ZZ";
     currchar := char ring vanishingCoordinates;
@@ -847,7 +374,7 @@ liftStep = ( systemData, vanishingCoordinates ) ->
 
     prime := ( factor currchar)#0#0;
    
-    rightHandSide := systemData.equationsAt( localVanishingCoordinates );
+    rightHandSide := systemData.valuesAt( localVanishingCoordinates );
 
     rightHandSide = sub(sub(rightHandSide,ZZ),nextLiftDestRing); -- get rid of degree information
 
@@ -865,7 +392,7 @@ liftStep = ( systemData, vanishingCoordinates ) ->
     --secondCorrectionPart := currchar_nextLiftDestField*randomvector*(transpose JacobianKernelAtSolution);
     
    nextVanishingCoordinates :=  -special  + localVanishingCoordinates;
-    assert( systemData.equationsAt( nextVanishingCoordinates)==0 );
+    assert( systemData.valuesAt( nextVanishingCoordinates)==0 );
 
     return   nextVanishingCoordinates;
 )
@@ -1013,7 +540,7 @@ testLiftStep = ()->
     assert( sub(IFZ, solution1) ==0 );   
     assert( sub(IFZ, solution2 ) ==0);        
 
-    nextApprox := nextLift( varietyBlackBoxFromIdeal(IFZ),solution2);
+    nextApprox := nextLift( blackBoxIdeal(IFZ),solution2);
     assert (sub (IFZ, nextApprox)==0);       
 
     nonsolution := matrix{ {2_K , 2_K} }; 
@@ -1033,7 +560,7 @@ testLiftStep = ()->
     assert( sub(IFZ, solution1) ==0 );   
     assert( sub(IFZ, solution2 ) ==0);        
 
-    nextApprox = nextLift( varietyBlackBoxFromIdeal(IFZ) ,solution2);
+    nextApprox = nextLift( blackBoxIdeal(IFZ) ,solution2);
     assert (sub (IFZ, nextApprox)==0);       
 
 )
@@ -1049,18 +576,18 @@ testLiftStep = ()->
 nextLift =method();
 
 nextLift (HashTable, Matrix)  := Matrix=> (systemData , vanishingCoordinates) -> (
-    assert( systemData.equationsAt(vanishingCoordinates ) == 0 );
+    assert( systemData.valuesAt(vanishingCoordinates ) == 0 );
     assert( (char ring vanishingCoordinates ) != 0 );
     nextVanishingCoordinates := liftStep( systemData, vanishingCoordinates);
     --print(nextVanishingCoordinates);
-    assert( systemData.equationsAt( nextVanishingCoordinates)==0 );
+    assert( systemData.valuesAt( nextVanishingCoordinates)==0 );
     return nextVanishingCoordinates;
 )
 
 nextLift (Ideal, Matrix)  := Matrix=> (equationsIdeal , vanishingCoordinates) ->
 (
         if  ((coefficientRing ring equationsIdeal ) =!= ZZ) then error " nextLift() expects equationsIdeal in ZZ";
-	return nextLift(varietyBlackBoxFromIdeal(equationsIdeal), vanishingCoordinates);
+	return nextLift(blackBoxIdeal(equationsIdeal), vanishingCoordinates);
 )
 
 
@@ -1082,7 +609,7 @@ doc ///
         nextLift( equationsIdeal, solutionPoint)
     Inputs
         equationsData: HashTable
-             an equation system blackbox (see varietyBlackBoxFromIdeal() )
+             an equation system blackbox (see blackBoxIdeal() )
         vanishingCoordinates: Matrix
              element of the ideal vanishing set over a finite field in matrix form
     Outputs
@@ -1114,7 +641,7 @@ doc ///
         Text    
             \break 4. compute next padic approximation
         Example
-            nextApprox = nextLift(varietyBlackBoxFromIdeal(IFZ),vanishingElem2)
+            nextApprox = nextLift(blackBoxIdeal(IFZ),vanishingElem2)
             sub (IFZ, nextApprox)
             assert (sub (IFZ, nextApprox)==0);                 
 ///
@@ -1132,7 +659,7 @@ liftPoint =method();
 liftPoint (Ideal, Matrix, ZZ)  := Matrix=> (equationsIdeal , vanishingCoordinates,numLiftDepth) ->
 (
         if  ((coefficientRing ring equationsIdeal ) =!= ZZ) then error " liftPoint() expects equationsIdeal in ZZ";
-	return liftPoint(varietyBlackBoxFromIdeal(equationsIdeal), vanishingCoordinates,numLiftDepth);
+	return liftPoint(blackBoxIdeal(equationsIdeal), vanishingCoordinates,numLiftDepth);
 )
 
 liftPoint (HashTable, Matrix, ZZ)  := Matrix=>  ( systemData,  vanishingCoordinates , numLiftDepth) -> (
@@ -1140,7 +667,7 @@ liftPoint (HashTable, Matrix, ZZ)  := Matrix=>  ( systemData,  vanishingCoordina
     assert((char ring vanishingCoordinates) !=0 ); 
     -- if characteristic was zero, the next test (factor char...) could also crash Macaulay2 (factoring zero. bug?)
     assert(#(factor char ring vanishingCoordinates) == 1 ); -- characteristic of the solution is a power of the prime
-    assert( systemData.equationsAt( vanishingCoordinates ) == 0 );
+    assert( systemData.valuesAt( vanishingCoordinates ) == 0 );
     currLiftDepth := 0;
     localVanishingCoordinates := vanishingCoordinates;
     while currLiftDepth < numLiftDepth do
@@ -1163,7 +690,7 @@ doc ///
         I: Ideal 
 	     ideal of system equations with integer coefficient ring (@TO ZZ@)
         B: HashTable
-             variety blackbox, see   @TO createVarietyBlackBox@              
+             variety blackbox, see   @TO blackBoxIdeal@              
         P: Matrix
              coordiantes of an isolated smooth point in V(I) over a finite field F_p 
         liftPrecision: ZZ 
@@ -1203,7 +730,7 @@ doc ///
             \break 6. compute the padic approximation  mod p^{2^4}. 
         Example
                 liftPrecision := 4;
-                liftResult = liftPoint( varietyBlackBoxFromIdeal(IZZ), point, liftPrecision )
+                liftResult = liftPoint( blackBoxIdeal(IZZ), point, liftPrecision )
                 sub (IZZ, liftResult)                
 ///
 
@@ -1230,7 +757,7 @@ testLiftPoint = ()->
     assert( sub(IFZ, solution2 ) ==0);        
 
     liftDepth:=10;
-    nextApprox := liftPoint( varietyBlackBoxFromIdeal(IFZ) ,solution2 ,liftDepth);
+    nextApprox := liftPoint( blackBoxIdeal(IFZ) ,solution2 ,liftDepth);
     assert (prime^(2^liftDepth)==char ring nextApprox);
 
     assert (sub (IFZ, nextApprox)==0);       
@@ -1814,7 +1341,7 @@ computeSingleMinPolyEx = method (Options=>{"options"=>new LiftOptions});
 computeSingleMinPolyEx (Ideal, Matrix, RingElement,RingElement) := 
 ReducedPadicLiftResult => opts -> ( equationsIdeal, solution, unknown, resultPolynomialVariable )->
 (
-   return computeSingleMinPolyEx( varietyBlackBoxFromIdeal(equationsIdeal), solution, unknown, resultPolynomialVariable ,"options"=>opts#"options");
+   return computeSingleMinPolyEx( blackBoxIdeal(equationsIdeal), solution, unknown, resultPolynomialVariable ,"options"=>opts#"options");
 )
 
 computeSingleMinPolyEx (HashTable, Matrix, RingElement,RingElement) := 
@@ -1825,7 +1352,7 @@ ReducedPadicLiftResult => opts -> (systemData, solution, unknown, resultPolynomi
     checkLiftOptions (opts#"options");
     --if not ( ring IZ === ring unknown) then error "an unknown is not element of the equations ideal ring";
     if not ( systemData.unknownIsValid(unknown) ) then error "an unknown is not element of the equations ideal ring";
-    if not ( systemData.equationsAt(solution) == 0)   then error "the given solution is not an element of the equations ideal vanishing set";
+    if not ( systemData.valuesAt(solution) == 0)   then error "the given solution is not an element of the equations ideal vanishing set";
 
     liftOptions:= opts#"options";
     initialLiftDepth := liftOptions#"initialLiftDepth"; 
@@ -1934,7 +1461,7 @@ testComputeSingleMinPolyEx=()->
 computeMinPolys = method (Options=>{"options"=>new LiftOptions});
 computeMinPolys (Ideal, Matrix, List) := opts->(equationsIdeal, solutionPoint, unknownList)->
 (
-	return computeMinPolys( varietyBlackBoxFromIdeal(equationsIdeal),solutionPoint,unknownList);
+	return computeMinPolys( blackBoxIdeal(equationsIdeal),solutionPoint,unknownList);
 )
 
 computeMinPolys (HashTable, Matrix, List) := opts->(systemData, solutionPoint, unknownList)->
@@ -1992,7 +1519,7 @@ computeSingleMinPoly = method (Options=>{"options"=>new LiftOptions});
 
 computeSingleMinPoly (Ideal, Matrix, RingElement) :=  ReducedPadicLiftResult =>  opts->(equationsIdeal, solution, unknown ) ->
 (
-  return computeMinPolys( varietyBlackBoxFromIdeal(equationsIdeal), solution, unknown );
+  return computeMinPolys( blackBoxIdeal(equationsIdeal), solution, unknown );
 )
 
 
@@ -2064,7 +1591,7 @@ doc ///
         Text    
             \break do it
         Example          
-            liftResult2 = computeSingleMinPoly ( varietyBlackBoxFromIdeal(IFZ), solution2, (gens ring IFZ)#0 );
+            liftResult2 = computeSingleMinPoly ( blackBoxIdeal(IFZ), solution2, (gens ring IFZ)#0 );
         Text
             \break check lifted result correctness
         Example          
@@ -2113,19 +1640,19 @@ testComputeMinPolys = ()->
     -- a test, where startingLatticeDim is to big
     liftOptions := new LiftOptions;
     liftOptions#"initialLatticeDim"=6;
-    result = computeMinPolys( varietyBlackBoxFromIdeal(IFZ), solution, {  x  },"options"=>liftOptions );
+    result = computeMinPolys( blackBoxIdeal(IFZ), solution, {  x  },"options"=>liftOptions );
     assert(result#0#x#1==2*x+3);
 
     liftOptions  = new LiftOptions;
     liftOptions#"initialLatticeDim"=3;
-    result = computeMinPolys( varietyBlackBoxFromIdeal(IFZ), solution, {  x  },"options"=>liftOptions );
+    result = computeMinPolys( blackBoxIdeal(IFZ), solution, {  x  },"options"=>liftOptions );
     assert(result#0#x#1==2*x+3);
 
 
-    result = computeMinPolys( varietyBlackBoxFromIdeal(IFZ), solution, {    } );
+    result = computeMinPolys( blackBoxIdeal(IFZ), solution, {    } );
 
     -- root gluing test:
-    result = approxComplexSolutions( varietyBlackBoxFromIdeal(IFZ), solution  );
+    result = approxComplexSolutions( blackBoxIdeal(IFZ), solution  );
 )
 
 
@@ -2207,7 +1734,7 @@ doc ///
             \break Compute minimal polynomial for x:
         Example        
             unknown = (gens RZ)#0
-            ( minimalPolynomialsTable , liftInfo )  = computeMinPolys  ( varietyBlackBoxFromIdeal(IFZ), solutionPoint, {unknown} );
+            ( minimalPolynomialsTable , liftInfo )  = computeMinPolys  ( blackBoxIdeal(IFZ), solutionPoint, {unknown} );
         Text
             \break The roots of the polynomial {\tt minimalPolynomialsTable#unknown }  are solutions for variable {\tt unknown}. \break
             Compare with factored initial polynomial FZ!
@@ -2285,17 +1812,7 @@ padicLiftProtect()
 testClearCoeffDenominators()
 ///
 
-TEST ///
-debug padicLift
-padicLiftProtect()
-testVarietyBlackBoxFromIdeal()
-///
 
-TEST ///
-debug padicLift
-padicLiftProtect()
-testVarietyBlackBoxFromEvaluation
-///
 
 TEST ///
 debug padicLift
