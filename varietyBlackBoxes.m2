@@ -496,3 +496,73 @@ padicLiftProtect()
 testBlackBoxIdealFromEvaluation()
 ///
 
+end
+---
+
+restart
+--load"varietyBlackBoxes.m2"
+loadPackage"padicLift"
+apropos "blackBox"
+
+R = ZZ[x_0..x_3]
+
+M = matrix{
+     {x_0,x_1,0},
+     {x_1,x_2,x_3}
+     }
+
+I = minors(2,M)
+
+smoothPoint = matrix{{1,0,0,0}}
+singularPoint = matrix{{0,0,1,0}}
+offPoint = matrix{{1,11,0,0}}
+
+S = ZZ[s,t]
+
+line = matrix{{0,0,s,t}}
+
+B = blackBoxIdeal I
+
+
+assert (sub(jacobian I,smoothPoint) == B.jacobianAt smoothPoint)
+rank(B.jacobianAt smoothPoint) == codim(I,Generic=>true)
+rank(B.jacobianAt singularPoint) < codim(I,Generic=>true)
+B.isZeroAt(smoothPoint)
+B.isZeroAt(singularPoint)
+B.isZeroAt(line)
+not B.isZeroAt(offPoint)
+
+prime = 11
+K = ZZ/prime
+B.isZeroAt(sub(smoothPoint,K))
+B.isZeroAt(sub(offPoint,K))
+
+apply(100,i->(
+	  r = random(K^1,K^4);
+	  assert ((B.isZeroAt r) == ((B.valuesAt r) == 0));
+	  ));
+
+	  
+evalLinePlusConic = point -> (
+     ePoint = flatten entries point;
+     M = matrix{
+	  {ePoint#0,ePoint#1,0},
+	  {ePoint#1,ePoint#2,ePoint#3}
+	  };
+     matrix{{det M_{0,1},det M_{0,2},det M_{1,2}}}
+     )
+
+B2 = blackBoxIdealFromEvaluation(4,ZZ,evalLinePlusConic)
+
+apply(100,i->(
+	  r = random(K^1,K^4)
+	  assert (B2.isZero(r) == B.isZero(r))
+	  assert (B2.valuesAt(r) == B.valuesAt(r))
+	  assert (B2.jacobianAt(r) == B.jacobianAt(r))
+     ))
+
+assert B2.isZeroAt(line)
+
+
+restart
+loadPackage"padicLift"
