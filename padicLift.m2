@@ -20,8 +20,8 @@
 
 newPackage(
      "padicLift",
-     Version => "0.9.6", 
-     Date => "15.02.2013",
+     Version => "0.9.7", 
+     Date => "20.03.2013",
      Authors => {{
            Name => "Jakob Kroeker", 
            Email => "kroeker@uni-math.gwdg.de", 
@@ -34,15 +34,25 @@ newPackage(
      Headline => "p-adic lift package",
      DebuggingMode => true,
      AuxiliaryFiles=>true
+  
 )
+--   PackageExports => {"idealBlackBoxes"}
 
+
+needsPackage "idealBlackBoxes";
+
+
+-- a hack to export the symbols of idealBlackBoxes for Macaulay 1.4.0.1, 
+try ( loadPackage "idealBlackBoxes"; )  then ( installPackage idealBlackBoxes; ) else ( installPackage idealBlackBoxes;);
+--try ( load "idealBlackBoxes.m2";  ) then ( installPackage idealBlackBoxes; ) else ( installPackage idealBlackBoxes;);
+ 
 
 export{
     gppath,
     ReducedPadicLiftResult,
     LiftOptions,
     liftPoint,
-    nextLift,
+    "nextLift",
     computeMinPolys,
     approxComplexSolutions,
     approxComplexSolutionsOld,
@@ -51,11 +61,10 @@ export{
     checkLiftOptions,
     computeRootsWithGP,
     createLiftOptions,
-    pariGpIsPresent,
-    clearCoeffDenominators,
-    blackBoxIdeal,
-    blackBoxIdealFromEvaluation
+    pariGpIsPresent 
 }
+
+
     
  --protect the symbols for checking package correctness: no symbol variables should be overwritten by accident!
 -- all in the package used hash table keys should be contained in this list.
@@ -87,27 +96,7 @@ padicLiftProtect = ()->
     protect liftOptions;
     protect tolerance;
     protect decimalPrecision;
-    protect jacobianAt;
-    protect jacobianMatrix;
-    protect transposedJacobianAt;
-    protect transposedJacobian;
-    protect valuesAt;
-    protect unknownIsValid;
-    protect getUnknowns;
-    protect createBlackBoxIdeal;
- 
-
-    protect getEquations;
-    protect sourceRank;
-    protect imageRank;
-    protect isZeroAt;
-    protect getPointProperties;
-    protect setRing;
-    protect registerPointProperty;
-    protect internalRegisterPointProperty;
-    protect setValuesAt;
-    protect setImageRank;
-    protect checkCoeffRing;
+    
 
 )
 
@@ -139,30 +128,7 @@ padicLiftExport = ()->
     exportMutable( liftOptions);
     exportMutable( tolerance);
     exportMutable( decimalPrecision);  
-    exportMutable( jacobianAt);
-    exportMutable( jacobianMatrix);
-    exportMutable( transposedJacobian);
-    exportMutable( transposedJacobianAt);
-    exportMutable( valuesAt);
-    exportMutable( unknownIsValid);    
-    exportMutable( getUnknowns);
-    exportMutable( createBlackBoxIdeal);
-    exportMutable( getEquations);                
-
-    exportMutable( imageRank);
-    exportMutable( sourceRank);            
-
-    exportMutable( isZeroAt);      
-
-    exportMutable( getPointProperties);  
-    exportMutable( setRing);  
-    exportMutable( registerPointProperty);  
-    exportMutable( internalRegisterPointProperty);
-    exportMutable( setValuesAt);    
-    exportMutable(  checkCoeffRing);
-    exportMutable( setImageRank );
- 
-
+    
 )
 
 undocumented { 
@@ -203,6 +169,8 @@ undocumented {
 --padicLiftProtect() -- protect the symbols for checking package correctness: no symbol variables should be overwritten by accident!
 padicLiftExport(); -- export the symbols to make the package work 
 
+
+
 -- a package global  for indeterminate usage ...hopefully not too bad design...?
 
 GlobalInternalPadicLiftResultVariable := null;
@@ -212,8 +180,6 @@ GlobalInternalPadicLiftResultVariable = (gens (ZZ[GlobalInternalPadicLiftResultV
 
 
 beginDocumentation()
-
-load "./varietyBlackBoxes.m2";
 
 load "./padicLift/univarPolRootsLoader.m2";
 
@@ -370,22 +336,22 @@ liftStep = ( systemData, vanishingCoordinates ) ->
     nextLiftDestRing := ZZ[]/nextchar; 
     localVanishingCoordinates := sub( vanishingCoordinates, nextLiftDestRing );
   
-    JacobianAtSolution := systemData.jacobianAt(localVanishingCoordinates); --get rid of degree information
+    transposedM2JacobianAtSolution := transpose systemData.jacobianAt(localVanishingCoordinates); --get rid of degree information
 
     prime := ( factor currchar)#0#0;
    
-    rightHandSide := systemData.valuesAt( localVanishingCoordinates );
+    rightHandSide := transpose systemData.valuesAt( localVanishingCoordinates );
 
     rightHandSide = sub(sub(rightHandSide,ZZ),nextLiftDestRing); -- get rid of degree information
 
 
-    if ( 0 != (rightHandSide % JacobianAtSolution) )
+    if ( 0 != (rightHandSide % transposedM2JacobianAtSolution) )
            then return {};
-    special :=  transpose ( rightHandSide // JacobianAtSolution); 
+    special :=  transpose ( rightHandSide // transposedM2JacobianAtSolution); 
 
-    JacobianInverseAtSolution := null;
+    transposedM2JacobianInverseAtSolution := null;
         
-    --JacobianKernelAtSolution  := syz transpose TransposedJacobianAtSolution;
+    --JacobianKernelAtSolution  := syz transpose transposedJacobianAtSolution;
     --kerdim := rank source JacobianKernelAtSolution;
     --randomvector := matrix { apply(kerdim, i->(random(char nextLiftDestField))_nextLiftDestField ) };
     --randomvector =sub (randomvector, nextLiftDestField);
@@ -398,130 +364,6 @@ liftStep = ( systemData, vanishingCoordinates ) ->
 )
 
 
-
--- polynomialLCMDenominator computes the least common multiple of the denominators of the polynomial (rational) cofficients.
--- that means if we have a polynomial = sum { (a_i/b_i)*monomial_i }, a_i and b_i integers, then the function returns LCM( (b_i) )
-polynomialLCMDenominator = (polynomial)->
-(
-    coeffRng := null;
-    LCMDenominator := 1;
-    --
-    summands := { polynomial };
-    while (coeffRng=!=ZZ and coeffRng=!=QQ) do
-    (
-        try ( coeffRng = coefficientRing ring  summands#0 ) then
-        (        
-             summands = flatten apply( summands, summand-> apply(flatten entries  last coefficients summand, j->sub(j,coeffRng) ) );    
-        )
-        else
-        (  error("expected rationals as coefficient ring!"); 
-        );
-    );
-    if (coeffRng===QQ) then   LCMDenominator =  lcm apply(summands ,j-> denominator j ) ;
-    return LCMDenominator;
-)
-
-
--- clearCoeffDenominators converts an ideal with rational coefficients to an ideal with integer coefficients while preserving the vanishing set.
--- e.g. if sub(IdealWithRationalCoeffs,point)==0, then  sub( clearCoeffDenominators(IdealWithRationalCoeffs),point)==0 and vice versa
-clearCoeffDenominators = method();
-
-clearCoeffDenominators (Ideal)  :=  Ideal =>  (IdealWithRationalCoeffs)->
-(
-    if (coefficientRing ring IdealWithRationalCoeffs=!=ZZ and coefficientRing ring IdealWithRationalCoeffs=!=QQ) then
-    error("expected rationals as coefficient ring!");
-    dstrng := ZZ[gens ring IdealWithRationalCoeffs];
-    modgens := apply(flatten entries gens IdealWithRationalCoeffs, i->polynomialLCMDenominator(i)*i );
-    return sub(ideal modgens,dstrng );
-)
-
-doc ///
-    Key
-        clearCoeffDenominators        
-        (clearCoeffDenominators, Ideal )
-    
-    Headline
-        convert an ideal with rational coefficients to an ideal with integer coefficients
-    Usage   
-        clearCoeffDenominators(IdealInQQ)
-    Inputs  
-        IdealInQQ:Ideal
-             ideal with rational coefficients
-    Outputs
-        : Ideal
-             ideal with integer coefficients with the same zero set as the input ideal
-    Description
-        Example          
-        Text
-           \break  Example:  convert an ideal with coefficients in QQ to an ideal with   coefficients in ZZ
-        Example          
-            RQ = QQ[x];
-            FQ = {1/3*x+1,1/5*x+2};        
-            IFQ = ideal FQ
-            IFZ = clearCoeffDenominators(IFQ)
-    Caveat
-        Conversion implemented only for cases where the ideal coefficient ring is QQ( or ZZ).
-///
-
-testClearCoeffDenominators =()->
-(
-    x := null;  x=symbol x;
-    y := null;  y=symbol y;
-    RQ := QQ[x,y];
-    x = (gens(RQ))#0;
-    FQ := { (1/3*x+1) ,  (y+1/2)}; 
-    IFQ := ideal FQ;
-    IFZ := clearCoeffDenominators(IFQ);  
-    FZ := (entries (gens IFZ)_0)#0;
-
-    assert(   FZ == sub(x+3,ring FZ)   ) ; 
-
-    point := matrix {{-3,-1/2}};
-    assert( sub(IFQ,point)==0 );
-    assert( sub(IFZ,point)==0 );
-
-    point = random(QQ^1,QQ^2);
-    assert( sub(IFQ,point)==sub(IFZ,point) );    
-)
-
-testNestedRingCoeffsLCMDenominator =()->
-(
-    x:=null; x=symbol x;
-    y:=null;  y=symbol y;
-    z:=null;  z=symbol z;
-    RQ := QQ[x,y];
-    x = (gens(RQ))#0;
-
-    RQQ := RQ[z];
-    polFQ :=  (1/3*x+1)*z; 
-
-    lcmDenom := polynomialLCMDenominator( polFQ );
-    assert(lcmDenom==3);   
-)
-
-testTensoredClearCoeffDenominators =()->
-(
-    x:=null; x=symbol x;
-    y:=null;  y=symbol y;
-    z:=null;  z=symbol z;
-    R1Q := QQ[x,y];
-    x = (gens(R1Q))#0;
-
-    R2Q := QQ[z];
-
-    RTQ := R1Q**R2Q**QQ;
-
-    x = (gens(RTQ))#0;
-    z = (gens(RTQ))#2;
-    polFTQ :=  (1/3*x+1)*z; 
-
-    lcmDenom := polynomialLCMDenominator( polFTQ );
-    assert(lcmDenom==3);
-    IFQ := ideal polFTQ;
-    IFZ := clearCoeffDenominators(IFQ);  
-    FZ := (entries (gens IFZ)_0)#0;
-    assert(   FZ == sub(x*z+3*z,ring FZ)   ) ;       
-)
 
 
 -- 
@@ -1292,6 +1134,7 @@ tryLatticeReduction (RingElement, Matrix, Matrix ) := LatticeReductionResult => 
     result.latticeBasisVectorNormsList= latticeBasisVectorNormsList;
     result.currentLatticeDim= currentLatticeDim;
 
+
     if (verbose) then 
     (
         print "tryLatticeReduction result:";
@@ -1806,26 +1649,6 @@ padicLiftProtect()
 testRemoveConstantFactors()
 ///
 
-TEST ///
-debug padicLift
-padicLiftProtect()
-testClearCoeffDenominators()
-///
-
-
-
-TEST ///
-debug padicLift
-padicLiftProtect()
-testNestedRingCoeffsLCMDenominator()
-///
-         
-
-TEST ///
-debug padicLift
-padicLiftProtect()
-testTensoredClearCoeffDenominators()
-///
 
 TEST ///
 debug padicLift

@@ -1,3 +1,212 @@
+newPackage(
+     "idealBlackBoxes",
+     Version => "0.1", 
+     Date => "15.02.2013",
+     Authors => {{
+           Name => "Jakob Kroeker", 
+           Email => "kroeker@uni-math.gwdg.de", 
+           HomePage => "http://www.crcg.de/wiki/User:Kroeker"},{
+           Name => "Hans-Christian Graf v. Bothmer", 
+           Email => "bothmer@math.uni-hannover.de", 
+           HomePage => "http://www.crcg.de/wiki/Bothmer"}    
+      },
+     Configuration => {},
+     Headline => "black boxes for explicit and implicitly given ideals",
+     DebuggingMode => true
+)
+
+export{
+    clearCoeffDenominators,
+    blackBoxIdeal,
+    blackBoxIdealFromEvaluation
+}
+
+
+idealBlackBoxesProtect = ()->
+(
+   
+    protect jacobianAt;
+    protect jacobianMatrix;
+    protect transposedJacobianAt;
+    protect transposedJacobian;
+    protect valuesAt;
+    protect unknownIsValid;
+    protect getUnknowns;
+    protect createBlackBoxIdeal;
+    protect getEquations;
+    protect sourceRank;
+    protect imageRank;
+    protect isZeroAt;
+    protect getPointProperties;
+    protect setRing;
+    protect registerPointProperty;
+    protect internalRegisterPointProperty;
+    protect setValuesAt;
+    protect setImageRank;
+    protect checkCoeffRing;
+    protect deduceImageRank;
+
+)
+
+--todo: fix dublicate code,  -  padicLiftProtect and padicLiftExport
+idealBlackBoxesExport = ()->
+(
+    exportMutable( jacobianAt);
+    exportMutable( jacobianMatrix);
+    exportMutable( transposedJacobian);
+    exportMutable( transposedJacobianAt);
+    exportMutable( valuesAt);
+    exportMutable( unknownIsValid);    
+    exportMutable( getUnknowns);
+    exportMutable( createBlackBoxIdeal);
+    exportMutable( getEquations);                
+    exportMutable( sourceRank);  
+    exportMutable( imageRank);
+    exportMutable( isZeroAt);      
+    exportMutable( getPointProperties);  
+    exportMutable( setRing);  
+    exportMutable( registerPointProperty);  
+    exportMutable( internalRegisterPointProperty);
+    exportMutable( setValuesAt);    
+    exportMutable( setImageRank );
+    exportMutable(  checkCoeffRing);
+    exportMutable( deduceImageRank );
+)
+
+
+
+
+-- swith between protect and export - both are not possible!
+
+--idealBlackBoxesProtect() -- protect the symbols for checking package correctness: no symbol variables should be overwritten by accident!
+idealBlackBoxesExport(); -- export the symbols to make the package work 
+
+
+beginDocumentation()
+
+
+-- polynomialLCMDenominator computes the least common multiple of the denominators of the polynomial (rational) cofficients.
+-- that means if we have a polynomial = sum { (a_i/b_i)*monomial_i }, a_i and b_i integers, then the function returns LCM( (b_i) )
+polynomialLCMDenominator = (polynomial)->
+(
+    coeffRng := null;
+    LCMDenominator := 1;
+    --
+    summands := { polynomial };
+    while (coeffRng=!=ZZ and coeffRng=!=QQ) do
+    (
+        try ( coeffRng = coefficientRing ring  summands#0 ) then
+        (        
+             summands = flatten apply( summands, summand-> apply(flatten entries  last coefficients summand, j->sub(j,coeffRng) ) );    
+        )
+        else
+        (  error("expected rationals as coefficient ring!"); 
+        );
+    );
+    if (coeffRng===QQ) then   LCMDenominator =  lcm apply(summands ,j-> denominator j ) ;
+    return LCMDenominator;
+)
+
+-- clearCoeffDenominators converts an ideal with rational coefficients to an ideal with integer coefficients while preserving the vanishing set.
+-- e.g. if sub(IdealWithRationalCoeffs,point)==0, then  sub( clearCoeffDenominators(IdealWithRationalCoeffs),point)==0 and vice versa
+clearCoeffDenominators = method();
+
+clearCoeffDenominators (Ideal)  :=  Ideal =>  (IdealWithRationalCoeffs)->
+(
+    if (coefficientRing ring IdealWithRationalCoeffs=!=ZZ and coefficientRing ring IdealWithRationalCoeffs=!=QQ) then
+    error("expected rationals as coefficient ring!");
+    dstrng := ZZ[gens ring IdealWithRationalCoeffs];
+    modgens := apply(flatten entries gens IdealWithRationalCoeffs, i->polynomialLCMDenominator(i)*i );
+    return sub(ideal modgens,dstrng );
+)
+
+doc ///
+    Key
+        clearCoeffDenominators        
+        (clearCoeffDenominators, Ideal )
+    
+    Headline
+        convert an ideal with rational coefficients to an ideal with integer coefficients
+    Usage   
+        clearCoeffDenominators(IdealInQQ)
+    Inputs  
+        IdealInQQ:Ideal
+             ideal with rational coefficients
+    Outputs
+        : Ideal
+             ideal with integer coefficients with the same zero set as the input ideal
+    Description
+        Example          
+        Text
+           \break  Example:  convert an ideal with coefficients in QQ to an ideal with   coefficients in ZZ
+        Example          
+            RQ = QQ[x];
+            FQ = {1/3*x+1,1/5*x+2};        
+            IFQ = ideal FQ
+            IFZ = clearCoeffDenominators(IFQ)
+    Caveat
+        Conversion implemented only for cases where the ideal coefficient ring is QQ( or ZZ).
+///
+
+testClearCoeffDenominators =()->
+(
+    x := null;  x=symbol x;
+    y := null;  y=symbol y;
+    RQ := QQ[x,y];
+    x = (gens(RQ))#0;
+    FQ := { (1/3*x+1) ,  (y+1/2)}; 
+    IFQ := ideal FQ;
+    IFZ := clearCoeffDenominators(IFQ);  
+    FZ := (entries (gens IFZ)_0)#0;
+
+    assert(   FZ == sub(x+3,ring FZ)   ) ; 
+
+    point := matrix {{-3,-1/2}};
+    assert( sub(IFQ,point)==0 );
+    assert( sub(IFZ,point)==0 );
+
+    point = random(QQ^1,QQ^2);
+    assert( sub(IFQ,point)==sub(IFZ,point) );    
+)
+
+testNestedRingCoeffsLCMDenominator =()->
+(
+    x:=null; x=symbol x;
+    y:=null;  y=symbol y;
+    z:=null;  z=symbol z;
+    RQ := QQ[x,y];
+    x = (gens(RQ))#0;
+
+    RQQ := RQ[z];
+    polFQ :=  (1/3*x+1)*z; 
+
+    lcmDenom := polynomialLCMDenominator( polFQ );
+    assert(lcmDenom==3);   
+)
+
+testTensoredClearCoeffDenominators =()->
+(
+    x:=null; x=symbol x;
+    y:=null;  y=symbol y;
+    z:=null;  z=symbol z;
+    R1Q := QQ[x,y];
+    x = (gens(R1Q))#0;
+
+    R2Q := QQ[z];
+
+    RTQ := R1Q**R2Q**QQ;
+
+    x = (gens(RTQ))#0;
+    z = (gens(RTQ))#2;
+    polFTQ :=  (1/3*x+1)*z; 
+
+    lcmDenom := polynomialLCMDenominator( polFTQ );
+    assert(lcmDenom==3);
+    IFQ := ideal polFTQ;
+    IFZ := clearCoeffDenominators(IFQ);  
+    FZ := (entries (gens IFZ)_0)#0;
+    assert(   FZ == sub(x*z+3*z,ring FZ)   ) ;       
+)
 
 
 
@@ -7,7 +216,6 @@ createBasicBlackBox = () ->
     
    blackBox := new MutableHashTable;
       
- 
 
    pointProperties := new HashTable  ;
 
@@ -21,7 +229,6 @@ createBasicBlackBox = () ->
 
      blackBox.ring = () ->
      (
-       print ("orig blackBox.ring  called");
         --error "error:  blackBox.ring() not implemented";
         return rng;
      );
@@ -150,6 +357,31 @@ createBasicBlackBox = () ->
       imageRank = pImageRank;
    );
 
+     blackBox.deduceImageRank = ()->
+     (
+        computed  := false; 
+        maxTrials := 100;
+        currTrial := 0;
+        rng := blackBox.coefficientRing();
+        imageRank := null;
+        while imageRank===null and currTrial<maxTrials do
+        (
+          try (
+              tmppoint := matrix random(rng^1,rng^(blackBox.sourceRank()) );
+              valuesMatrix := blackBox.valuesAt( tmppoint );
+              print valuesMatrix;
+              assert (numRows valuesMatrix==1);
+              imageRank = numColumns valuesMatrix;
+
+          )         then ( computed=true ) else();
+               
+           
+          currTrial = currTrial+1;
+        );
+        if not computed then error "error: failed to deduce image dim";
+        return imageRank;
+     );
+
 
     blackBox.setValuesAt = (pValuesAt) ->
      ( 
@@ -178,34 +410,18 @@ blackBoxIdeal  = (equationsIdeal)->
 (
      blackBox := new MutableHashTable from createBasicBlackBox();
 
-     transposedJacobian := jacobian gens equationsIdeal;
-     jacobianMatrix := transpose transposedJacobian;
+     jacobianM2Matrix := jacobian gens equationsIdeal;
 
-     --transposedJacobian := symbol transposedJacobian;
 
      -- should be different if the ideal is over Fp
 
       blackBox.setRing(ring equationsIdeal);
       remove( blackBox, getSymbol "setRing" );
 
-  
 
-
-
-
-     blackBox.transposedJacobian=() ->
+     blackBox.jacobian = () ->
      (
-       return transposedJacobian;
-     );
-
-     --blackBox.jacobianMatrix = () ->
-     --(
-     --  return jacobianMatrix;
-     --);
-
-   blackBox.jacobian = () ->
-     (
-       return jacobianMatrix;
+       return jacobianM2Matrix;
      );
 
      blackBox.getEquations = ()->
@@ -215,7 +431,7 @@ blackBoxIdeal  = (equationsIdeal)->
 
      valuesAt := (point)->
      (
-         return transpose gens sub( equationsIdeal , point);   
+         return gens sub( equationsIdeal , point);   
      );
 
      blackBox.setValuesAt(valuesAt);
@@ -224,11 +440,11 @@ blackBoxIdeal  = (equationsIdeal)->
 
      jacobianAt := (point)->
      (
-        jacobianMatrixAt:= sub( jacobianMatrix , point);
+        jacobianM2MatrixAt:= sub( jacobianM2Matrix , point);
         --get rid of map degree information
-	jacobianMatrixAt = sub( jacobianMatrixAt, ring point);
-        jacobianMatrixAt = sub(sub(jacobianMatrixAt, ZZ), ring point);
-        return jacobianMatrixAt;
+	    jacobianM2MatrixAt = sub( jacobianM2MatrixAt, ring point);
+        jacobianM2MatrixAt = sub(sub(jacobianM2MatrixAt, ZZ), ring point);
+        return jacobianM2MatrixAt;
      );
 
        
@@ -238,9 +454,7 @@ blackBoxIdeal  = (equationsIdeal)->
         return jacobianAt(point);
     );      
      
-   --blackBox.setImageRank(rank image gens equationsIdeal);
-    tmppoint := matrix { apply(blackBox.sourceRank(), i-> 0_(blackBox.coefficientRing()) ) };
-     blackBox.setImageRank(numRows blackBox.valuesAt( tmppoint ));
+     blackBox.setImageRank( blackBox.deduceImageRank() );
      remove( blackBox, getSymbol "setImageRank" );
 
 
@@ -267,7 +481,7 @@ testBlackBoxIdeal=()->
    rng13 := ZZ/13;
    assert( IFPBlackBox.getUnknowns()=={x} );
    assert( IFPBlackBox.getEquations()==gens IFP);
-   assert( IFPBlackBox.jacobian()==transpose jacobian IFP);
+   assert( IFPBlackBox.jacobian()== jacobian IFP);
    
 
    point = matrix {{3}};
@@ -286,8 +500,8 @@ testBlackBoxIdeal=()->
     IFPBlackBox.ring();
     IFPBlackBox.valuesAt(point) ;
     assert(   IFPBlackBox.isZeroAt( point ) );
-   assert( IFPBlackBox.jacobianAt(point)==sub(transpose jacobian IFP,point) );
-   assert( IFPBlackBox.valuesAt(point)==transpose gens sub(  IFP, point ) );
+   assert( IFPBlackBox.jacobianAt(point)==sub( jacobian IFP,point) );
+   assert( IFPBlackBox.valuesAt(point)== gens sub(  IFP, point ) );
 )
 
 blackBoxIdealFromEvaluation  =method();
@@ -302,7 +516,6 @@ blackBoxIdealFromEvaluation( Ring, Function )  := HashTable=> ( rng, valuesAt )-
 
      blackBox.ring = ()->
      (         
-        print ("new blackBox.ring  called");
         return rng;
      );
 
@@ -312,13 +525,12 @@ blackBoxIdealFromEvaluation( Ring, Function )  := HashTable=> ( rng, valuesAt )-
 
      blackBox.valuesAt = (point)->
      (
-         print ("new blackBox.valuesAt never called");
          return valuesAt( point);   
      );
  
-  
-     tmppoint := matrix { apply(blackBox.sourceRank(), i-> 0_(blackBox.coefficientRing()) ) };
-     blackBox.setImageRank(numRows blackBox.valuesAt( tmppoint ));
+    
+
+     blackBox.setImageRank( blackBox.deduceImageRank() );
      remove( blackBox, getSymbol "setImageRank" );
 
      blackBox.isZeroAt = (point)->
@@ -351,18 +563,18 @@ blackBoxIdealFromEvaluation( Ring, Function )  := HashTable=> ( rng, valuesAt )-
         epsRng := ( blackBox.coefficientRing() )[eps]/eps^2;
         eps = (gens epsRng)#0;
 
-        jacobianMatrixAt := mutableMatrix( blackBox.coefficientRing() ,  blackBox.imageRank(  ), #unknowns );
+        jacobianMatrixAt := mutableMatrix( blackBox.coefficientRing(),  #unknowns, blackBox.imageRank(  ) );
         for unknownIdx  in 0..(#unknowns-1) do
         (
              newpoint := new MutableMatrix from sub( point,epsRng );
    
              newpoint_(unknownIdx,0) = newpoint_(unknownIdx,0)+eps;
              valueVec := blackBox.valuesAt( matrix newpoint );  
-             for rowIdx in 0..numRows valueVec-1 do
+             for equationIdx in 0..numColumns valueVec-1 do
              (
-                coordinateValue := last coefficients (valueVec_(rowIdx,0), Monomials=>{1 , eps } );
+                coordinateValue := last coefficients (valueVec_(0,equationIdx), Monomials=>{1 , eps } );
                 if ( not (coordinateValue)_(0,0) ==0) then error("error in jacobianAt. please contact the developers");
-                jacobianMatrixAt_(rowIdx,unknownIdx) = sub( (coordinateValue)_(1,0) , blackBox.coefficientRing())  ;
+                jacobianMatrixAt_(unknownIdx,equationIdx) = sub( (coordinateValue)_(1,0) , blackBox.coefficientRing())  ;
              );
         );
         return matrix jacobianMatrixAt;
@@ -381,7 +593,8 @@ blackBoxIdealFromEvaluation(ZZ, Ring, Function) := HashTable => ( numVariables, 
     assert ( numVariables>0 );
     a := null;
     a = symbol a;
-    
+    -- todo: add getNumVariables;
+
     rng := coeffRing[a_1..a_numVariables];
     return blackBoxIdealFromEvaluation(rng,valuesAt);
 )
@@ -484,16 +697,36 @@ doc ///
 ///
 
 
+TEST ///
+debug idealBlackBoxes
+idealBlackBoxesProtect()
+testClearCoeffDenominators()
+///
+
+
 
 TEST ///
-debug padicLift
-padicLiftProtect()
+debug idealBlackBoxes
+idealBlackBoxesProtect()
+testNestedRingCoeffsLCMDenominator()
+///
+         
+
+TEST ///
+debug idealBlackBoxes
+idealBlackBoxesProtect()
+testTensoredClearCoeffDenominators()
+///
+
+TEST ///
+debug idealBlackBoxes
+idealBlackBoxesProtect()
 testBlackBoxIdeal()
 ///
 
 TEST ///
-debug padicLift
-padicLiftProtect()
+debug idealBlackBoxes
+idealBlackBoxesProtect()
 testBlackBoxIdealFromEvaluation()
 ///
 
@@ -501,8 +734,8 @@ end
 ---
 
 restart
---load"varietyBlackBoxes.m2"
-loadPackage"padicLift"
+--load "idealBlackBoxes.m2"
+loadPackage"idealBlackBoxes"
 apropos "blackBox"
 
 R = ZZ[x_0..x_3]
@@ -550,7 +783,7 @@ evalLinePlusConic = point -> (
 	  {ePoint#0,ePoint#1,0},
 	  {ePoint#1,ePoint#2,ePoint#3}
 	  };
-      transpose matrix{{det M_{0,1},det M_{0,2},det M_{1,2}}}
+      matrix{{det M_{0,1},det M_{0,2},det M_{1,2}}}
      )
 
 B2 = blackBoxIdealFromEvaluation(4,ZZ,evalLinePlusConic)
@@ -567,4 +800,4 @@ assert B2.isZeroAt(line)
 
 
 restart
-loadPackage"padicLift"
+loadPackage"idealBlackBoxes"
