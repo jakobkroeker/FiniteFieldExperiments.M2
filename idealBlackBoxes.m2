@@ -789,14 +789,25 @@ evalLinePlusConic = point -> (
 B2 = blackBoxIdealFromEvaluation(4,ZZ,evalLinePlusConic)
 
 apply(100,i->(
-	  r = random(K^1,K^4)
+	  r = random(K^1,K^4);
 	  assert (B2.isZeroAt(r) == B.isZeroAt(r));
 	  assert (B2.valuesAt(r) == B.valuesAt(r));
-      if B2.isZeroAt(r) then 
-	  assert (B2.jacobianAt(r) == B.jacobianAt(r));
+      	  if B2.isZeroAt(r) then 
+	      assert (B2.jacobianAt(r) == B.jacobianAt(r));
      ))
 
 assert B2.isZeroAt(line)
+B2.jacobianAt(line)
+B.jacobianAt(line)
+
+-- sollte gehn
+assert (B.jacobianAt(line) == sub(jacobian I,line))
+-- eventuell schwieriger
+assert (B2.jacobianAt(line) == B.jacobianAt(line))
+
+
+
+line
 
 
 restart
