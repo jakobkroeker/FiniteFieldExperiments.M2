@@ -34,7 +34,7 @@ idealBlackBoxesProtect = ()->
     protect getUnknowns;
     protect createBlackBoxIdeal;
     protect getEquations;
-    protect sourceRank;
+    protect numVariables;
     protect imageRank;
     protect isZeroAt;
     protect getPointProperties;
@@ -60,7 +60,7 @@ idealBlackBoxesExport = ()->
     exportMutable( getUnknowns);
     exportMutable( createBlackBoxIdeal);
     exportMutable( getEquations);                
-    exportMutable( sourceRank);  
+    exportMutable( numVariables);  
     exportMutable( imageRank);
     exportMutable( isZeroAt);      
     exportMutable( getPointProperties);  
@@ -270,7 +270,7 @@ createBasicBlackBox = () ->
         return true;
      );
 
-     blackBox.sourceRank = ()->
+     blackBox.numVariables = ()->
      (
         --return rank source  blackBox.getUnknowns();
         return #(blackBox.getUnknowns());
@@ -347,7 +347,7 @@ createBasicBlackBox = () ->
    blackBox.imageRank = ()->
    (
        return imageRank;
-       --point := matrix { apply(blackBox.sourceRank(), i-> 0_(blackBox.coefficientRing()) ) };
+       --point := matrix { apply(blackBox.numVariables(), i-> 0_(blackBox.coefficientRing()) ) };
        --return #blackBox.valuesAt( point );
    );
 
@@ -367,7 +367,7 @@ createBasicBlackBox = () ->
         while imageRank===null and currTrial<maxTrials do
         (
           try (
-              tmppoint := matrix random(rng^1,rng^(blackBox.sourceRank()) );
+              tmppoint := matrix random(rng^1,rng^(blackBox.numVariables()) );
               valuesMatrix := blackBox.valuesAt( tmppoint );
               print valuesMatrix;
               assert (numRows valuesMatrix==1);
@@ -540,9 +540,9 @@ blackBoxIdealFromEvaluation( Ring, Function )  := HashTable=> ( rng, valuesAt )-
 
      check := ()->
      (
-         sourceRank :=  blackBox.sourceRank();
+         numVariables :=  blackBox.numVariables();
 
-         point := matrix { apply(sourceRank, i-> 0_(blackBox.coefficientRing()) ) };
+         point := matrix { apply(numVariables, i-> 0_(blackBox.coefficientRing()) ) };
          blackBox.valuesAt( point );
          blackBox.isZeroAt( point );
      );
@@ -624,7 +624,7 @@ testBlackBoxIdealFromEvaluation = ()->
     assert( evaluation.valuesAt( point ) == evalBlackBox.valuesAt( point ) );
     assert( evaluation.jacobianAt( point ) == evalBlackBox.jacobianAt( point ) );
 
-    assert( evaluation.sourceRank() ==evalBlackBox.sourceRank() );
+    assert( evaluation.numVariables() ==evalBlackBox.numVariables() );
 
     outerPoint := matrix {{2_(ZZ/7)}} ;
 
