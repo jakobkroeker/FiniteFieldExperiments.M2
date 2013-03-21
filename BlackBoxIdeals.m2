@@ -18,7 +18,8 @@ newPackage(
 export{
     clearCoeffDenominators,
     blackBoxIdeal,
-    blackBoxIdealFromEvaluation
+    blackBoxIdealFromEvaluation,
+    blackBoxIdealFromProperties
 }
 
 
@@ -45,6 +46,7 @@ idealBlackBoxesProtect = ()->
     protect setImageRank;
     protect checkCoeffRing;
     protect deduceImageRank;
+    protect properties;
 
 )
 
@@ -71,6 +73,7 @@ idealBlackBoxesExport = ()->
     exportMutable( setImageRank );
     exportMutable(  checkCoeffRing);
     exportMutable( deduceImageRank );
+    exportMutable( properties );
 )
 
 
@@ -504,7 +507,7 @@ testBlackBoxIdeal=()->
    assert( IFPBlackBox.valuesAt(point)== gens sub(  IFP, point ) );
 )
 
-blackBoxIdealFromEvaluation  =method();
+blackBoxIdealFromEvaluation = method();
 
 blackBoxIdealFromEvaluation( Ring, Function )  := HashTable=> ( rng, valuesAt )->
 (
@@ -644,6 +647,21 @@ testBlackBoxIdealFromEvaluation = ()->
 
 );
 
+
+blackBoxIdealFromProperies = method();
+
+blackBoxIdealFromProperies(ZZ, Ring, Function) := HashTable => ( numVariables, coeffRing, properties )  ->
+(
+    assert ( numVariables>0 );
+    B := new MutableHashTable;
+    B.numVariables = ()->numVariables;
+    B.coefficientRing = ()->coeffRing;
+    B.properties = properties;
+    return B
+)
+
+    
+    
 
 
 doc ///

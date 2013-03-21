@@ -71,7 +71,7 @@ poissonEstimate(ZZ) := HashTable => opts -> (numPoints) -> (
      -- for a Poisson distribution the standard deviation is
      -- the square root of the expected value
      err := opts#"confidence"*sqrt(numPoints); 
-     estimate := new Interval from (round(1,numPoints-err),round(1,numPoints+err));
+     estimate := new Interval from (max(round(1,numPoints-err),0.0001),round(1,numPoints+err));
      return estimate;
      )
 
@@ -135,8 +135,8 @@ estimateCodim = method(Options => (options poissonEstimate));
 estimateCodim(ZZ,ZZ,ZZ) := HashTable => opts->
     (trials,numPoints,fieldCardinality) -> (
     	 est := (1/trials)*poissonEstimate(numPoints,opts);
-    	 logEst := new Interval from (log est.max,log est.min);
-    	 codimEst := (-1/log fieldCardinality)*logEst;
+    	 logEst := new Interval from (-log est.max,-log est.min);
+    	 codimEst := (1/log fieldCardinality)*logEst;
 	 new Interval from (round(1,codimEst.min),round(1,codimEst.max))
     )
 
@@ -220,6 +220,8 @@ new Experiment from HashTable := (E, blackBoxIdeal) ->
 	  )
    );
 
+   experiment.estimateDecomposition = () -> (estimateDecomposition(experimentData));
+
    estimateStratification := experimentData -> (
        count = experimentData.count;
        new Tally from apply( keys count, rankJacobian->
@@ -231,7 +233,8 @@ new Experiment from HashTable := (E, blackBoxIdeal) ->
 	  )
    );
 
-
+   experiment.estimateStratification = () -> (estimateStratification(experimentData));
+   
 
    runExperimentOnce := method(Options => {"numPointsPerComponentToCollect" => 10});
  
@@ -242,40 +245,48 @@ new Experiment from HashTable := (E, blackBoxIdeal) ->
        numVariables := blackBoxIdeal.numVariables();
        -- todo 'numVariables' keine Funkton - in Konflikt mit "Vermeidung von doppeltem code"
 
-     -- choose a random point
-     randomPoint := random( K^1, K^numVariables );
-     -- if ideal vanishes on the random point do something
-     if blackBoxIdeal.isZeroAt(randomPoint) then   -- only if jacobianAt is defined
-     (
-     	  rankJacobian := rank blackBoxIdeal.jacobianAt(randomPoint);
+       -- choose a random point
+       randomPoint := random( K^1, K^numVariables );
+       -- if ideal vanishes on the random point do something
+       if blackBoxIdeal.isZeroAt(randomPoint) then   
+       (
+	  countKey := {};  
+	  if blackBoxIdeal#?(symbol jacobianAt) then (
+	       countKey = countKey|{rank blackBoxIdeal.jacobianAt(randomPoint)}
+	       );
+	  if blackBoxIdeal#?(symbol propertiesAt) then (
+	       countKey = countKey|{blackBoxIdeal.propertiesAt(randomPoint)}
+	       );	  
 	  
-      -- count number of found points for each rank (=codim Tangentspace)
-     	  experimentData.count = experimentData.count + tally {rankJacobian};
+          -- count number of found points for each rank and property
+     	  experimentData.count = experimentData.count + tally {countKey};
 	 
-      -- remember all points
-     	  if experimentData.points#?rankJacobian then 
-          (
-	        estimate = (estimateDecomposition(experimentData))#rankJacobian;
+      	  -- remember some points
+	  wantedPoints := numberOfPointsToCollect;
+	  if blackBoxIdeal#?(symbol jaobianAt) then (
+	        upperEstimate := ((estimateDecomposition(experimentData))#countKey).max;
+		wantedPoints = max(1,upperEstimate)*wantedPoints;
+		); 	       
+     	  if experimentData.points#?countKey then (
 	        -- collect a fixed number of points per estimated component
 	        -- use upper limit of estimation for this
-	        if #(experimentData.points#rankJacobian) < numberOfPointsToCollect*max(1,estimate.max) then 
-            (
-	       	    experimentData.points#rankJacobian = experimentData.points#rankJacobian | {randomPoint}
+	        if #(experimentData.points#countKey) < wantedPoints then 
+            	(
+	       	    experimentData.points#countKey = experimentData.points#countKey | {randomPoint}
 	       	);
-	      ) else (
-	           experimentData.points#rankJacobian = {randomPoint}
-     	  );
-	  );
+	   ) else (
+	        experimentData.points#countKey = {randomPoint}
+     	  	);
+      );
       -- count this trial even if no solution is found
       experimentData.trials = experimentData.trials + 1;
-      return estimateDecomposition (experimentData);
     );
 
     runExperiment := method(Options => options runExperimentOnce);
 
      runExperiment(ExperimentData, ZZ) := Tally => opts -> (experimentData,trials) -> ( 
        apply( trials, trialNum->runExperimentOnce( experimentData, opts) );
-       return estimateDecomposition (experimentData);
+       -- return estimateDecomposition (experimentData);
      );
 
    ---- syntax for the moment too hard (method without parameters)
@@ -323,12 +334,11 @@ e = new Experiment from B
 e.run(1, "numPointsPerComponentToCollect"=>20 ) 
 e.run(1) 
 
-e.run( 2000,  "numPointsPerComponentToCollect"=>20 )
+e.run( 3000,  "numPointsPerComponentToCollect"=>20 )
 
 pointData = e.getPointData()
 
 apply(keys pointData,i->#(pointData#i))
 
-
-
+assert (#(pointData#{2}) >= 40)
 

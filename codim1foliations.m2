@@ -2,8 +2,7 @@
 -- degree d foliations in AA^3
 -- using finite field experiments
 
-restart
-loadPackage"BlackBoxIdeals"
+
 load"FiniteFieldExperiments.m2"
 
 K = ZZ/3
@@ -52,22 +51,38 @@ betti (M = matrix entries sub(contract(sub(transpose vars A,AB),mingens I),B))
 -- 0: 18 46
 assert isHomogeneous M
 
--- stratification by rank of M
-time tally apply(100,i->(
-	  point = random(K^1,K^(rank source vars B));
-	  rank sub(M,point)
-	  ))
--- 54 => 1   
--- 59 => 2
--- 60 => 9997
-
--- stratification by rank of M
-rank29points = flatten apply(100,i->(
-	  point = random(K^1,K^(rank source vars B));
-	  if 29==rank sub(M,point) then {point} else {}
-	  ))
-
 Mat = (point) -> sub(M,point)
+rankMat = (point) -> rank Mat(point)
+
+blackBoxIdealFromProperties = method();
+
+blackBoxIdealFromProperties(ZZ, Ring, Function) := HashTable => ( numVariables, coeffRing, propertiesAt )  ->
+(
+    assert ( numVariables>0 );
+    B := new MutableHashTable;
+    B.numVariables = ()->numVariables;
+    B.coefficientRing = ()->coeffRing;
+    B.propertiesAt = propertiesAt;
+    B.isZeroAt = (point)->(true);
+    return B
+)
+
+end
+---
+
+restart
+load"codim1foliations.m2"
+
+
+bbRankM = blackBoxIdealFromProperties(#(gens B),K,rankMat)
+
+e = new Experiment from bbRankM
+e.run(1000)
+e.estimateStratification()
+apply(keys e.getPointData(),i->#((e.getPointData())#i))
+rank29points = (e.getPointData())#{29}
+-- lieber e.points().
+
 omegaBat = (point) -> sub(sub(omegaB,sub(vars A,ABRD)|point|sub(vars RD,ABRD)),RD)
 omegaAat = (point) -> ( 
      allPointsA = transpose syz transpose Mat(point);
@@ -80,17 +95,62 @@ omegaAat = (point) -> (
      sub(sub(omegaA,randomPointA|sub(vars B,ABRD)|sub(vars RD,ABRD)),RD)
      )
 
-point = rank29points#1
-wA = omegaAat(point)
-wB = omegaBat(point)
-assert (wA*wB==0)
-assert (1==rank source mingens ideal(differentialD(wA),wB))
-assert (0==differentialD(wB))
-differentialD(wB)
-differentialD(wA)
+tally apply(rank29points,point->(
+	  wA = omegaAat(point);
+	  wB = omegaBat(point);
+	  assert (wA*wB==0);
+	  assert (1==rank source mingens ideal(differentialD(wA),wB));
+	  --assert (0==differentialD(wB));
+	  (
+	       0==differentialD(wA),
+	       0==differentialD(wB)
+	  )
+))
 -- sometimes A is closed
 
 -- matrix drops rank generically only by one
+
+-- stratification by betti tableau
+betti (coeffB = matrix entries contract(
+	  super basis({0,0,0,2},ABRD)
+	  ,omegaB))
+isHomogeneous coeffB
+coeffBat = (point) -> sub(sub(coeffB,sub(vars A,ABRD)|point|sub(vars RD,ABRD)),R)
+coeffBat(rank29points#0)
+
+
+bettiAt = (point) -> betti syz coeffBat(point)
+bettiAt(rank29points#0)
+
+bbBetti = blackBoxIdealFromProperties(#(gens B),K,i->(bettiAt i))
+
+eBetti = new Experiment from bbBetti
+eBetti.run(1000)
+eBetti.estimateStratification()
+-- sollte nach intervallen sortiert sein
+-- eventuell nur keys mit mindestens 10 punkten?
+-- eventuell nur keys mit codim < vorgabe?
+apply(keys e.getPointData(),i->#((e.getPointData())#i))
+rank29points = (e.getPointData())#{29}
+-- lieber e.points().
+
+
+time tally apply(1000,i->(
+	  point = random(K^1,K^(rank source vars B));
+	  coeffBpoint = matrix entries sub(sub(coeffB,sub(vars A,ABRD)|point|sub(vars RD,ABRD)),RD);
+	  assert isHomogeneous coeffBpoint;
+	  (rank sub(M,point),betti syz coeffBpoint)
+	  ))
+
+-- make an experiment that can do this
+-- and estimate codimension and # of components in each stratum
+-- (without the use of rank jacobi)
+
+
+
+
+
+
 
 -- consider only closed 2-forms
 Iclosed = ideal sub(contract(super basis({0,0,d-2,3},ABRD),differentialD(omegaB)),B)
@@ -115,22 +175,7 @@ time tally apply(10000,i->(
 	  ))
 
 	  
--- stratification by betti tableau
-betti (coeffB = matrix entries contract(
-	  super basis({0,0,0,2},ABRD)
-	  ,omegaB))
-isHomogeneous coeffB
 
-time tally apply(1000,i->(
-	  point = random(K^1,K^(rank source vars B));
-	  coeffBpoint = matrix entries sub(sub(coeffB,sub(vars A,ABRD)|point|sub(vars RD,ABRD)),RD);
-	  assert isHomogeneous coeffBpoint;
-	  (rank sub(M,point),betti syz coeffBpoint)
-	  ))
-
--- make an experiment that can do this
--- and estimate codimension and # of components in each stratum
--- (without the use of rank jacobi)
 
 -- make an approximate black box for the ideal
 -- where the matrix drops rank
