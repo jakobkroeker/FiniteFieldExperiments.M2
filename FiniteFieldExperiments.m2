@@ -18,7 +18,7 @@ new Interval from HashTable := (E,ht) ->
 new Interval from Sequence := (E,seq) -> 
 (
     assert(#seq==2);
-    return new Interval from { (symbol min)=>seq#0, (symbol max)=>seq#1};
+    return new Interval from { (symbol min)=>seq#0*1.0, (symbol max)=>seq#1*1.0};
 );
 
 TEST ///
@@ -28,44 +28,104 @@ new Interval from (1,1);
 
 net (Interval) := Net =>(interval)->
 (
-   str := "(" | toString interval.min | ", " | toString interval.max | ")";
+   str := "[" | toString interval.min | ", " | toString interval.max | "]";
    return net str;
 )
 
+poissonEstimate = method(Options => {"confidence" => 1.96});
+poissonEstimate(ZZ) := HashTable => opts -> (numPoints) -> ( 
+     -- we use a poisson approximation since there are only 
+     -- very few solution points compared to the number of trials
+     --
+     -- we then use the normal approximatiom of the poissondistribution
+     -- to calculate the confidence interval
+     --
+     -- for a Poisson distribution the standard deviation is
+     -- the square root of the expected value
+     err := opts#"confidence"*sqrt(numPoints); 
+     estimate := new Interval from (round(1,numPoints-err),round(1,numPoints+err));
+     return estimate;
+     )
+
+TEST ///
+  assert ((poissonEstimate(16,"confidence" => 2)).min == 8);
+  assert ((poissonEstimate(16,"confidence" => 2)).max == 24);
+///
+
+RR * Interval := (scalingFactor,I) -> (
+     new Interval from (scalingFactor*I.min,scalingFactor*I.max)
+     )
+
+Interval * RR := (I,scalingFactor) -> (
+     scalingFactor*I
+     )
+
+ZZ * Interval := (scalingFactor,I) -> (
+     (scalingFactor*1.0)*I
+     )
+
+QQ * Interval := (scalingFactor,I) -> (
+     (scalingFactor*1.0)*I
+     )
+
+TEST ///
+   assert (2*(new Interval from (1,2)) == new Interval from (2,4))
+   assert (2.0*(new Interval from (1,2)) == new Interval from (2,4))
+///
+
+Interval == Interval := (I1,I2) -> (
+     (I1.min == I2.min) and (I1.max == I2.max)
+     )
+
+TEST ///
+  assert (poissonEstimate(16,"confidence"=>2) == new Interval from (8,24))
+///
+
+estimateNumberOfComponents = method(Options => (options poissonEstimate));
+estimateNumberOfComponents(ZZ,ZZ,ZZ,ZZ) := HashTable => opts->
+    (trials,estimatedCodim,numPoints,fieldCardinality) -> (
+    return poissonEstimate(numPoints,opts)*(fieldCardinality^estimatedCodim/trials*1.0);
+    )
+
+TEST ///
+  assert (estimateNumberOfComponents(11^2*16,2,16,11,"confidence"=>2) == new Interval from (0.5,1.5))
+///
+
+estimateCodim = method(Options => (options poissonEstimate));
+estimateCodim(ZZ,ZZ,ZZ) := HashTable => opts->
+    (trials,numPoints,fieldCardinality) -> (
+    	 est := (1/trials)*poissonEstimate(numPoints,opts);
+    	 logEst := new Interval from (log est.max,log est.min);
+    	 codimEst := (-1/log fieldCardinality)*logEst;
+	 new Interval from (round(1,codimEst.min),round(1,codimEst.max))
+    )
+
+TEST ///
+  assert (estimateCodim(11^2*10,10,11) == new Interval from (1.8,2.4))
+///
+
 ExperimentData = new Type of MutableHashTable;
 
--- new ExperimentData from BlackBoxIdeal := 
-new ExperimentData from HashTable := (E,blackBoxIdeal) -> (
+
+new ExperimentData from HashTable := (E,coeffRing) -> (
      print (toString E);
      e := new MutableHashTable;
-     e.blackBoxIdeal = blackBoxIdeal;
-     e.coefficientRing = blackBoxIdeal.coefficientRing();
+     --e.blackBoxIdeal = blackBoxIdeal;
+     e.coefficientRing = coeffRing;
      e.points = new MutableHashTable;
      e.count = new Tally;
      e.trials = 0;
      return e;
      )
+
      
 
  
 
--- prime is fieldCardinality?
-estimateNumberOfComponents = method(Options => {"confidence" => 1.96});
-estimateNumberOfComponents(ZZ,ZZ,ZZ,ZZ) := HashTable => opts->( trials,rankJacobian,pointCount, prime) -> (
-     confidence := opts#"confidence";
-     expected := pointCount*prime^rankJacobian/trials*1.0;
-     err := confidence*sqrt(pointCount)*prime^rankJacobian/trials*1.0;
-     estimate := new Interval from (round(1,expected-err),round(1,expected+err));
-     return estimate;
-     )
-
-TEST ///
-  estimateNumberOfComponents(1000,1,100,11)
-  estimateNumberOfComponents(1000,1,100,11,"confidence"=>1.0)
-///
 
 
-    createRandomPointIterator = (numVariables, coeffRing, trials )->
+
+createRandomPointIterator = (numVariables, coeffRing, trials )->
     (
         rpi := new MutableHashTable;
  
@@ -105,11 +165,13 @@ Experiment = new Type of HashTable;
 new Experiment from HashTable := (E,blackBoxIdeal) -> 
 (
    experiment := new MutableHashTable;
-   experimentData := new ExperimentData from B;
-
-   experimentStatistics := experimentData -> (
+   experimentData := new ExperimentData from blackBoxIdeal.coefficientRing();
+   -- blackBoxIdeal := pblackBoxIdeal;
+   
+   estimateDecomposition := experimentData -> (
        count = experimentData.count;
-       new Tally from apply( keys count, rankJacobian->rankJacobian => estimateNumberOfComponents(
+       new Tally from apply( keys count, rankJacobian->
+	    rankJacobian => estimateNumberOfComponents(
 	         experimentData.trials,
 	         rankJacobian,
 	         count#rankJacobian,
@@ -118,17 +180,27 @@ new Experiment from HashTable := (E,blackBoxIdeal) ->
 	  )
    );
 
+   estimateStratification := experimentData -> (
+       count = experimentData.count;
+       new Tally from apply( keys count, rankJacobian->
+	    rankJacobian => estimateCodim(
+	         experimentData.trials,
+	         count#rankJacobian,
+	         char experimentData.coefficientRing
+	       )
+	  )
+   );
 
 
-    runExperimentOnce := method(Options => {"numPointsPerComponentToCollect" => 10});
+
+   runExperimentOnce := method(Options => {"numPointsPerComponentToCollect" => 10});
  
-     runExperimentOnce(ExperimentData) := Tally => opts -> experimentData -> ( 
-     numberOfPointsToCollect := opts#"numPointsPerComponentToCollect";	   
-     K := experimentData.coefficientRing;
-     --prime = char K
-     bb := experimentData.blackBoxIdeal;
-     numVariables := bb.numVariables();
-     -- todo 'numVariables' keine Funkton - in Konflikt mit "Vermeidung von doppeltem code"
+   runExperimentOnce(ExperimentData) := Tally => opts -> experimentData -> ( 
+       numberOfPointsToCollect := opts#"numPointsPerComponentToCollect";	   
+       K := experimentData.coefficientRing;
+       --prime = char K
+       numVariables := blackBoxIdeal.numVariables();
+       -- todo 'numVariables' keine Funkton - in Konflikt mit "Vermeidung von doppeltem code"
 
      -- choose a random point
      randomPoint := random(K^1,K^numVariables);
@@ -175,8 +247,8 @@ new Experiment from HashTable := (E,blackBoxIdeal) ->
 
   
 
-   experiment.runExperiment= method(Options => options runExperimentOnce);
-   experiment.runExperiment(ZZ) := Thing=> opts->(trials)->
+   experiment.run = method(Options => options runExperimentOnce);
+   experiment.run(ZZ) := Thing=> opts->(trials)->
    (
       return runExperiment(experimentData,trials);
    );
@@ -210,6 +282,7 @@ B = blackBoxIdeal I
 e = new Experiment from B
 
 e.runExperiment(1, "numPointsPerComponentToCollect"=>20 ) 
+e.runExperiment(1) 
 
 e.runExperiment( 2000,  "numPointsPerComponentToCollect"=>20 )
 

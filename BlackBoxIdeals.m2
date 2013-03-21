@@ -1,5 +1,5 @@
 newPackage(
-     "idealBlackBoxes",
+     "BlackBoxIdeals",
      Version => "0.1", 
      Date => "15.02.2013",
      Authors => {{

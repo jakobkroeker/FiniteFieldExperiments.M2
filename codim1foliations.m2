@@ -3,6 +3,9 @@
 -- using finite field experiments
 
 restart
+loadPackage"BlackBoxIdeals"
+load"FiniteFieldExperiments.m2"
+
 K = ZZ/3
 --R = K[x,y,z,w]
 R = K[x,y,z]
