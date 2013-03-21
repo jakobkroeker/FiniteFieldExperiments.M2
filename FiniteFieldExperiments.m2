@@ -3,28 +3,56 @@
 
 
 
+
 Interval = new Type of HashTable;
 
-new Interval from HashTable := (E,ht) -> 
-(  
-  assert(ht?#(symbol min) );
-  assert(ht?#(symbol max) );
+roundInterval = method();
+
+
+roundInterval ( HashTable, ZZ) := Interval=>(I,n)->
+(
+     return new Interval from ( round(n,I.min), round(n,I.max) );
+)
+
+TEST ///
+///
+
+new Interval from Thing := (E,ll) -> 
+(
+   error ("this interface is not implemented");
+);
+
+--new Interval from HashTable := (E,ll) -> 
+new Interval from List := (E,ll) -> 
+( 
+  ht := new MutableHashTable from ll;
+  --print "new Interval from HashTable";
+  assert(ht#?(symbol min) );
+  assert(ht#?(symbol max) );
   assert(ht.min<=ht.max);
-  return ht;
+ 
+  ht.round = method();
+  ht.round(ZZ) := Interval => (n)->
+  (
+     return roundInterval( ht, n);
+  );
+  --print( keys ht);
+  return new HashTable from ht;
 );
 
 -- maybe Interval coould also contain statistical information?
 
 new Interval from Sequence := (E,seq) -> 
 (
+    --print "new Interval from Sequence";
     assert(#seq==2);
-    return new Interval from { (symbol min)=>seq#0*1.0, (symbol max)=>seq#1*1.0};
+    ht := { (symbol min)=>seq#0*1.0, (symbol max)=>seq#1*1.0};
+    return new Interval from ht;
 );
 
-TEST ///
-new Interval from { (symbol min)=>0, (symbol max)=>1};
-new Interval from (1,1);
-///
+
+
+
 
 net (Interval) := Net =>(interval)->
 (
@@ -76,6 +104,18 @@ TEST ///
 Interval == Interval := (I1,I2) -> (
      (I1.min == I2.min) and (I1.max == I2.max)
      )
+
+TEST ///
+restart
+
+loadPackage"BlackBoxIdeals"
+load "FiniteFieldExperiments.m2"
+  new Interval from { (symbol min)=>0, (symbol max)=>1};
+  i2 := new Interval from (1, 1.04);
+  i3 := new Interval from (1, 1.045);
+  assert( i3.round(2)== i2);
+///
+
 
 TEST ///
   assert (poissonEstimate(16,"confidence"=>2) == new Interval from (8,24))
@@ -162,7 +202,7 @@ TEST ///
 
 Experiment = new Type of HashTable;
 
-new Experiment from HashTable := (E,blackBoxIdeal) -> 
+new Experiment from HashTable := (E, blackBoxIdeal) -> 
 (
    experiment := new MutableHashTable;
    experimentData := new ExperimentData from blackBoxIdeal.coefficientRing();
@@ -203,11 +243,11 @@ new Experiment from HashTable := (E,blackBoxIdeal) ->
        -- todo 'numVariables' keine Funkton - in Konflikt mit "Vermeidung von doppeltem code"
 
      -- choose a random point
-     randomPoint := random(K^1,K^numVariables);
+     randomPoint := random( K^1, K^numVariables );
      -- if ideal vanishes on the random point do something
-     if bb.isZeroAt(randomPoint) then   -- only if jacobianAt is defined
+     if blackBoxIdeal.isZeroAt(randomPoint) then   -- only if jacobianAt is defined
      (
-     	  rankJacobian := rank bb.jacobianAt(randomPoint);
+     	  rankJacobian := rank blackBoxIdeal.jacobianAt(randomPoint);
 	  
       -- count number of found points for each rank (=codim Tangentspace)
      	  experimentData.count = experimentData.count + tally {rankJacobian};
@@ -215,7 +255,7 @@ new Experiment from HashTable := (E,blackBoxIdeal) ->
       -- remember all points
      	  if experimentData.points#?rankJacobian then 
           (
-	        estimate = (experimentStatistics(experimentData))#rankJacobian;
+	        estimate = (estimateDecomposition(experimentData))#rankJacobian;
 	        -- collect a fixed number of points per estimated component
 	        -- use upper limit of estimation for this
 	        if #(experimentData.points#rankJacobian) < numberOfPointsToCollect*max(1,estimate.max) then 
@@ -228,14 +268,14 @@ new Experiment from HashTable := (E,blackBoxIdeal) ->
 	  );
       -- count this trial even if no solution is found
       experimentData.trials = experimentData.trials + 1;
-      return experimentStatistics (experimentData);
+      return estimateDecomposition (experimentData);
     );
 
     runExperiment := method(Options => options runExperimentOnce);
 
-     runExperiment(ExperimentData,ZZ) := Tally => opts -> (experimentData,trials) -> ( 
+     runExperiment(ExperimentData, ZZ) := Tally => opts -> (experimentData,trials) -> ( 
        apply( trials, trialNum->runExperimentOnce( experimentData, opts) );
-       return experimentStatistics (experimentData);
+       return estimateDecomposition (experimentData);
      );
 
    ---- syntax for the moment too hard (method without parameters)
@@ -267,9 +307,8 @@ end
 ---
 
 restart
-loadPackage"idealBlackBoxes"
--- besser BlackBoxIdeals
-load "finiteFieldExperiments.m2"
+loadPackage"BlackBoxIdeals"
+load "FiniteFieldExperiments.m2"
 
 R = (ZZ/7)[x_0..x_3]
 M = matrix{
@@ -281,10 +320,10 @@ B = blackBoxIdeal I
  
 e = new Experiment from B
 
-e.runExperiment(1, "numPointsPerComponentToCollect"=>20 ) 
-e.runExperiment(1) 
+e.run(1, "numPointsPerComponentToCollect"=>20 ) 
+e.run(1) 
 
-e.runExperiment( 2000,  "numPointsPerComponentToCollect"=>20 )
+e.run( 2000,  "numPointsPerComponentToCollect"=>20 )
 
 pointData = e.getPointData()
 
