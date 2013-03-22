@@ -14,6 +14,17 @@ roundInterval ( HashTable, ZZ) := Interval=>(I,n)->
      return new Interval from ( round(n,I.min), round(n,I.max) );
 )
 
+intervalCenter = method();
+
+intervalCenter (HashTable) := Interval=>(I)->
+(
+    return (I.min+I.max)/2.0;
+)
+
+
+
+
+
 TEST ///
 ///
 
@@ -36,6 +47,9 @@ new Interval from List := (E,ll) ->
   (
      return roundInterval( ht, n);
   );
+
+  ht.center = intervalCenter(ht);
+
   --print( keys ht);
   return new HashTable from ht;
 );
@@ -96,6 +110,23 @@ QQ * Interval := (scalingFactor,I) -> (
      (scalingFactor*1.0)*I
      )
 
+-- problem: sortierung nicht ohne weiteres austauschbar -> wrappertyp muss eingeführt werden, der eine andere sortierung implementiert
+-- und alle objekte müssen in den Wrappertyp konvertiert werden.
+
+Interval ? Interval := (I1,I2) ->
+(
+   if  (I1.center==I2.center ) then 
+   (
+        I2.min ? I1.min 
+   )
+   else 
+   (  
+         I1.center ? I2.center
+   )
+)
+
+
+
 TEST ///
    assert (2*(new Interval from (1,2)) == new Interval from (2,4))
    assert (2.0*(new Interval from (1,2)) == new Interval from (2,4))
@@ -114,6 +145,13 @@ load "FiniteFieldExperiments.m2"
   i2 := new Interval from (1, 1.04);
   i3 := new Interval from (1, 1.045);
   assert( i3.round(2)== i2);
+  i4 :=  new Interval from (2.5,3.5);
+  assert(i4.center == 3.0);
+  i2<i3;
+  i2?i3;
+  assert ( (i2?i3) === (1?2));
+  assert ( (i2?i2) === (1?1));
+  i2?i2;
 ///
 
 
@@ -220,6 +258,8 @@ new Experiment from HashTable := (E, blackBoxIdeal) ->
 	  )
    );
 
+   
+
    experiment.estimateDecomposition = () -> (estimateDecomposition(experimentData));
 
    estimateStratification := experimentData -> (
@@ -233,8 +273,25 @@ new Experiment from HashTable := (E, blackBoxIdeal) ->
 	  )
    );
 
+ 
+
    experiment.estimateStratification = () -> (estimateStratification(experimentData));
    
+   stratificationIntervalView := (stratificationData )->
+   (
+     
+      prerearrangedData := new HashTable from apply( keys stratificationData, key -> (stratificationData#key=>(stratificationData#key,key )));
+      toSort := apply( keys stratificationData, key -> (stratificationData#key));
+      sorted := sort (toSort); 
+      rearrangedData := apply (sorted, key-> (prerearrangedData#key) );
+      return new HashTable from rearrangedData;
+   );
+
+   experiment.stratificationIntervalView = ()->
+   (
+        stratificationData := experiment.estimateStratification();
+        return stratificationIntervalView(stratificationData);
+   );
 
    runExperimentOnce := method(Options => {"numPointsPerComponentToCollect" => 10});
  
