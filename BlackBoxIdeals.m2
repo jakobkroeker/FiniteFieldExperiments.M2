@@ -46,7 +46,7 @@ idealBlackBoxesProtect = ()->
     protect setImageRank;
     protect checkCoeffRing;
     protect deduceImageRank;
-    protect properties;
+    protect propertiesAt;
 
 )
 
@@ -73,7 +73,7 @@ idealBlackBoxesExport = ()->
     exportMutable( setImageRank );
     exportMutable(  checkCoeffRing);
     exportMutable( deduceImageRank );
-    exportMutable( properties );
+    exportMutable( propertiesAt );
 )
 
 
@@ -648,15 +648,16 @@ testBlackBoxIdealFromEvaluation = ()->
 );
 
 
-blackBoxIdealFromProperies = method();
+blackBoxIdealFromProperties = method();
 
-blackBoxIdealFromProperies(ZZ, Ring, Function) := HashTable => ( numVariables, coeffRing, properties )  ->
+blackBoxIdealFromProperties(ZZ, Ring, Function) := HashTable => ( numVariables, coeffRing, propertiesAt )  ->
 (
     assert ( numVariables>0 );
     B := new MutableHashTable;
     B.numVariables = ()->numVariables;
     B.coefficientRing = ()->coeffRing;
-    B.properties = properties;
+    B.propertiesAt = propertiesAt;
+    B.isZeroAt = (point)->(true);
     return B
 )
 

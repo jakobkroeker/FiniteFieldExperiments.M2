@@ -308,6 +308,16 @@ new Experiment from HashTable := (E, blackBoxIdeal) ->
    (
       return new HashTable from experimentData.points;
    );
+ 
+   experiment.getCountData = ()->
+   (
+      return new Tally from experimentData.count;
+   );
+
+   experiment.getTrials = ()->
+   (
+      return experimentData.trials;
+   );
 
    return new HashTable from experiment; 
 );
