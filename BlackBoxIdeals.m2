@@ -47,7 +47,8 @@ idealBlackBoxesProtect = ()->
     protect checkCoeffRing;
     protect deduceImageRank;
     protect propertiesAt;
-
+    protect setPropertiesAt;
+    protect setIsZeroAt;
 )
 
 --todo: fix dublicate code,  -  padicLiftProtect and padicLiftExport
@@ -74,6 +75,8 @@ idealBlackBoxesExport = ()->
     exportMutable(  checkCoeffRing);
     exportMutable( deduceImageRank );
     exportMutable( propertiesAt );
+    exportMutable( setPropertiesAt );
+    exportMutable( setIsZeroAt );
 )
 
 
@@ -226,6 +229,14 @@ createBasicBlackBox = () ->
    (  
       return pointProperties;
    );
+
+    propertiesAt  := (point)->null;
+   
+    blackBox.propertiesAt = (point)->propertiesAt(point);
+
+
+
+    blackBox.setPropertiesAt = (pPropertiesAt)->( propertiesAt= pPropertiesAt);
 
     
      rng := null;
@@ -392,9 +403,17 @@ createBasicBlackBox = () ->
      );
 
 
+   isZeroAt = (point)->(true);
+  
+
    blackBox.isZeroAt = (point)->
    (
-       return blackBox.valuesAt(point)==0;   
+       return isZeroAt(point);   
+   );
+
+   blackBox.setIsZeroAt = (pIsZeroAt) ->
+   ( 
+     isZeroAt =  pIsZeroAt;
    );
 
 
@@ -439,6 +458,16 @@ blackBoxIdeal  = (equationsIdeal)->
 
      blackBox.setValuesAt(valuesAt);
      remove( blackBox, getSymbol "setValuesAt" );
+
+     blackBox.setValuesAt(valuesAt);
+     remove( blackBox, getSymbol "setValuesAt" );
+
+       blackBox.setIsZeroAt(
+        (point)->( return blackBox.valuesAt(point)==0 ; )
+      );
+
+     remove( blackBox, getSymbol "setIsZeroAt" );
+
      blackBox.internalRegisterPointProperty( "valuesAt" , blackBox.valuesAt );
 
      jacobianAt := (point)->
@@ -526,12 +555,20 @@ blackBoxIdealFromEvaluation( Ring, Function )  := HashTable=> ( rng, valuesAt )-
      blackBox.setValuesAt(valuesAt);
      remove( blackBox, getSymbol "setValuesAt" );
 
+  
+
+
      blackBox.valuesAt = (point)->
      (
          return valuesAt( point);   
      );
  
     
+     blackBox.setIsZeroAt(
+        (point)->( return blackBox.valuesAt(point)==0 ;) 
+      );
+     remove( blackBox, getSymbol "setIsZeroAt" );
+
 
      blackBox.setImageRank( blackBox.deduceImageRank() );
      remove( blackBox, getSymbol "setImageRank" );
@@ -650,14 +687,19 @@ testBlackBoxIdealFromEvaluation = ()->
 
 blackBoxIdealFromProperties = method();
 
-blackBoxIdealFromProperties(ZZ, Ring, Function) := HashTable => ( numVariables, coeffRing, propertiesAt )  ->
+blackBoxIdealFromProperties(ZZ, Ring, Function) := HashTable => ( numVariables, coeffRing, pPropertiesAt )  ->
 (
     assert ( numVariables>0 );
     B := new MutableHashTable;
     B.numVariables = ()->numVariables;
     B.coefficientRing = ()->coeffRing;
-    B.propertiesAt = propertiesAt;
+    propertiesAt  := (point)->null;
+    propertiesAt  = pPropertiesAt;
+    B.propertiesAt = (point)->propertiesAt(point);
+
     B.isZeroAt = (point)->(true);
+
+    B.setPropertiesAt = (pPropertiesAt)->( propertiesAt= pPropertiesAt);
     return B
 )
 

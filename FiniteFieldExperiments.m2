@@ -206,17 +206,19 @@ new ExperimentData from HashTable := (E,coeffRing) -> (
 createRandomPointIterator = (numVariables, coeffRing, trials )->
     (
         rpi := new MutableHashTable;
- 
         randomPoint := null;
   
         currTrial := 0;
 
+        assert( trials >= 0 );
+
         rpi.next=()->
         (
-            if (currTrial==trials) then error " cannot get next point";
+            if (currTrial+1 >= trials) then return false;
             randomPoint = random( coeffRing^1, coeffRing^numVariables );         
             currTrial = currTrial + 1;
-            return (currTrial<trials) ;
+ 
+            return true;
         );
 
         rpi.begin=()->
@@ -237,6 +239,40 @@ TEST ///
   pointIterator.point()
   apply(99, i-> pointIterator.next() )
 ///
+
+createPointIterator = ( pPoints )->
+    (
+        pIterator := new MutableHashTable; 
+
+        points := pPoints  ;
+ 
+        point := null;
+
+        pointCount := #points;
+  
+        currPosition := 0;
+
+        pIterator.next=()->
+        (
+            if (currTrial+1 >= pointCount) then return false;
+            point = points#currPosition;
+            currPosition = currPosition + 1;
+            return (true) ;
+        );
+
+        rpi.begin=()->
+        (
+            localPointIterator := createPointIterator( pPoints);
+            localPointIterator.next();
+            return localPointIterator;
+        );
+
+        rpi.point=()-> point;
+
+       return new HashTable from pIterator;
+    );
+
+
 
 Experiment = new Type of HashTable;
 
@@ -293,33 +329,61 @@ new Experiment from HashTable := (E, blackBoxIdeal) ->
         return stratificationIntervalView(stratificationData);
    );
 
-   runExperimentOnce := method(Options => {"numPointsPerComponentToCollect" => 10});
+
+   isInteresting := ()->true;
+   
+   if  blackBoxIdeal#?(getSymbol "isZeroAt") then
+      isInteresting =blackBoxIdeal.IsZeroAt;
+    
+   experiment.isInteresting=(point)->
+   ( 
+      return isInteresting(point);
+   );
+
+   experiment.getPoints=()->
+   (
+      return flatten  apply (keys experimentData.points, countKey-> experimentData.points#countKey);
+   );
+
+
+
+   runExperimentOnce := method();
+
+   numPointsPerComponentToCollect := 10;
+
+   experiment.setNumPointsPerComponentToCollect = (numPointsPerComponent)->
+   ( 
+     numPointsPerComponentToCollect = numPointsPerComponent;
+   );
+
+   experiment.numPointsPerComponentToCollect = ()->
+   ( 
+     return numPointsPerComponentToCollect ;
+   );
  
-   runExperimentOnce(ExperimentData) := Tally => opts -> experimentData -> ( 
-       numberOfPointsToCollect := opts#"numPointsPerComponentToCollect";	   
+   runExperimentOnce(ExperimentData, Matrix,ZZ ) := Tally => (experimentData, point, wantedPoints) -> (  
        K := experimentData.coefficientRing;
        --prime = char K
        numVariables := blackBoxIdeal.numVariables();
        -- todo 'numVariables' keine Funkton - in Konflikt mit "Vermeidung von doppeltem code"
 
        -- choose a random point
-       randomPoint := random( K^1, K^numVariables );
+    
        -- if ideal vanishes on the random point do something
-       if blackBoxIdeal.isZeroAt(randomPoint) then   
+       if blackBoxIdeal.isZeroAt(point) then   
        (
 	  countKey := {};  
 	  if blackBoxIdeal#?(symbol jacobianAt) then (
-	       countKey = countKey|{rank blackBoxIdeal.jacobianAt(randomPoint)}
+	       countKey = countKey|{rank blackBoxIdeal.jacobianAt(point)}
 	       );
 	  if blackBoxIdeal#?(symbol propertiesAt) then (
-	       countKey = countKey|{blackBoxIdeal.propertiesAt(randomPoint)}
+	       countKey = countKey|{blackBoxIdeal.propertiesAt(point)}
 	       );	  
 	  
           -- count number of found points for each rank and property
      	  experimentData.count = experimentData.count + tally {countKey};
 	 
       	  -- remember some points
-	  wantedPoints := numberOfPointsToCollect;
 	  if blackBoxIdeal#?(symbol jaobianAt) then (
 	        upperEstimate := ((estimateDecomposition(experimentData))#countKey).max;
 		wantedPoints = max(1,upperEstimate)*wantedPoints;
@@ -336,15 +400,65 @@ new Experiment from HashTable := (E, blackBoxIdeal) ->
      	  	);
       );
       -- count this trial even if no solution is found
-      experimentData.trials = experimentData.trials + 1;
     );
 
-    runExperiment := method(Options => options runExperimentOnce);
+   
 
-     runExperiment(ExperimentData, ZZ) := Tally => opts -> (experimentData,trials) -> ( 
-       apply( trials, trialNum->runExperimentOnce( experimentData, opts) );
-       -- return estimateDecomposition (experimentData);
+ 
+     runRandomExperiment := method();
+     runRandomExperiment(ExperimentData, ZZ) := Tally => (experimentData, trials) -> 
+     ( 
+      
+       K := experimentData.coefficientRing;
+       --prime = char K
+       numVariables := blackBoxIdeal.numVariables();
+
+       apply(trials, trial-> (  randomPoint := random( K^1,  K^numVariables );         
+           runExperimentOnce( experimentData, randomPoint, numPointsPerComponentToCollect );
+           experimentData.trials = experimentData.trials + 1;)
+       );
      );
+
+     runExperiment := method();
+     --rpi := createRandomPointIterator ( blackBoxIdeal.numVariables(), experimentData.coefficientRing, trials );
+     -- too slow:
+     runExperiment(ExperimentData, Thing) := Tally => (experimentData, pointIterator) -> 
+     ( 
+       while pointIterator.next() do
+       (
+           runExperimentOnce( experimentData, pointIterator.point(), numPointsPerComponentToCollect );
+           experimentData.trials = experimentData.trials + 1;
+       );
+     );
+
+     updateExperiment = method();
+     updateExperiment(ExperimentData) := Tally => opts -> (experimentData) -> 
+     ( 
+        pointIterator := createPointIterator (  experiment.getPoints() );
+        experimentData.trials = 0;
+        experimentData.points = new MutableHashTable;
+        experimentData.count = new Tally;
+
+        while ( pointIterator.next() ) do
+        (
+            runExperimentOnce( experimentData, pointIterator.point(), numPointsPerComponentToCollect );
+        );
+     );
+
+   experiment.setIsInteresting = (pIsInteresting)->
+   (  
+      if ( pIsInteresting=!=isInteresting ) then
+      (
+         isInteresting = pIsInteresting;
+         updateExperiment(experimentData);
+      );
+   );
+
+   experiment.setIdealPropertiesAt =(idealPropertiesAt)->
+   (
+      blackBoxIdeal.setPropertiesAt( idealPropertiesAt );
+      updateExperiment(experimentData);
+   );
 
    ---- syntax for the moment too hard (method without parameters)
    --experiment.runExperimentOnce = method(Options => (options runExperimentOnce));
@@ -355,10 +469,12 @@ new Experiment from HashTable := (E, blackBoxIdeal) ->
 
   
 
-   experiment.run = method(Options => options runExperimentOnce);
-   experiment.run(ZZ) := Thing=> opts->(trials)->
+   experiment.run = method();
+   experiment.run(ZZ) := Thing=> (trials)->
    (
-      return runExperiment(experimentData,trials);
+      rpi := createRandomPointIterator ( blackBoxIdeal.numVariables(), experimentData.coefficientRing, trials );
+      return  runExperiment( experimentData, rpi );
+      --return runRandomExperiment( experimentData, trials );
    );
   
    experiment.getPointData = ()->
@@ -375,6 +491,10 @@ new Experiment from HashTable := (E, blackBoxIdeal) ->
    (
       return experimentData.trials;
    );
+
+
+   
+
 
    return new HashTable from experiment; 
 );

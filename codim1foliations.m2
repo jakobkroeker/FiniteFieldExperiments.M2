@@ -63,8 +63,10 @@ load"codim1foliations.m2"
 bbRankM = blackBoxIdealFromProperties(#(gens B),K,rankMat)
 
 e = new Experiment from bbRankM
-e.run(1000)
+e.setNumPointsPerComponentToCollect(20);
+time e.run(1000)
 e.estimateStratification()
+e.stratificationIntervalView()
 apply(keys e.getPointData(),i->#((e.getPointData())#i))
 -- lieber e.points().
 
@@ -169,10 +171,10 @@ closedRankMat = (point) -> rank closedMat(point)
 
 
 bbClosed = blackBoxIdealFromProperties(rank target basisClosed,K,i->(closedBettiAt i))
-bbClosed.isZeroAt = (point) -> (closedRankMat(point) < #(gens A))
 bbClosed.numVariables()
 
 eClosedBetti = new Experiment from bbClosed
+eClosedBetti.setIsInteresting ( (point) -> (closedRankMat(point) < #(gens A)))
 time eClosedBetti.run(10000)
 -- used 42.6086 seconds
 estimateStratification2(eClosedBetti)
