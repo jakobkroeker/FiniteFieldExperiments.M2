@@ -46,7 +46,7 @@ betti (Idiff = sub(ideal mingens minors(2,contract( matrix{apply(indB,i->sub(i,A
 betti (I = ideal mingens (Iint+Idiff))
 assert isHomogeneous I
 
--- eliminate B
+-- eliminate A
 betti (M = matrix entries sub(contract(sub(transpose vars A,AB),mingens I),B))
 -- 0: 18 46
 assert isHomogeneous M
@@ -93,7 +93,7 @@ estimateStratification2(e)
 
 
 omegaBat = (point) -> sub(sub(omegaB,sub(vars A,ABRD)|point|sub(vars RD,ABRD)),RD)
-omegaAat = (point) -> ( 
+randomPointAat = (point) -> ( 
      allPointsA = transpose syz transpose Mat(point);
      if rank target allPointsA == 0 then return null;
      if rank target allPointsA == 1 then (
@@ -101,7 +101,11 @@ omegaAat = (point) -> (
      	  ) else (
 	  randomPointA = (random(K^1,K^(rank target allPointsA))*allPointsA);
 	  );
-     sub(sub(omegaA,randomPointA|sub(vars B,ABRD)|sub(vars RD,ABRD)),RD)
+     randomPointA
+     )
+
+omegaAat = (point) -> (     
+     sub(sub(omegaA,randomPointAat(point)|sub(vars B,ABRD)|sub(vars RD,ABRD)),RD)
      )
 
 -- wA = omegaAat(point);
@@ -152,7 +156,7 @@ tryProperty = (experiment,property) ->(
      )
 
 tryProperty(eBetti,isAclosedAt)
-time eBetti.run(10000)
+--time eBetti.run(10000)
  -- used 396.944 seconds
 tryProperty(eBetti,isAclosedAt)
 
@@ -167,7 +171,6 @@ closedBettiAt = (point) -> betti res ideal coeffBat(closedPointBat(point))
 closedMat = (point) -> Mat(closedPointBat(point))
 closedRankMat = (point) -> rank closedMat(point)
 
-
 bbClosed = blackBoxIdealFromProperties(rank target basisClosed,K,i->(closedBettiAt i))
 bbClosed.isZeroAt = (point) -> (closedRankMat(point) < #(gens A))
 bbClosed.numVariables()
@@ -181,64 +184,58 @@ closedIsAclosedAt = (point) -> isAclosedAt(closedPointBat(point))
 
 time eClosedBetti.run(10000) 
 -- used 424.527 seconds
- 
+eClosedBetti.estimateStratification()
+
 tryProperty(eClosedBetti,closedIsAclosedAt)
 tryProperty(eClosedBetti,closedRankMat)
 tryProperty(eClosedBetti,point->(closedRankMat(point),closedIsAclosedAt(point)))
 
+time betti (J = jacobian I)
 
-
--- make an approximate black box for the ideal
--- where the matrix drops rank
-betti M
-randomMinors = apply(12,i->random(K^(rank source M),K^(rank target M)));
--- should only fail in one of
-(char K)^#randomMinors
--- cases
-
-evaluateRandomMinorsAt = (point) -> (
-     MatPoint = closedMat(point);
-     valuesAtPoint = matrix{apply(randomMinors,i->det(MatPoint*i))};
-     if valuesAtPoint == 0 then assert (rank(MatPoint) < max(rank source MatPoint,rank target MatPoint));
-     --(valuesAtPoint == 0,rank MatPoint)
-     valuesAtPoint
+closedRankJacobiAt = (point) -> (
+     pointB := closedPointBat(point);
+     pointA := randomPointAat(pointB);
+     tangentB := syz (transpose syz transpose sub(J,pointA|pointB))_{rank source pointA..rank source pointA+rank source pointB-1};
+     rank tangentB + rank(basisClosed) - rank (tangentB | transpose basisClosed) 
      )
 
-evaluateRandomMinorsAt(random(K^1,K^(bbClosed.numVariables())))
-tryProperty(eClosedBetti,evaluateRandomMinorsAt)
+time eClosedBetti.run(100000) 
+-- used 556.586 seconds
+estimateStratification2(eClosedBetti)
+tryProperty(eClosedBetti,i->(closedIsAclosedAt i,closedRankJacobiAt i))
 
-bbMinors = blackBoxIdealFromEvaluation(bbClosed.numVariables(),K,evaluateRandomMinorsAt)
+-- jets in AB-space
+
+-- sysygies of three cubics
+restart
+needsPackage"BlackBoxIdeals"
+load"FiniteFieldExperiments.m2"
+
+K = ZZ/3
+R = K[x,y,z,w]
+d = 3
+mons = super basis(d,R)
+indB = flatten entries mons
+B = K[flatten apply(3,i->apply(indB,j->b_{i,j}))]
+
+betti (M = transpose matrix apply(3,i->apply(indB,j->b_{i,j})))
+(M^{0})
+
+-- Blackbox
+bb.Mat = (point) -> sub(M,point)
+bb.Iat = (point) -> ideal(mons*Mat(point))
+bb.bettiAt = (point) -> betti res Iat(point)
+--
 
 
-keys bbClosed
-points = eClosedBetti.getPointData()
-point = points#((keys points)#0)#0
-bbMinors.valuesAt(point)
-
-M0K = closedMat(point)*randomMinors#0
-Ke = K[eps]/eps^2
-t = matrix {apply(bbClosed.numVariables(),i->if i==0 then 1 else 0_K)}
-M0Keps = closedMat(
-     point+eps*sub(t,Ke)
-     )*randomMinors#0
-M0eps = M0Keps-M0K
-M0K
+--bbBetti = blackBoxIdealFromProperties(#(gens B),K,bettiAt)
+eBetti = new Experiment from K
+eBetti.numVariables = #(gens B)
+--eBetti.coefficientRing = K
+eBetti.property = bb.bettiAt
+eBetti.isInteresting = (i->true) -- default
 
 
-time bbMinors.jacobianAt(point)
-
-time bbMinors.run(100)
-
-eMinors = new Experiment from bbMinors
-
-time eMinors.run(100)
-
-tally apply(1000,i->(
-	  evaluateRandomMinorsAt(
-     	       random(K^1,K^(rank source vars B))
-     	       )
-	  ))
-
--- use blackBox and experiment here to find codimension of tangent spaces
--- using epsilon generated jacobi matrix
--- look at syzygies of found points
+time eBetti.run(100000)
+--eBetti.estimateStratification()
+estimateStratification2(eBetti)

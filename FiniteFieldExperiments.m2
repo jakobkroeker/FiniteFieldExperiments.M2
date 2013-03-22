@@ -106,7 +106,15 @@ ZZ * Interval := (scalingFactor,I) -> (
      (scalingFactor*1.0)*I
      )
 
+Interval * ZZ := (I,scalingFactor) -> (
+     (scalingFactor*1.0)*I
+     )
+
 QQ * Interval := (scalingFactor,I) -> (
+     (scalingFactor*1.0)*I
+     )
+
+Interval * QQ := (I,scalingFactor) -> (
      (scalingFactor*1.0)*I
      )
 
