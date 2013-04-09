@@ -1,9 +1,9 @@
 
 
 
-.PHONY: installPadicLift installBlackBoxIdeals uninstallPadicLift uninstallBlackBoxIdeals  install uninstall
+.PHONY: installPadicLift installBlackBoxIdeals installFiniteFieldExperiments  uninstallPadicLift uninstallBlackBoxIdeals uninstallFiniteFieldExperiments install uninstall
  
-install: installPadicLift installBlackBoxIdeals
+install: installPadicLift installBlackBoxIdeals installFiniteFieldExperiments
    
 
 installPadicLift:  
@@ -16,8 +16,12 @@ installPadicLift:
 installBlackBoxIdeals: 
 	mkdir -p   ~/.Macaulay2/local/share/Macaulay2/
 	cp BlackBoxIdeals.m2 ~/.Macaulay2/local/share/Macaulay2/
-	cp FailingExport.m2 ~/.Macaulay2/local/share/Macaulay2/
 	@echo  -e "#"'!'"/bin/bash \n rm  ~/.Macaulay2/local/share/Macaulay2/BlackBoxIdeals.m2 " > ~/.Macaulay2/local/share/Macaulay2/BlackBoxIdealsUninstall.sh
+
+installFiniteFieldExperiments: 
+	mkdir -p   ~/.Macaulay2/local/share/Macaulay2/
+	cp FiniteFieldExperiments.m2 ~/.Macaulay2/local/share/Macaulay2/
+	@echo  -e "#"'!'"/bin/bash \n rm  ~/.Macaulay2/local/share/Macaulay2/FiniteFieldExperiments.m2 " > ~/.Macaulay2/local/share/Macaulay2/FiniteFieldExperimentsUninstall.sh
 
 
 uninstallPadicLift:
@@ -25,7 +29,10 @@ uninstallPadicLift:
 
 
 uninstallBlackBoxIdeals:
-	bash ~/.Macaulay2/local/share/Macaulay2/uninstallBlackBoxIdeals.sh
+	bash ~/.Macaulay2/local/share/Macaulay2/BlackBoxIdealsUninstall.sh
+
+uninstallFiniteFieldExperiments:
+	bash ~/.Macaulay2/local/share/Macaulay2/FiniteFieldExperimentsUninstall.sh
 
 
-uninstall: uninstallPadicLift uninstallBlackBoxIdeals
+uninstall: uninstallPadicLift uninstallBlackBoxIdeals uninstallFiniteFieldExperiments
