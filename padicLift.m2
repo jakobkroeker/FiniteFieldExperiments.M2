@@ -74,7 +74,7 @@ export{
 -- e.g. in a  statement like 'liftOption.maxLiftDepth' maxLiftDepth should be a symbol variable without assigned value!
 padicLiftProtect = ()->
 (
-    protect GlobalInternalPadicLiftResultVariable;
+    --protect "GlobalInternalPadicLiftResultVariable"; --todo: problems when trying to protect/export  GlobalInternalPadicLiftResultVariable
     protect unchanged;
     protect normalized;
     protect norms;
@@ -105,7 +105,7 @@ padicLiftProtect = ()->
 padicLiftExport = ()->
 (
   
-    protect GlobalInternalPadicLiftResultVariable;
+    export( GlobalInternalPadicLiftResultVariable);
     exportMutable( unchanged);
     exportMutable( normalized);
     exportMutable( norms);
@@ -139,6 +139,7 @@ padicLiftExport = ()->
 --jacobianAt = global jacobianAt;
 
 undocumented { 
+    GlobalInternalPadicLiftResultVariable,
     approxComplexSolutionsOld,
     unchanged,
     normalized,

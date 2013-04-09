@@ -442,7 +442,7 @@ estimateDecomposition := (experimentData) -> (
    );
 
 
-estimateStratification2 = (experiment) -> (
+estimateStratification2 := (experiment) -> (
      trials := experiment.trials();
      orderK := (experiment.coefficientRing()).order; -- this must be read from the experimentdata
      print "--";
