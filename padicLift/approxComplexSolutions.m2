@@ -1,6 +1,8 @@
 
-approxComplexSolutions = method (Options=>{"options"=>new LiftOptions,"decimalPrecision"=>10});
+
+
 approxComplexSolutionsOld = method (Options=>{"options"=>new LiftOptions,"decimalPrecision"=>10});
+
 approxComplexSolutionsOld (Ideal, Matrix, List) := opts->(inputIdeal, solutionPoint, unknownList)->
 (
 
@@ -91,10 +93,10 @@ approxComplexSolutionsOld (Ideal, Matrix, List) := opts->(inputIdeal, solutionPo
 
 -- idealPointsApproxData: creates result data structure (a hash table)
 --precondition: root coordinates corresponds to unknown list entries and unknownList is the same as gens ring equationsIdeal
-idealPointsApproxData=( inputIdeal, solutionPoint, minPolyTable, approxSolutions, mergedLiftInfo, unknownList )->
+idealPointsApproxData=( systemData, solutionPoint, minPolyTable, approxSolutions, mergedLiftInfo, unknownList )->
 (
     approxSolutionData := new MutableHashTable;
-    approxSolutionData#"inputIdeal"  =  inputIdeal ;
+    approxSolutionData#"systemData"  =  systemData ;
     approxSolutionData#"solutionPoint"     =  solutionPoint ;
 
     approxSolutionData#"approxVanishingSetElems"  =  approxSolutions ;
@@ -121,13 +123,25 @@ idealPointsApproxData=( inputIdeal, solutionPoint, minPolyTable, approxSolutions
     return new HashTable from approxSolutionData;
 )
 
+approxComplexSolutions = method (Options=>{"options"=>new LiftOptions,"decimalPrecision"=>10});
 
-
--- may have problems in case unknownList is different from (gens ring inputIdeal order). Therefore removed the parameter for a moment.
 approxComplexSolutions (Ideal, Matrix) := opts->(inputIdeal, solutionPoint)->
 (   
+	return approxComplexSolutions( blackBoxIdeal(inputIdeal), solutionPoint );
+)
 
-    unknownList := gens ring inputIdeal;
+-- may have problems in case unknownList is different from (gens ring inputIdeal order). Therefore removed the parameter for a moment.
+approxComplexSolutions (HashTable, Matrix) := opts->( systemData, solutionPoint)->
+(   
+
+    --systemData.unknowns;
+
+    --unknownList := gens ring inputIdeal;
+    --unknowns := null;
+    --unknowns = getGlobalSymbol "unknowns";
+    --unknownList := systemData#unknowns;
+    
+    unknownList := systemData.unknowns;
 
     if (not pariGpIsPresent() ) then 
         error "please install Pari/GP or build Macaulay2 with pari (add 'pari' to the --enable-build-libraries configure parameter. ) to use 'approxComplexSolutions'";
@@ -140,7 +154,7 @@ approxComplexSolutions (Ideal, Matrix) := opts->(inputIdeal, solutionPoint)->
     characteristic:=char ring solutionPoint;
 
 
-    (minimalPolynomialsTable, mergedLiftInfo ) := computeMinPolys(inputIdeal, solutionPoint, unknownList, 
+    (minimalPolynomialsTable, mergedLiftInfo ) := computeMinPolys( systemData, solutionPoint, unknownList, 
                                     "options" => opts#"options" );
 
     pairedRootRootList := new MutableList;
@@ -152,7 +166,7 @@ approxComplexSolutions (Ideal, Matrix) := opts->(inputIdeal, solutionPoint)->
     if (mergedLiftInfo#"requiredLatticeDimension"===null) then  
     (
         return null;
-        --return idealPointsApproxData( inputIdeal, solutionPoint, minimalPolynomialsTable, {}  , mergedLiftInfo, unknownList );
+        --return idealPointsApproxData( systemData, solutionPoint, minimalPolynomialsTable, {}  , mergedLiftInfo, unknownList );
     );
       
       --opts.logger(1, "------------------------pairing part---------------------------") ;
@@ -197,7 +211,7 @@ approxComplexSolutions (Ideal, Matrix) := opts->(inputIdeal, solutionPoint)->
             opts#"options"#"maxLatticeDim" =  1+ (#preApproxSolutions)*( #(rootListList#unknownIdx) ) ;
           
             --opts.logger(1, Concatenation("opts.maxLatticeDim: ", String(opts.maxLatticeDim ) ) ) ;
-           (compatibilityMinimalPolynomials, compatLiftInfo ) := computeMinPolys(inputIdeal, solutionPoint, {newUnknown}, 
+           (compatibilityMinimalPolynomials, compatLiftInfo ) := computeMinPolys( systemData, solutionPoint, {newUnknown}, 
                             "options" => opts#"options");
             
            if (compatLiftInfo#"requiredLatticeDimension"===null) then continue; --failed
@@ -257,7 +271,7 @@ approxComplexSolutions (Ideal, Matrix) := opts->(inputIdeal, solutionPoint)->
 
     preApproxSolutions    = apply(preApproxSolutions, i-> matrix{i} );
     
-    return idealPointsApproxData(  inputIdeal, solutionPoint, minimalPolynomialsTable, preApproxSolutions  , mergedLiftInfo, unknownList );
+    return idealPointsApproxData(  systemData, solutionPoint, minimalPolynomialsTable, preApproxSolutions  , mergedLiftInfo, unknownList );
     
     --return approxComplexSolutionData;
 )
@@ -267,11 +281,12 @@ doc ///
     Key
         approxComplexSolutions
         (approxComplexSolutions ,Ideal, Matrix)
+        (approxComplexSolutions ,HashTable, Matrix)
     Headline
         given a solution over a prime field for a system of equations, compute the corresponding complex solutions
     Inputs
-        equationsIdeal: Ideal 
-            the equations ideal ( only integer coefficient ring is supported )
+         blackBoxIdeal: HashTable 
+            an ideal blackbox (see @TO createBlackBoxIdeal@ ) or the equations ideal ( only integer coefficient ring is supported ) 
         solutionModPrime: Matrix
             an element of the ideal vanishing set over a prime field
         "options"=> LiftOptions
@@ -285,8 +300,8 @@ doc ///
             contains complex solutions {\tt 'approxVanishingSetElems'} and intermediate result {\tt 'minPolyTable'}, 
             the minimal polynomials for the unknowns
     Usage
-         complexSolutionsData = approxComplexSolutions( equationsIdeal, solutionModPrime, unknowns )
-         complexSolutionsData = approxComplexSolutions( equationsIdeal, solutionModPrime, unknowns,"options"=>options, "decimalPrecision"=> decimalPrecision )
+         complexSolutionsData = approxComplexSolutions( systemData, solutionModPrime, unknowns )
+         complexSolutionsData = approxComplexSolutions( systemData, solutionModPrime, unknowns,"options"=>options, "decimalPrecision"=> decimalPrecision )
 
     Description
         Text
@@ -345,3 +360,9 @@ testApproxComplexSolutions = ()->
     -- root gluing test:
     result := approxComplexSolutions( IFZ, solution  );
 )
+
+TEST ///
+debug padicLift
+padicLiftProtect()
+testApproxComplexSolutions()
+///
