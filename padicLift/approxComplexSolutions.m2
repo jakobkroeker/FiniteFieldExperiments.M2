@@ -134,8 +134,14 @@ approxComplexSolutions (Ideal, Matrix) := opts->(inputIdeal, solutionPoint)->
 approxComplexSolutions (HashTable, Matrix) := opts->( systemData, solutionPoint)->
 (   
 
+    --systemData.unknowns;
+
     --unknownList := gens ring inputIdeal;
-    unknownList := systemData.getUnknowns();
+    --unknowns := null;
+    --unknowns = getGlobalSymbol "unknowns";
+    --unknownList := systemData#unknowns;
+    
+    unknownList := systemData.unknowns;
 
     if (not pariGpIsPresent() ) then 
         error "please install Pari/GP or build Macaulay2 with pari (add 'pari' to the --enable-build-libraries configure parameter. ) to use 'approxComplexSolutions'";
@@ -354,3 +360,9 @@ testApproxComplexSolutions = ()->
     -- root gluing test:
     result := approxComplexSolutions( IFZ, solution  );
 )
+
+TEST ///
+debug padicLift
+padicLiftProtect()
+testApproxComplexSolutions()
+///

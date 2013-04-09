@@ -5,7 +5,6 @@
 -- remark: for hashtable keys mainly strings are used, because string usage prevents introducing bugs 
 --         caused by shadowing or overwriting symbols by local variables, etc.
 
--- todo: black box functionality!
 -- replace assert messages with error messages.
 -- todo: write lift tests, where the inteterminate order is different from ring variable order.
 -- todo: inkonsequent: hashtables mit strings als Schlüssel und Gleichzeitig hashtables mit Symbolen als Schlüssel
@@ -31,20 +30,24 @@ newPackage(
            HomePage => "http://www.crcg.de/wiki/Bothmer"}    
       },
      Configuration => {"gppath" =>  ""},
+    PackageExports => {"BlackBoxIdeals"},
      Headline => "p-adic lift package",
      DebuggingMode => true,
      AuxiliaryFiles=>true
   
 )
---   PackageExports => {"idealBlackBoxes"}
+--  
 
 
-needsPackage "idealBlackBoxes";
+needsPackage "BlackBoxIdeals";
+needsPackage "SimpleDoc";
+needsPackage "Text";
 
 
 -- a hack to export the symbols of idealBlackBoxes for Macaulay 1.4.0.1, 
-try ( loadPackage "idealBlackBoxes"; )  then ( installPackage idealBlackBoxes; ) else ( installPackage idealBlackBoxes;);
---try ( load "idealBlackBoxes.m2";  ) then ( installPackage idealBlackBoxes; ) else ( installPackage idealBlackBoxes;);
+--try ( loadPackage( "BlackBoxIdeals",Reload=>true) )  then ( installPackage "BlackBoxIdeals"; ) else ( installPackage "BlackBoxIdeals";);
+--try ( loadPackage( "BlackBoxIdeals",Reload=>true) ) then () else ();
+--try ( load "BlackBoxIdeals.m2";  ) then ( installPackage BlackBoxIdeals; ) else ( installPackage BlackBoxIdeals;);
  
 
 export{
@@ -96,13 +99,12 @@ padicLiftProtect = ()->
     protect liftOptions;
     protect tolerance;
     protect decimalPrecision;
-    
-
 )
 
 --todo: fix dublicate code,  -  padicLiftProtect and padicLiftExport
 padicLiftExport = ()->
 (
+  
     protect GlobalInternalPadicLiftResultVariable;
     exportMutable( unchanged);
     exportMutable( normalized);
@@ -127,9 +129,14 @@ padicLiftExport = ()->
     exportMutable( reductionOpts);
     exportMutable( liftOptions);
     exportMutable( tolerance);
-    exportMutable( decimalPrecision);  
-    
+    exportMutable( decimalPrecision);     
 )
+
+-- testing reusage of same symbols in different packages. It seems not to work .
+--jacobianAt = global jacobianAt;
+
+--jacobianAt := global jacobianAt;
+--jacobianAt = global jacobianAt;
 
 undocumented { 
     approxComplexSolutionsOld,
@@ -174,12 +181,12 @@ padicLiftExport(); -- export the symbols to make the package work
 -- a package global  for indeterminate usage ...hopefully not too bad design...?
 
 GlobalInternalPadicLiftResultVariable := null;
-GlobalInternalPadicLiftResultVariable = symbol GlobalInternalPadicLiftResultVariable;
+GlobalInternalPadicLiftResultVariable = global GlobalInternalPadicLiftResultVariable;
 GlobalInternalPadicLiftResultVariable = (gens (ZZ[GlobalInternalPadicLiftResultVariable]))#0;
 
 
+ 
 
-beginDocumentation()
 
 load "./padicLift/univarPolRootsLoader.m2";
 
@@ -336,7 +343,9 @@ liftStep = ( systemData, vanishingCoordinates ) ->
     nextLiftDestRing := ZZ[]/nextchar; 
     localVanishingCoordinates := sub( vanishingCoordinates, nextLiftDestRing );
   
-    transposedM2JacobianAtSolution := transpose systemData.jacobianAt(localVanishingCoordinates); --get rid of degree information
+   systemData.unknowns;
+
+    transposedM2JacobianAtSolution := transpose systemData.bareJacobianAt(localVanishingCoordinates); -- jacobian without degree information
 
     prime := ( factor currchar)#0#0;
    
@@ -365,6 +374,8 @@ liftStep = ( systemData, vanishingCoordinates ) ->
 
 
 
+--
+
 
 -- 
 testLiftStep = ()->
@@ -381,6 +392,9 @@ testLiftStep = ()->
 
     assert( sub(IFZ, solution1) ==0 );   
     assert( sub(IFZ, solution2 ) ==0);        
+
+    bb := blackBoxIdeal(IFZ);
+    bb.jacobianAt(solution2);
 
     nextApprox := nextLift( blackBoxIdeal(IFZ),solution2);
     assert (sub (IFZ, nextApprox)==0);       
@@ -509,6 +523,7 @@ liftPoint (HashTable, Matrix, ZZ)  := Matrix=>  ( systemData,  vanishingCoordina
     assert((char ring vanishingCoordinates) !=0 ); 
     -- if characteristic was zero, the next test (factor char...) could also crash Macaulay2 (factoring zero. bug?)
     assert(#(factor char ring vanishingCoordinates) == 1 ); -- characteristic of the solution is a power of the prime
+
     assert( systemData.valuesAt( vanishingCoordinates ) == 0 );
     currLiftDepth := 0;
     localVanishingCoordinates := vanishingCoordinates;
@@ -1194,6 +1209,7 @@ ReducedPadicLiftResult => opts -> (systemData, solution, unknown, resultPolynomi
     -- checking function parameters:
     checkLiftOptions (opts#"options");
     --if not ( ring IZ === ring unknown) then error "an unknown is not element of the equations ideal ring";
+    
     if not ( systemData.unknownIsValid(unknown) ) then error "an unknown is not element of the equations ideal ring";
     if not ( systemData.valuesAt(solution) == 0)   then error "the given solution is not an element of the equations ideal vanishing set";
 
@@ -1313,9 +1329,6 @@ computeMinPolys (HashTable, Matrix, List) := opts->(systemData, solutionPoint, u
 
     solutionChar := char ring solutionPoint;
     assert(solutionChar>0);
-
-    --SZ := ring equationsIdeal;
-    --betti gens equationsIdeal
 
     varsnum := #unknownList;
 
