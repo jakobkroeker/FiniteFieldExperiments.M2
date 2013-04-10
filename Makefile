@@ -1,31 +1,38 @@
 
 
 
-.PHONY: installPadicLift installIdealBlackBoxes uninstallPadicLift uninstallIdealBlackBoxes  install uninstall
+.PHONY: installPadicLift installBlackBoxIdeals installFiniteFieldExperiments  uninstallPadicLift uninstallBlackBoxIdeals uninstallFiniteFieldExperiments install uninstall
  
-install: installPadicLift installIdealBlackBoxes
+install: installPadicLift installBlackBoxIdeals installFiniteFieldExperiments
    
 
-installPadicLift: 
+installPadicLift:  
 	mkdir -p   ~/.Macaulay2/local/share/Macaulay2/
 	cp padicLift.m2 ~/.Macaulay2/local/share/Macaulay2/
 	cp padicLift  ~/.Macaulay2/local/share/Macaulay2/ -R
 	@echo -e "#"'!'"/bin/bash \n rm  ~/.Macaulay2/local/share/Macaulay2/padicLift.m2 "> ~/.Macaulay2/local/share/Macaulay2/padicLiftUninstall.sh
 	@echo "rm  -rf ~/.Macaulay2/local/share/Macaulay2/padicLift/" >>  ~/.Macaulay2/local/share/Macaulay2/padicLiftUninstall.sh
 
-installIdealBlackBoxes: 
+installBlackBoxIdeals: 
 	mkdir -p   ~/.Macaulay2/local/share/Macaulay2/
-	cp idealBlackBoxes.m2 ~/.Macaulay2/local/share/Macaulay2/
-	cp padicLift  ~/.Macaulay2/local/share/Macaulay2/ -R
-	@echo  -e "#"'!'"/bin/bash \n rm  ~/.Macaulay2/local/share/Macaulay2/idealBlackBoxes.m2 " > ~/.Macaulay2/local/share/Macaulay2/idealBlackBoxesUninstall.sh
+	cp BlackBoxIdeals.m2 ~/.Macaulay2/local/share/Macaulay2/
+	@echo  -e "#"'!'"/bin/bash \n rm  ~/.Macaulay2/local/share/Macaulay2/BlackBoxIdeals.m2 " > ~/.Macaulay2/local/share/Macaulay2/BlackBoxIdealsUninstall.sh
+
+installFiniteFieldExperiments: 
+	mkdir -p   ~/.Macaulay2/local/share/Macaulay2/
+	cp FiniteFieldExperiments.m2 ~/.Macaulay2/local/share/Macaulay2/
+	@echo  -e "#"'!'"/bin/bash \n rm  ~/.Macaulay2/local/share/Macaulay2/FiniteFieldExperiments.m2 " > ~/.Macaulay2/local/share/Macaulay2/FiniteFieldExperimentsUninstall.sh
 
 
 uninstallPadicLift:
 	bash ~/.Macaulay2/local/share/Macaulay2/padicLiftUninstall.sh
 
 
-uninstallIdealBlackBoxes:
-	bash ~/.Macaulay2/local/share/Macaulay2/idealBlackBoxesUninstall.sh
+uninstallBlackBoxIdeals:
+	bash ~/.Macaulay2/local/share/Macaulay2/BlackBoxIdealsUninstall.sh
+
+uninstallFiniteFieldExperiments:
+	bash ~/.Macaulay2/local/share/Macaulay2/FiniteFieldExperimentsUninstall.sh
 
 
-uninstall: uninstallPadicLift uninstallIdealBlackBoxes
+uninstall: uninstallPadicLift uninstallBlackBoxIdeals uninstallFiniteFieldExperiments

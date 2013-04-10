@@ -15,41 +15,63 @@ newPackage(
      DebuggingMode => true
 )
 
-export{
-    clearCoeffDenominators,
+export {
+    --clearCoeffDenominators,
+    "clearCoeffDenominators",
     blackBoxIdeal,
     blackBoxIdealFromEvaluation,
-    blackBoxIdealFromProperties
+    blackBoxIdealFromProperties,
+    createLogger
 }
 
+--undocumented {
+--
+--}
+
+jacobianAt := global jacobianAt;
+jacobianAt = global jacobianAt;
 
 idealBlackBoxesProtect = ()->
 (
-   
-    protect jacobianAt;
-    protect jacobianMatrix;
-    protect transposedJacobianAt;
-    protect transposedJacobian;
-    protect valuesAt;
-    protect unknownIsValid;
-    protect getUnknowns;
-    protect createBlackBoxIdeal;
-    protect getEquations;
-    protect numVariables;
-    protect imageRank;
-    protect isZeroAt;
-    protect getPointProperties;
-    protect setRing;
-    protect registerPointProperty;
-    protect internalRegisterPointProperty;
-    protect setValuesAt;
-    protect setImageRank;
-    protect checkCoeffRing;
-    protect deduceImageRank;
-    protect propertiesAt;
-    protect setPropertiesAt;
-    protect setIsZeroAt;
-)
+protect jacobianAt;
+protect jacobianMatrix;
+protect transposedJacobianAt;
+protect transposedJacobian;
+protect valuesAt;
+protect unknownIsValid;
+protect createBlackBoxIdeal;
+protect getEquations;
+protect numVariables;
+protect imageRank;
+protect isZeroAt;
+protect pointProperties;
+protect setRing;
+protect registerPointProperty;
+protect registerAnonymousPointProperty;
+protect setPointProperty;
+protect setValuesAt;
+protect setImageRank;
+protect checkInputPoint;
+protect deduceImageRank;
+protect propertiesAt;
+protect setPropertiesAt;
+protect setIsZeroAt;
+protect dropDegreeInfo;
+protect bareJacobianAt;
+protect rebuild;
+protect setThis;
+protect clearInternal;
+protect unknowns;
+protect pointProperty;
+protect updatePointProperty;
+protect setJacobianAt;
+protect equations;
+protect setLevel;
+protect pointPropertyByName;
+protect hasPointProperty;
+
+protect knownPointProperties;
+);
 
 --todo: fix dublicate code,  -  padicLiftProtect and padicLiftExport
 idealBlackBoxesExport = ()->
@@ -60,27 +82,50 @@ idealBlackBoxesExport = ()->
     exportMutable( transposedJacobianAt);
     exportMutable( valuesAt);
     exportMutable( unknownIsValid);    
-    exportMutable( getUnknowns);
     exportMutable( createBlackBoxIdeal);
     exportMutable( getEquations);                
     exportMutable( numVariables);  
     exportMutable( imageRank);
     exportMutable( isZeroAt);      
-    exportMutable( getPointProperties);  
+    exportMutable( pointProperties);  
     exportMutable( setRing);  
-    exportMutable( registerPointProperty);  
-    exportMutable( internalRegisterPointProperty);
+    exportMutable( registerPointProperty); 
+    exportMutable(  registerAnonymousPointProperty );
+    exportMutable( setPointProperty);
     exportMutable( setValuesAt);    
     exportMutable( setImageRank );
-    exportMutable(  checkCoeffRing);
+    exportMutable(  checkInputPoint);
     exportMutable( deduceImageRank );
     exportMutable( propertiesAt );
     exportMutable( setPropertiesAt );
     exportMutable( setIsZeroAt );
+    exportMutable( dropDegreeInfo );
+    exportMutable( bareJacobianAt );
+   exportMutable( rebuild );
+   exportMutable( setThis );
+   exportMutable( clearInternal );
+ exportMutable( unknowns );
+ exportMutable( pointProperty );
+ exportMutable( updatePointProperty );
+ exportMutable( setJacobianAt );
+ exportMutable( equations );
+ exportMutable( setLevel );
+ exportMutable( pointPropertyByName );
+ exportMutable( hasPointProperty );
+  exportMutable( knownPointProperties );
 )
 
 
 
+String ? Symbol := (str,symb)->
+(
+  1 ? 2
+);
+
+Symbol ? String := (str,symb)->
+(
+  2 ? 1
+);
 
 -- swith between protect and export - both are not possible!
 
@@ -88,7 +133,38 @@ idealBlackBoxesExport = ()->
 idealBlackBoxesExport(); -- export the symbols to make the package work 
 
 
-beginDocumentation()
+needsPackage "SimpleDoc";
+needsPackage "Text";
+
+-- Estring = new Type of String - goal was to distinguies string keys from symbol keys without changing string visuaulization (net())
+-- but that turned out to be impossible, because e.g. operator '#' cannot be overloaded.
+
+
+--net (String) := Net =>(str)->(   strl := "\""| str| "\"" ;   return stack separate strl; );
+
+
+createLogger = ()->
+(
+    logger := new MutableHashTable;
+    --
+    level := 0;
+    logger.setLevel = method();
+    --
+    logger.setLevel(ZZ) := (pLevel)->
+    ( 
+       assert(level>=0 and level<5);
+       level = pLevel;
+    );
+    --    
+    logger.log = method();
+    logger.log (ZZ,String) := (msgLvl,msg )->
+    (
+       if (msgLvl<=level) then
+       print( "--" | msg );
+    );
+    --
+    return new HashTable from logger;
+);
 
 
 -- polynomialLCMDenominator computes the least common multiple of the denominators of the polynomial (rational) cofficients.
@@ -113,9 +189,12 @@ polynomialLCMDenominator = (polynomial)->
     return LCMDenominator;
 )
 
+
+
 -- clearCoeffDenominators converts an ideal with rational coefficients to an ideal with integer coefficients while preserving the vanishing set.
 -- e.g. if sub(IdealWithRationalCoeffs,point)==0, then  sub( clearCoeffDenominators(IdealWithRationalCoeffs),point)==0 and vice versa
-clearCoeffDenominators = method();
+
+clearCoeffDenominators  = method();
 
 clearCoeffDenominators (Ideal)  :=  Ideal =>  (IdealWithRationalCoeffs)->
 (
@@ -126,11 +205,10 @@ clearCoeffDenominators (Ideal)  :=  Ideal =>  (IdealWithRationalCoeffs)->
     return sub(ideal modgens,dstrng );
 )
 
+
 doc ///
     Key
-        clearCoeffDenominators        
-        (clearCoeffDenominators, Ideal )
-    
+        (clearCoeffDenominators, Ideal )    
     Headline
         convert an ideal with rational coefficients to an ideal with integer coefficients
     Usage   
@@ -153,6 +231,11 @@ doc ///
     Caveat
         Conversion implemented only for cases where the ideal coefficient ring is QQ( or ZZ).
 ///
+
+
+
+--        clearCoeffDenominators        
+
 
 testClearCoeffDenominators =()->
 (
@@ -216,174 +299,27 @@ testTensoredClearCoeffDenominators =()->
 
 
 
-
-createBasicBlackBox = () ->
+deduceImageRank := (blackBox)->
 (
-    
-   blackBox := new MutableHashTable;
-      
+     valuesAt:=null; 
+     valuesAt = global valuesAt;
 
-   pointProperties := new HashTable  ;
+     assert( blackBox#?(global valuesAt) );
+     assert( blackBox#?valuesAt );
 
-   blackBox.getPointProperties=()->
-   (  
-      return pointProperties;
-   );
-
-    propertiesAt  := (point)->null;
-   
-    blackBox.propertiesAt = (point)->propertiesAt(point);
-
-
-
-    blackBox.setPropertiesAt = (pPropertiesAt)->( propertiesAt= pPropertiesAt);
-
-    
-     rng := null;
-
-     blackBox.ring = () ->
-     (
-        --error "error:  blackBox.ring() not implemented";
-        return rng;
-     );
-
-  
-     blackBox.setRing = (parrng) ->
-     ( 
-        rng =  parrng;
-     );
-
-     blackBox.coefficientRing = () ->
-     (
-       return  coefficientRing blackBox.ring();
-     );
-
-     blackBox.checkCoeffRing = (point)->
-     (
-        errorMsg := "  ideal is defined over "| toString  blackBox.coefficientRing() | "and not over " | toString ring point |"!" ;
-        if blackBox.coefficientRing() =!= ZZ  
-           and ring point =!= blackBox.coefficientRing()
-           then 
-	   (
-		try ( if coefficientRing ring point=!= blackBox.coefficientRing() then error errorMsg )  then () else ( error (errorMsg) );
-           );
-     );
-
-     blackBox.getUnknowns =()->
-     (
-         return gens blackBox.ring();
-     );
-
-     blackBox.unknownIsValid = (unknown)->
-     (
-        if not ( blackBox.ring() === ring unknown) then 
-        ( 
-            print "the unknown is not element of the equations ideal ring";
-	    return false;
-        );
-        return true;
-     );
-
-     blackBox.numVariables = ()->
-     (
-        --return rank source  blackBox.getUnknowns();
-        return #(blackBox.getUnknowns());
-     );
-
-    blackBox.registerPointProperty = method();
-   blackBox.registerPointProperty(String, Function, Function) := Thing => ( propertyName, propertyMethod, preconditionsTest )->
-   (
-
-      preconditionsTest(blackBox); -- e.g. check for method presence or test an example.
-      
-      pointProperties = new MutableHashTable from pointProperties;
-
-      propertySymbol := getSymbol propertyName;
-      if  ( not  pointProperties#?propertySymbol  and  not  pointProperties#?propertyName 
-      and not  blackBox#?propertySymbol          and   not  blackBox#?propertyName  ) then 
-      (
-         pointProperties#propertySymbol = (point )-> (return  propertyMethod( blackBox,point); );
-         pointProperties#propertyName   = (point )-> (return  propertyMethod( blackBox,point); );
-         blackBox#propertySymbol        = (point )-> (return  propertyMethod( blackBox,point); );
-         blackBox#propertyName          = (point )-> (return  propertyMethod( blackBox,point); );
-         return new HashTable from blackBox;
-      )
-      else "error: method "| propertyName |" is already registered";
- 
-      pointProperties = new HashTable from pointProperties;
-
-     -- error "not yet implemented"; -- idea :  propertyMethod takes two parameters; first one is the ideal black box, second one is point
-   );
-
-   -- how to hide this method?
-   -- propertyMethod is expected to have two parameters: (blackBox,point)
-   blackBox.registerPointProperty(String, Function) := Thing =>( propertyName, propertyMethod )->
-   (
-      blackBox.registerPointProperty( propertyName, propertyMethod, ()->() )
-   );
-
-   -- how to hide this method?
-   blackBox.internalRegisterPointProperty = method();
-   blackBox.internalRegisterPointProperty (String, Function, Function) := Thing => ( propertyName, propertyMethod, preconditionsTest )->
-   (
-
-      preconditionsTest(blackBox); -- e.g. check for method presence or test an example.
-
-      pointProperties = new MutableHashTable from pointProperties;
-      propertySymbol := getSymbol propertyName;
-      if not  pointProperties#?propertySymbol  and  not  pointProperties#?propertyName then 
-      (
-         pointProperties#propertySymbol = (point )-> (return  propertyMethod(point); );
-         pointProperties#propertyName = (point )-> (return  propertyMethod(point); );
-      )
-      else "error: method "| propertyName |" is already registered";
- 
-      pointProperties = new HashTable from pointProperties;
-      return null;
-   );
-
-   blackBox.internalRegisterPointProperty(String, Function) := Thing => ( propertyName, propertyMethod )->
-   (
-      blackBox.internalRegisterPointProperty( propertyName, propertyMethod, (varietyIdeal)->() );
-      return null;
-   );
-
-   valuesAt := null;
-
-   blackBox.valuesAt = (point) ->
-   (
-      blackBox.checkCoeffRing(point);
-      return valuesAt(point);
-   );
-
-   imageRank := null;
-
-   blackBox.imageRank = ()->
-   (
-       return imageRank;
-       --point := matrix { apply(blackBox.numVariables(), i-> 0_(blackBox.coefficientRing()) ) };
-       --return #blackBox.valuesAt( point );
-   );
-
-
-   blackBox.setImageRank = (pImageRank)->
-   (
-      imageRank = pImageRank;
-   );
-
-     blackBox.deduceImageRank = ()->
-     (
-        computed  := false; 
+     --assert( blackBox#?(BlackBoxIdeals.Dictionary#(toString symbol valuesAt)) );  -- ok
+     
+       computed  := false; 
         maxTrials := 100;
         currTrial := 0;
-        rng := blackBox.coefficientRing();
+        rng := blackBox.coefficientRing;
         imageRank := null;
         while imageRank===null and currTrial<maxTrials do
         (
           try (
-              tmppoint := matrix random(rng^1,rng^(blackBox.numVariables()) );
+              tmppoint := matrix random(rng^1,rng^(blackBox.numVariables) );
               valuesMatrix := blackBox.valuesAt( tmppoint );
-              print valuesMatrix;
+              --print valuesMatrix;
               assert (numRows valuesMatrix==1);
               imageRank = numColumns valuesMatrix;
 
@@ -397,101 +333,401 @@ createBasicBlackBox = () ->
      );
 
 
-    blackBox.setValuesAt = (pValuesAt) ->
-     ( 
-        valuesAt =  pValuesAt;
+
+deducedJacobianAt = (blackBox,point)->
+(
+  
+    valuesAt := null; imageRank := null;
+    valuesAt = global valuesAt;
+    imageRank = global imageRank;
+    assert( blackBox#?(global valuesAt) );
+    assert( blackBox#?(global imageRank) ); 
+
+    rngPoint := ring point;
+    numVariables := blackBox.numVariables ;      
+    if (not ( blackBox.valuesAt( point )==0))  then  error("point does not belong to the ideal ! ");
+    eps := null;
+    eps = symbol eps;
+    epsRng := rngPoint[eps]/eps^2;
+    eps = (gens epsRng)#0;
+
+    jacobianMatrixAt := mutableMatrix( rngPoint ,  numVariables, blackBox.imageRank() );
+    for unknownIdx  in 0..(numVariables-1) do
+    (
+         newpoint := new MutableMatrix from sub( point, epsRng );
+
+         newpoint_(0,unknownIdx) = newpoint_(0,unknownIdx)+eps;
+         valueVec := blackBox.valuesAt( matrix newpoint );  
+         for equationIdx in 0..numColumns valueVec-1 do
+         (
+            coordinateValue := last coefficients (valueVec_(0,equationIdx), Monomials=>{1 , eps } );
+            if ( not (coordinateValue)_(0,0) ==0) then error("error in jacobianAt. please contact the developers");
+            jacobianMatrixAt_(unknownIdx,equationIdx) = sub( (coordinateValue)_(1,0) , rngPoint  )  ;
+         );
+    );
+    return matrix jacobianMatrixAt;
+);
+
+dropDegreeInfo := method();
+dropDegreeInfo (Matrix) := Matrix=> (mat)->
+(
+   return map( (ring mat)^(numRows mat) ,(ring mat)^(numColumns mat),mat);
+);
+
+
+basicBlackBox = method();
+--basicBlackBox (Ring) :=  HashTable =>( parrng ) ->
+basicBlackBox(ZZ,Ring) := HashTable => ( numVariables, coeffRing ) ->
+(
+    
+   blackBox := new MutableHashTable;   
+   pointProperties := new HashTable  ;
+   blackBox.coefficientRing = coeffRing;
+   blackBox.numVariables = numVariables;
+   imageRank := null;
+
+
+   blackBox.imageRank = () ->
+   (  return imageRank; );
+   
+     
+
+     checkInputPoint := (point)->
+     (
+        errorMsg := "  ideal is defined over "| toString  blackBox.coefficientRing | "and not over " | toString ring point |"!" ;
+        if blackBox.coefficientRing =!= ZZ  
+           and ring point =!= blackBox.coefficientRing
+           then 
+	   (
+		try ( if coefficientRing ring point=!= blackBox.coefficientRing then error errorMsg )  then () else ( error (errorMsg) );
+           );
+       if (numColumns point=!=blackBox.numVariables) then error (" illegal point : expected " | toString blackBox.numVariables | " coordinates");
      );
 
 
-   isZeroAt = (point)->(true);
+   
+
+     blackBox.pointProperty=(prop)->
+     (
+        if not pointProperties#?prop then return null;
+
+        return pointProperties#prop;
+     );
+
   
 
-   blackBox.isZeroAt = (point)->
+   blackBox.hasPointProperty=(propertyName)->
    (
-       return isZeroAt(point);   
+       return pointProperties#?propertyName;
    );
 
-   blackBox.setIsZeroAt = (pIsZeroAt) ->
+
+   setPointProperty := method();
+   setPointProperty ( Symbol, Function, Function) := Thing => ( propertySymbol, propertyMethod, preconditionsTest )->
+   (
+      -- propertySymbol := getGlobalSymbol propertyName;
+      propertyName := toString propertySymbol;
+
+      assert(propertyName=!=null); 
+      
+      packageSymbol := null;
+      if BlackBoxIdeals.Dictionary#?propertyName then 
+        packageSymbol  = BlackBoxIdeals.Dictionary#propertyName;
+    
+
+      preconditionsTest(blackBox); -- e.g. check for method presence or test an example.
+
+      pointProperties = new MutableHashTable from pointProperties;
+ 
+      
+     pointProperties#propertyName = (point )-> ( 
+          checkInputPoint(point);
+          try { return propertyMethod(  point); } then {  return propertyMethod(  point); } else {     return propertyMethod(blackBox,   point);  };
+     );
+
+     pointProperties#propertySymbol = pointProperties#propertyName;
+  
+     if packageSymbol=!=null then 
+       pointProperties#packageSymbol = pointProperties#propertyName;
+     
+     if mutable blackBox then 
+     (
+         blackBox#propertySymbol        = (point)->( (blackBox.pointProperty(propertySymbol))(point) );
+         blackBox#propertyName          = (point)->( (blackBox.pointProperty(propertyName))(point) );
+         if packageSymbol=!=null then 
+           blackBox#packageSymbol        = (point)->( (blackBox.pointProperty(packageSymbol))(point) );
+     );
+
+     pointProperties = new HashTable from pointProperties;
+  
+   );
+
+   blackBox.knownPointProperties = ()->
+   (
+      return keys pointProperties;
+   );
+
+
+   setPointProperty( Symbol, Function) := Thing => ( propertySymbol, propertyMethod )->
+   (
+      setPointProperty( propertySymbol, propertyMethod, (varietyIdeal)->() );
+      return null;
+   );
+
+   valuesAtWrapper := ( pValuesAt, point) ->
+   (
+      result := pValuesAt(point);
+      assert(numRows result==1);
+      return result;
+   );
+
+   setIsZeroAt := (pIsZeroAt) ->
    ( 
-     isZeroAt =  pIsZeroAt;
+      --blackBox.setPointProperty( global isZeroAt , pIsZeroAt );
+       setPointProperty( global isZeroAt , pIsZeroAt );
+   );
+
+   setJacobianAt := (jacobianAt) ->
+   (
+      blackBox.jacobianAt =jacobianAt;  
+      --blackBox.setPointProperty( global jacobianAt , blackBox.jacobianAt );
+      setPointProperty( global jacobianAt , blackBox.jacobianAt );
+      blackBox.bareJacobianAt = (point)->
+      (
+         return dropDegreeInfo( blackBox.jacobianAt(point) );
+      );
+      setPointProperty( global bareJacobianAt , blackBox.bareJacobianAt );
    );
 
 
-   blackBox.internalRegisterPointProperty( "isZeroAt" , blackBox.isZeroAt );
+   setValuesAt := (pValuesAt) ->
+   (      
+        print "setValuesAt: updates (isZeroAt, jacobianAt)" ;      
 
-   return new HashTable from blackBox;
+       localValuesAt := (point)->return valuesAtWrapper(pValuesAt, point ) ;
+       -- when using valuesAt instead of localValuesAt we get the wrong  (symbol valuesAt) (local valuesAt)
+       --blackBox.setPointProperty( global valuesAt  ,  localValuesAt );
+       setPointProperty( global valuesAt  ,  localValuesAt );
+       
+    
+       imageRank =   deduceImageRank(blackBox)  ; --depends on valuesAt.
+
+      print ( "updated blackBox.imageRank to " | toString blackBox.imageRank );   
+
+       setIsZeroAt(
+          (point)->( return blackBox.valuesAt(point)==0 ;) 
+        );
+
+       ----- jacobian at:
+       setJacobianAt ( (point)->deducedJacobianAt( blackBox, point ) );  
+   );
+ 
+
+   outerSetPointProperty := ( propertySymbol, propertyMethod)->
+   (
+        propertyName := toString  propertySymbol;
+         if propertyName==="isZeroAt" then 
+              return setIsZeroAt(propertyMethod); --probably not necessary
+
+         if propertyName==="valuesAt" then 
+             return setValuesAt(propertyMethod);  -- triggers initialization of 'isZeroAt' and 'jacobianAt'
+     
+         if propertyName==="jacobianAt" then 
+             return setJacobianAt(propertyMethod); -- triggers initialization of 'bareJacobianAt'
+
+           setPointProperty( propertySymbol, propertyMethod );
+   );
+
+   --updating ValuesAt will not trigger updating isZeroAt and jacobianAt 
+   -- 
+   blackBox.updatePointProperty=( propertyName, propertyMethod )->
+   (
+      propertySymbol := getGlobalSymbol propertyName;
+
+      if  (    pointProperties#?propertySymbol  and   pointProperties#?propertyName ) then
+      (  
+           outerSetPointProperty( propertySymbol, propertyMethod );
+      ) 
+      else ( error "property"| toString propertyName | "does not exist.");
+   );
+
+
+
+    -- external function 
+
+ blackBox.registerPointProperty = method();
+
+   -- was passiert bei Zirkelschlüssen?
+   blackBox.registerPointProperty(String, Symbol, Function, Function) := Thing => ( propertyName, propertySymbol, propertyMethod, preconditionsTest )->
+   (
+      preconditionsTest(blackBox); -- e.g. check for method presence or test an example.
+      
+      if  ( not  pointProperties#?propertySymbol  and  not  pointProperties#?propertyName 
+      and not  blackBox#?propertySymbol          and   not  blackBox#?propertyName  ) then 
+      (
+           outerSetPointProperty( propertySymbol, propertyMethod );( propertySymbol, propertyMethod );
+      )
+      else error(" method "| propertyName |" is already registered");
+
+   );
+
+
+   blackBox.registerPointProperty(String, Function, Function) := Thing => ( propertyName, propertyMethod, preconditionsTest )->
+   (
+    
+     -- propertySymbol := getGlobalSymbol propertyName; --leads to error ???
+      propertySymbol := getSymbol propertyName;
+     blackBox.registerPointProperty(  propertyName,propertySymbol, propertyMethod, preconditionsTest )
+   );
+
+   -- propertyMethod is expected to get two parameters, (blackBox,point)
+
+   blackBox.registerPointProperty(String, Function) := Thing =>( propertyName, propertyMethod )->
+   (
+   
+
+      emptyFkt := (blackBox)->(return null);
+      blackBox.registerPointProperty( propertyName, propertyMethod, emptyFkt );
+   );
+
+   
+   
+   blackBox.clearInternal = ()-> 
+   (
+      remove( blackBox, getGlobalSymbol "setThis" );
+      remove( blackBox, getSymbol "setThis" );
+      remove( blackBox, symbol setThis );
+      assert( not blackBox#?(symbol setThis) );
+      assert( not blackBox#?( getSymbol "setThis" ) );
+
+      remove( blackBox, getGlobalSymbol "clearInternal" );
+      remove( blackBox, getSymbol "clearInternal" );
+      remove( blackBox, symbol clearInternal );
+      assert( not blackBox#?(symbol clearInternal) );
+      assert( not blackBox#?(getSymbol "clearInternal") );
+   );
+
+   blackBox.setThis = (bb)->
+   (
+       blackBox = bb;
+   );
+
+   blackBox.rebuild = ()->
+   (
+       bb := new MutableHashTable from  blackBox;
+       blackBox = bb;
+
+       for  property in blackBox.knownPointProperties() do
+       (
+          if not bb#?property then 
+          (
+              --bb#property = pointProperties#property;
+              bb#property = (point)->( blackBox.pointProperty(property)(point) );
+          )
+          else 
+	  (
+	    
+ 	  );         
+       );
+
+       return new HashTable from bb;
+   );
+
+   return blackBox;
+)
+
+
+basicBlackBox(Ring) := HashTable => ( pRing ) ->
+(
+
+   blackBox := basicBlackBox(#(gens pRing), coefficientRing pRing);
+
+   blackBox.ring = pRing;
+   blackBox.unknowns = gens blackBox.ring;
+   assert( blackBox.numVariables == #blackBox.unknowns );
+
+   blackBox.unknownIsValid = (unknown)->
+   (
+        if not ( blackBox.ring === ring unknown) then 
+        ( 
+            print "the unknown is not element of the equations ideal ring";
+	        return false;
+        );
+        return true;
+   );
+
+   --blackBox.setThis(blackBox);
+   return blackBox;
+)
+
+
+blackBoxIdeal = method();
+
+blackBoxIdeal(Ring) := HashTable => ( pRing ) ->
+( 
+    blackBox := basicBlackBox( pRing);
+    blackBox.setThis(blackBox);
+    blackBox.clearInternal();
+    return new HashTable from blackBox;
+);
+
+
+--basicBlackBox(ZZ,Ring) := HashTable => ( numVariables, coeffRing ) ->
+--(
+--    assert ( numVariables>0 );
+--    a := null;
+--    a = symbol a;
+--    rng := coeffRing[a_1..a_numVariables];
+--    return basicBlackBox( rng );
+--)
+
+
+
+blackBoxIdeal(ZZ, Ring) := HashTable => ( numVariables, coeffRing )  ->
+(
+    blackBox := basicBlackBox( numVariables, coeffRing );
+    blackBox.setThis(blackBox);
+    blackBox.clearInternal();
+    return new HashTable from blackBox;
 )
 
 
 
 
-
-
 -- todo: how to check, if 'ring equationsIdeal' is not a quotient ring?
-blackBoxIdeal  = (equationsIdeal)->
-(
-     blackBox := new MutableHashTable from createBasicBlackBox();
+blackBoxIdeal (Ideal) := HashTable =>(equationsIdeal)->
+(   
+     blackBox :=  basicBlackBox( ring equationsIdeal );
 
-     jacobianM2Matrix := jacobian gens equationsIdeal;
+     blackBox.setThis(blackBox);
+   
+     -- maybe blackBox.addProperty( ideal, equationsIdeal)
+     blackBox.ideal = equationsIdeal;      
+
+     -- maybe blackBox.addProperty( equations, gens equationsIdeal )
+     blackBox.equations =  gens  equationsIdeal; 
 
 
-     -- should be different if the ideal is over Fp
+    -- setValuesAt generates 'isZeroAt' and 'jacobianAt', too !  
+    blackBox.registerPointProperty("valuesAt",(point)->  (    return  gens sub( equationsIdeal , point);   ));
 
-      blackBox.setRing(ring equationsIdeal);
-      remove( blackBox, getSymbol "setRing" );
+    -- maybe blackBox.addProperty( jacobian, jacobian gens  equationsIdeal )
+    blackBox.jacobian = jacobian gens  equationsIdeal;
 
+    -- needs updatePointProperty, because "jacobianAt" is present. Todo: introduce force mode option? (overwriting registered property?)
+    --todo: introduce for all methods a precomposition with checkInputPoint
+    blackBox.updatePointProperty( "jacobianAt",
 
-     blackBox.jacobian = () ->
-     (
-       return jacobianM2Matrix;
-     );
-
-     blackBox.getEquations = ()->
-     (
-         return gens  equationsIdeal;   
-     );
-
-     valuesAt := (point)->
-     (
-         return gens sub( equationsIdeal , point);   
-     );
-
-     blackBox.setValuesAt(valuesAt);
-     remove( blackBox, getSymbol "setValuesAt" );
-
-     blackBox.setValuesAt(valuesAt);
-     remove( blackBox, getSymbol "setValuesAt" );
-
-       blackBox.setIsZeroAt(
-        (point)->( return blackBox.valuesAt(point)==0 ; )
-      );
-
-     remove( blackBox, getSymbol "setIsZeroAt" );
-
-     blackBox.internalRegisterPointProperty( "valuesAt" , blackBox.valuesAt );
-
-     jacobianAt := (point)->
-     (
-        jacobianM2MatrixAt:= sub( jacobianM2Matrix , point);
-        --get rid of map degree information
-	    jacobianM2MatrixAt = sub( jacobianM2MatrixAt, ring point);
-        jacobianM2MatrixAt = sub(sub(jacobianM2MatrixAt, ZZ), ring point);
-        return jacobianM2MatrixAt;
-     );
-
-       
-    blackBox.jacobianAt= (point)->
-    (
-        blackBox.checkCoeffRing(point);
-        return jacobianAt(point);
+       (point)->
+       (   
+          jacobianM2MatrixAt := sub( blackBox.jacobian , point);
+          return jacobianM2MatrixAt;
+       )
     );      
-     
-     blackBox.setImageRank( blackBox.deduceImageRank() );
-     remove( blackBox, getSymbol "setImageRank" );
+   
+     blackBox.setThis(blackBox);
+     blackBox.clearInternal();
 
-
-     blackBox.internalRegisterPointProperty( "jacobianAt" , blackBox.jacobianAt );
-  
      return new HashTable from blackBox;
 )
 
@@ -511,9 +747,9 @@ testBlackBoxIdeal=()->
    IFPBlackBox := blackBoxIdeal( IFP );
    point := matrix {{3}};
    rng13 := ZZ/13;
-   assert( IFPBlackBox.getUnknowns()=={x} );
-   assert( IFPBlackBox.getEquations()==gens IFP);
-   assert( IFPBlackBox.jacobian()== jacobian IFP);
+   assert( IFPBlackBox.unknowns=={x} );
+   assert( IFPBlackBox.equations==gens IFP);
+   assert( IFPBlackBox.jacobian== jacobian IFP);
    
 
    point = matrix {{3}};
@@ -529,115 +765,44 @@ testBlackBoxIdeal=()->
    (
         error("testblackBoxIdeal: jacobianAt should succeed  due the coefficient ring of the point matrix matches the ideal coefficient ring ");
    );  
-    IFPBlackBox.ring();
+    IFPBlackBox.ring;
     IFPBlackBox.valuesAt(point) ;
     assert(   IFPBlackBox.isZeroAt( point ) );
    assert( IFPBlackBox.jacobianAt(point)==sub( jacobian IFP,point) );
    assert( IFPBlackBox.valuesAt(point)== gens sub(  IFP, point ) );
 )
 
+
+
 blackBoxIdealFromEvaluation = method();
-
-blackBoxIdealFromEvaluation( Ring, Function )  := HashTable=> ( rng, valuesAt )->
-(
-
-     blackBox := new MutableHashTable from createBasicBlackBox();
- 
-      blackBox.setRing(rng);
-      remove( blackBox, getSymbol "setRing" );
-
-     blackBox.ring = ()->
-     (         
-        return rng;
-     );
-
-    
-     blackBox.setValuesAt(valuesAt);
-     remove( blackBox, getSymbol "setValuesAt" );
-
-  
-
-
-     blackBox.valuesAt = (point)->
-     (
-         return valuesAt( point);   
-     );
- 
-    
-     blackBox.setIsZeroAt(
-        (point)->( return blackBox.valuesAt(point)==0 ;) 
-      );
-     remove( blackBox, getSymbol "setIsZeroAt" );
-
-
-     blackBox.setImageRank( blackBox.deduceImageRank() );
-     remove( blackBox, getSymbol "setImageRank" );
-
-     blackBox.isZeroAt = (point)->
-     (
-         return blackBox.valuesAt(point)==0;   
-     );
-
-     check := ()->
-     (
-         numVariables :=  blackBox.numVariables();
-
-         point := matrix { apply(numVariables, i-> 0_(blackBox.coefficientRing()) ) };
-         blackBox.valuesAt( point );
-         blackBox.isZeroAt( point );
-     );
-
-     check();
-
-     -- here comes the magic:
-     blackBox.jacobianAt = (point)->
-     (
-       
-        unknowns := blackBox.getUnknowns() ;      
-        
-        if (not ( blackBox.valuesAt( point )==0))  then  error("point does not belong to the ideal ! ");
-
-
-        eps := null;
-        eps = symbol eps;
-        epsRng := ( blackBox.coefficientRing() )[eps]/eps^2;
-        eps = (gens epsRng)#0;
-
-        jacobianMatrixAt := mutableMatrix( blackBox.coefficientRing(),  #unknowns, blackBox.imageRank(  ) );
-        for unknownIdx  in 0..(#unknowns-1) do
-        (
-             newpoint := new MutableMatrix from sub( point,epsRng );
-   
-             newpoint_(unknownIdx,0) = newpoint_(unknownIdx,0)+eps;
-             valueVec := blackBox.valuesAt( matrix newpoint );  
-             for equationIdx in 0..numColumns valueVec-1 do
-             (
-                coordinateValue := last coefficients (valueVec_(0,equationIdx), Monomials=>{1 , eps } );
-                if ( not (coordinateValue)_(0,0) ==0) then error("error in jacobianAt. please contact the developers");
-                jacobianMatrixAt_(unknownIdx,equationIdx) = sub( (coordinateValue)_(1,0) , blackBox.coefficientRing())  ;
-             );
-        );
-        return matrix jacobianMatrixAt;
-     );
-
-   
-    blackBox.internalRegisterPointProperty("jacobianAt" , blackBox.jacobianAt );
-    blackBox.internalRegisterPointProperty("valuesAt" , blackBox.valuesAt );
-  
-
-    return  new HashTable from blackBox;
-)
 
 blackBoxIdealFromEvaluation(ZZ, Ring, Function) := HashTable => ( numVariables, coeffRing, valuesAt )  ->
 (
-    assert ( numVariables>0 );
-    a := null;
-    a = symbol a;
-    -- todo: add getNumVariables;
+    blackBox := basicBlackBox(numVariables, coeffRing);
 
-    rng := coeffRing[a_1..a_numVariables];
-    return blackBoxIdealFromEvaluation(rng,valuesAt);
+    blackBox.setThis(blackBox);
+
+    --blackBox.setValuesAt ( valuesAt ); --sets isZeroAt, jacobianAt and imageRank
+
+    blackBox.registerPointProperty ("valuesAt", valuesAt ); --sets isZeroAt, jacobianAt and imageRank
+
+    check := ()->
+    (
+         numVariables :=  blackBox.numVariables;
+
+         point := matrix { apply(numVariables, i-> 0_(blackBox.coefficientRing) ) };
+         blackBox.valuesAt( point );
+         blackBox.isZeroAt( point );
+    );
+
+     check();  
+   
+    blackBox.setThis(blackBox);-- not necessary?
+    blackBox.clearInternal();
+
+    return new HashTable from blackBox ;
 )
+
 
 testBlackBoxIdealFromEvaluation = ()->
 (
@@ -654,17 +819,17 @@ testBlackBoxIdealFromEvaluation = ()->
     rank source gens IFP;
   
    evaluation := blackBoxIdeal( IFP );
-    --evaluation := createBasicBlackBox();
+    --evaluation := basicBlackBox();
   
-    evalBlackBox := blackBoxIdealFromEvaluation ( evaluation.ring(), evaluation.valuesAt );
+    evalBlackBox := blackBoxIdealFromEvaluation ( # (gens evaluation.ring), coefficientRing evaluation.ring, evaluation.valuesAt );
 
     point := matrix {{3_(ZZ/7)}} ;
     assert( evaluation.isZeroAt( point ) );
-    assert( evaluation.getUnknowns()=={x} );
+    assert( evaluation.unknowns=={x} );
     assert( evaluation.valuesAt( point ) == evalBlackBox.valuesAt( point ) );
     assert( evaluation.jacobianAt( point ) == evalBlackBox.jacobianAt( point ) );
 
-    assert( evaluation.numVariables() ==evalBlackBox.numVariables() );
+    assert( evaluation.numVariables ==evalBlackBox.numVariables );
 
     outerPoint := matrix {{2_(ZZ/7)}} ;
 
@@ -672,7 +837,7 @@ testBlackBoxIdealFromEvaluation = ()->
 
     assert( not evaluation.isZeroAt( outerPoint ) );
 
-    assert( evaluation.coefficientRing() === coeffRng);
+    assert( evaluation.coefficientRing === coeffRng);
 
     assert( evaluation.unknownIsValid ( ( gens ring IFP )#0 ));
 
@@ -685,27 +850,30 @@ testBlackBoxIdealFromEvaluation = ()->
 );
 
 
-blackBoxIdealFromProperties = method();
+--blackBoxIdealFromProperties = method();
 
-blackBoxIdealFromProperties(ZZ, Ring, Function) := HashTable => ( numVariables, coeffRing, pPropertiesAt )  ->
-(
-    assert ( numVariables>0 );
-    B := new MutableHashTable;
-    B.numVariables = ()->numVariables;
-    B.coefficientRing = ()->coeffRing;
-    propertiesAt  := (point)->null;
-    propertiesAt  = pPropertiesAt;
-    B.propertiesAt = (point)->propertiesAt(point);
+--blackBoxIdealFromProperties(ZZ, Ring, Function) := HashTable => ( numVariables, coeffRing, pPropertiesAt )  ->
+--(
+--    blackBox := basicBlackBox( numVariables, coeffRing );
+--    blackBox.setThis(blackBox);
+--
+--    blackBox.setIsZeroAt( (point)->(true) );
+--    propertiesAt  := (point)->null;
+--
+--    --blackBox.propertiesAt = (point)->propertiesAt(point);
+   
+--    --blackBox.setPropertiesAt ( pPropertiesAt );
 
-    B.isZeroAt = (point)->(true);
 
-    B.setPropertiesAt = (pPropertiesAt)->( propertiesAt= pPropertiesAt);
-    return B
-)
+--    blackBox.setThis(blackBox);
+--    blackBox.clearInternal();
 
+--    return new HashTable from blackBox;
+--)
+
+--beginDocumentation()
     
     
-
 
 doc ///
    Key
@@ -722,16 +890,16 @@ doc ///
    Outputs
         : HashTable
              an ideal black box with methods  \break
-            \,\, \bullet \, { \tt getPointProperties() }. \break
+            \,\, \bullet \, { \tt knownPointProperties() }. \break
             \,\, \bullet \, { \tt registerPointProperty(pointPropertyMethod) }. \break
             where   { \tt pointPropertyMethod } expects to take two parameters: (blackBox,point)  \break
             \,\, \bullet \, { \tt valuesAt(point)},\break
             \,\, \bullet \, { \tt jacobianAt(point) }. \break
 
             optional:
-            \,\, \bullet \, { \tt getEquations()}, \break
-            \,\, \bullet \, { \tt getUnknowns()},\break
-            \,\, \bullet \, { \tt jacobian()}, \break
+            \,\, \bullet \, { \tt equations}, \break
+            \,\, \bullet \, { \tt unknowns},\break
+            \,\, \bullet \, { \tt jacobian}, \break
    Description
         Text
             Creates a blackbox describing an ideal from an ideal with integer coefficient ring
@@ -747,9 +915,9 @@ doc ///
             \break Now access some ideal propeties via the black box interface:
         Example          
             keys IFZBlackBox
-            IFZBlackBox.getUnknowns()
-            IFZBlackBox.getEquations()
-            IFZBlackBox.jacobian()
+            IFZBlackBox.unknowns
+            IFZBlackBox.equations
+            IFZBlackBox.jacobian
             point := matrix { {1} };
             IFZBlackBox.valuesAt(point)
             IFZBlackBox.jacobianAt(point)            
@@ -759,7 +927,7 @@ doc ///
 
 
 TEST ///
-debug idealBlackBoxes
+debug BlackBoxIdeals
 idealBlackBoxesProtect()
 testClearCoeffDenominators()
 ///
@@ -767,37 +935,34 @@ testClearCoeffDenominators()
 
 
 TEST ///
-debug idealBlackBoxes
+debug BlackBoxIdeals
 idealBlackBoxesProtect()
 testNestedRingCoeffsLCMDenominator()
 ///
          
 
 TEST ///
-debug idealBlackBoxes
+debug BlackBoxIdeals
 idealBlackBoxesProtect()
 testTensoredClearCoeffDenominators()
 ///
 
 TEST ///
-debug idealBlackBoxes
+debug BlackBoxIdeals
 idealBlackBoxesProtect()
 testBlackBoxIdeal()
 ///
 
 TEST ///
-debug idealBlackBoxes
+debug BlackBoxIdeals
 idealBlackBoxesProtect()
 testBlackBoxIdealFromEvaluation()
 ///
 
-end
----
 
-restart
---load "idealBlackBoxes.m2"
-loadPackage"idealBlackBoxes"
-apropos "blackBox"
+TEST ///
+debug BlackBoxIdeals
+idealBlackBoxesProtect()
 
 R = ZZ[x_0..x_3]
 
@@ -818,19 +983,22 @@ line = matrix{{0,0,s,t}}
 
 B = blackBoxIdeal I
 
-
 assert (sub(jacobian I,smoothPoint) == B.jacobianAt smoothPoint)
-rank(B.jacobianAt smoothPoint) == codim(I,Generic=>true)
-rank(B.jacobianAt singularPoint) < codim(I,Generic=>true)
-B.isZeroAt(smoothPoint)
-B.isZeroAt(singularPoint)
-B.isZeroAt(line)
-not B.isZeroAt(offPoint)
+assert (rank(B.jacobianAt smoothPoint) == codim(I,Generic=>true))
+assert (rank(B.jacobianAt singularPoint) < codim(I,Generic=>true))
+assert( B.isZeroAt(smoothPoint) );
+assert( B.isZeroAt(singularPoint));
+assert(B.isZeroAt(line));
 
-prime = 11
-K = ZZ/prime
-B.isZeroAt(sub(smoothPoint,K))
-B.isZeroAt(sub(offPoint,K))
+B.valuesAt(offPoint)
+B.isZeroAt(offPoint)
+
+assert(not B.isZeroAt(offPoint))
+
+prime = 11;
+K = ZZ/prime;
+assert (B.isZeroAt(sub(smoothPoint,K)));
+assert(B.isZeroAt(sub(offPoint,K)));
 
 apply(100,i->(
 	  r = random(K^1,K^4);
@@ -847,29 +1015,114 @@ evalLinePlusConic = point -> (
       matrix{{det M_{0,1},det M_{0,2},det M_{1,2}}}
      )
 
-B2 = blackBoxIdealFromEvaluation(4,ZZ,evalLinePlusConic)
+B2 = blackBoxIdealFromEvaluation( 4, ZZ, evalLinePlusConic)
 
 apply(100,i->(
 	  r = random(K^1,K^4);
 	  assert (B2.isZeroAt(r) == B.isZeroAt(r));
 	  assert (B2.valuesAt(r) == B.valuesAt(r));
       	  if B2.isZeroAt(r) then 
+          (             
 	      assert (B2.jacobianAt(r) == B.jacobianAt(r));
-     ))
+          ) else ();
+     ));
 
-assert B2.isZeroAt(line)
-B2.jacobianAt(line)
-B.jacobianAt(line)
+assert  B2.isZeroAt(line)
 
--- sollte gehn
+assert(sub(B.jacobian,line)== sub(jacobian I,line))
 assert (B.jacobianAt(line) == sub(jacobian I,line))
--- eventuell schwieriger
-assert (B2.jacobianAt(line) == B.jacobianAt(line))
+
+assert (B2.bareJacobianAt(line) == B.bareJacobianAt(line))
+
+///
+
+
+TEST ///
+
+    bbRankM = blackBoxIdeal( 5 ,ZZ )
+    assert(bbRankM.numVariables==5);
+    assert(bbRankM.coefficientRing===ZZ);
+
+    assert( bbRankM.imageRank() === null)
+
+    rankMat := (point)->5 
+
+   assert(not  bbRankM.hasPointProperty("rankMat") );
+
+    bbRankM.registerPointProperty("rankMat",rankMat)
+
+    assert(  bbRankM.hasPointProperty("rankMat") );
+
+    point  = matrix {{1,2,3,4,5}};
+
+    assert( rankMat(point) == (bbRankM.pointProperty("rankMat"))(point) );
+
+    rankMatNew := (point)->3
+    bbRankM.updatePointProperty("rankMat",rankMatNew)
+    assert( rankMatNew(point) == (bbRankM.pointProperty("rankMat"))(point) );
+    assert( rankMatNew(point) == (bbRankM.pointProperty(getGlobalSymbol "rankMat"))(point) );
+
+
+    bbRankMNew = bbRankM.rebuild()
+    assert bbRankMNew#?(global rankMat);
+    assert bbRankMNew#?("rankMat");
+
+    assert( rankMatNew(point) == bbRankMNew.rankMat(point) );
+
+    assert(bbRankMNew.coefficientRing===ZZ);
+
+    rankMatNew := (point)->4 --also influences bbRankM; because rebuild does not copy; it just exports new registered properties.
+
+    bbRankMNew.updatePointProperty("rankMat",rankMatNew)
+
+    (bbRankM.pointProperty("rankMat"))(point);
+
+    assert( rankMatNew(point) == bbRankMNew.rankMat(point) );
+    assert( rankMatNew(point) == bbRankMNew#"rankMat"(point) );
+    assert( rankMatNew(point) == (bbRankMNew.pointProperty("rankMat"))(point) );
+    assert( rankMatNew(point) == (bbRankMNew.pointProperty(getGlobalSymbol "rankMat"))(point) );
+    keys bbRankM
+    
+    valuesAt := (point)-> matrix {{1,2}};
+
+    bbRankM.registerPointProperty("valuesAt",valuesAt);
+
+    assert(  bbRankM.hasPointProperty("isZeroAt") );
+
+    assert(  bbRankM.hasPointProperty("jacobianAt") );
+    assert(  bbRankM.hasPointProperty("bareJacobianAt") );
+
+    assert( bbRankM.imageRank() =!= null)
+
+    assert( bbRankM.imageRank() === 2 )
+    bbRankMNew.imageRank()
+    
+    illegalPoint := matrix {{1,2,3,4,5,6}}; 
+   
+    try ( bbRankMNew.rankMat(illegalPoint) ) then ( assert(false) ) else ();
+
+
+    bbRankM = blackBoxIdeal( 5 ,ZZ/7 )
+
+    valuesAt := (point)-> matrix {{1,2}};
+
+    bbRankM.registerPointProperty("valuesAt",valuesAt);
+
+    bbRankM = bbRankM.rebuild();
+
+    point  = sub(point,ZZ/7); 
+
+    bbRankM.valuesAt(point)
+
+    illegalPoint := sub(point,ZZ/2); 
+
+    try ( bbRankM.valuesAt(illegalPoint) ) then ( assert(false) ) else ();
+
+   
+ ///
+
+end
+-- need test for randomIterator (for fixed error : to less trials  )
 
 
 
-line
-
-
-restart
-loadPackage"idealBlackBoxes"

@@ -1,0 +1,66 @@
+
+ein Suchbereich hat 
+- range
+- subsuchbereiche
+in einem Suchbereich gibt es einen iterator mit
+
+- point() und next()
+
+-eine Suche besteht aus mehreren suchbereichen mit den dazugehörigen Iteratoren.
+
+- jeder Suchbereich speichert seine tatistik/Ergebnisse getrennt.
+
+
+Operationen:
+
+
+- Suchbereichgröße  abfragen
+
+
+Suchbereich aufteilen: 
+
+
+Suchbereich zusammenführen: 
+
+
+
+BlackBox soll suchbereich erstellen können?
+
+
+- eine randomisierte suche hat
+- Anfangsseed
+- aktueller Seed
+- Anzahl geplanter Zufallsversuche
+
+
+Filter bekommt als eingabe varietät, punkt.
+
+
+- a search range iterator could support
+ -begin()
+ -next()
+ -pos()
+ -point()
+ -subdivide(numSubAreas)
+ -numTrials()
+ 
+- a random search range iterator could support
+ -begin()
+ -next()
+ -subdivide(numSubAreas)
+ -currentSeed()
+ -initialSeed()
+ -numTrials()
+ -point()
+
+
+createSearchOptions (variety , finiteField ,  (optional) searchRangeIterator )
+
+createRandomSearchOptions (variety , Field, numTrials )
+
+createSearchExperiment(  variety, Filter, primeField, (optional) randomSearch yes/no, statisticUpdate )
+
+
+- Speichert eine Varietät alle Experimente?
+
+

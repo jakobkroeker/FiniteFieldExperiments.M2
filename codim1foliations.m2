@@ -53,32 +53,60 @@ assert isHomogeneous M
 
 Mat = (point) -> sub(M,point)
 rankMat = (point) -> rank Mat(point)
-
+rankMatEx = (bb,point)-> rank Mat(point)
 end
 ---
 
 restart
 load"codim1foliations.m2"
 
-bbRankM = blackBoxIdealFromProperties(#(gens B),K,rankMat)
+bbRankM = blackBoxIdeal(#(gens B),K)
+bbRankM.registerPointProperty("rankMat",rankMat)
+keys bbRankM
+bbRankM.knownPointProperties()
+bbRankM.pointProperty("rankMat") -- basic access to properties
+
+bbRankM.rankMat -- only available after rebuild() :
+bbRankM = bbRankM.rebuild()
+bbRankM.rankMat --ok
 
 e = new Experiment from bbRankM
-e.setNumPointsPerComponentToCollect(20);
+keys e
+e.setMinPointsPerComponent(20);
+e.minPointsPerComponent() --20
+e.watchProperties {"rankMat"};
+e.watchedProperties()  -- {rankMat}
+
 time e.run(1000)
+e.pointLists()  -- returns points  categorized by watchedProperties.
+points := e.points(); --returns pure points
+#points
+
+-- howto apply properties:
+bbRankM.rankMat(points#0)
+(bbRankM.pointProperty("rankMat"))(points#0) 
+
+e.countsByCount()
 e.estimateStratification()
+e.estimateDecomposition()
 e.stratificationIntervalView()
-apply(keys e.getPointData(),i->#((e.getPointData())#i))
+e.collectedCount()
+e.jacobianAtKey() --null
+
+
+--tally apply( e.pointKeys(), key ->( #((e.pointLists())#key)=>key))
 -- lieber e.points().
 
-sortByFrequency = (t) -> sort apply(keys t,key->(t#key,key))
+--sortByFrequency = (t) -> sort apply(keys t,key->(t#key,key))
+
 estimateStratification2 = (e) -> (
-     count := e.getCountData();
-     trials := e.getTrials();
-     charK := char K; -- this must be read from the experimentdata
+     --count := e.countData();
+     trials := e.trials();
+     orderK := (e.coefficientRing()).order; -- this must be read from the experimentdata
      print "--";
-     apply(sortByFrequency(count),i->(
+     apply(e.countsByCount(),i->(
 	       --print (net((log(trials)-log(i#0))/log(charK))|" <= "|net(i#1)));
-	       print (net(round(1,(log(trials)-log(i#0))/log(char K)))|" <= "|net(i#1)))
+	       print (net(round(1,(log(trials)-log(i#0))/log(orderK)))|" <= "|net(i#1)))
 	       )
 	  ;
      print "--";
@@ -128,12 +156,15 @@ betti (coeffB = matrix entries contract(
 isHomogeneous coeffB
 coeffBat = (point) -> sub(sub(coeffB,sub(vars A,ABRD)|point|sub(vars RD,ABRD)),R)
 bettiAt = (point) -> betti res ideal coeffBat(point)
-
+bettiAtEx = (bb,point)->bettiAt(point)
 --bbBetti = blackBoxIdealFromProperties(#(gens B),K,i->(rankMat i, bettiAt i))
-bbBetti = blackBoxIdealFromProperties(#(gens B),K,i->(bettiAt i))
-bbBetti.isZeroAt = (point) -> (rankMat(point) < #(gens A))
+bbBetti = blackBoxIdeal(#(gens B),K)
+bbBetti.registerPointProperty("bettiAt",bettiAt)
+bettiInteresting = (point) -> (rankMat(point) < #(gens A))
 
 eBetti = new Experiment from bbBetti
+eBetti.setIsInteresting(bettiInteresting)
+eBetti.watchProperties {"bettiAt"}
 time eBetti.run(10000)
 -- used 19.2529 seconds (3 variables)
 -- used 40.5503 seconds (4 variables)
@@ -150,9 +181,9 @@ isAclosedAt = (point) -> (
      )
 
 tryProperty = (experiment,property) ->(
-     points := experiment.getPointData();
+     pointLists := experiment.pointLists();
      apply(
-     	  apply((keys points),key -> (key,tally apply(points#key,property))),
+     	  apply((keys pointLists),key -> (key,tally apply(pointLists#key,property))),
      	  i->print (net i#0|" => "|net i#1)
      	  )
      )
@@ -173,17 +204,20 @@ closedBettiAt = (point) -> betti res ideal coeffBat(closedPointBat(point))
 closedMat = (point) -> Mat(closedPointBat(point))
 closedRankMat = (point) -> rank closedMat(point)
 
-bbClosed = blackBoxIdealFromProperties(rank target basisClosed,K,i->(closedBettiAt i))
-bbClosed.numVariables()
-
+bbClosed = blackBoxIdeal(rank target basisClosed,K)
+bbClosed.numVariables
+bbClosed.registerPointProperty("closedBettiAt",closedBettiAt)
 eClosedBetti = new Experiment from bbClosed
 eClosedBetti.setIsInteresting ( (point) -> (closedRankMat(point) < #(gens A)))
+eClosedBetti.watchProperties {"closedBettiAt"}
 time eClosedBetti.run(10000)
 -- used 42.6086 seconds
 estimateStratification2(eClosedBetti)
 --closedOmegaAat = (point) -> omegaAat(closedPointBat(point))
 closedIsAclosedAt = (point) -> isAclosedAt(closedPointBat(point))
-
+keys eClosedBetti
+eClosedBetti.pointKeys()
+eClosedBetti.watchedProperties()
 time eClosedBetti.run(10000) 
 -- used 424.527 seconds
 eClosedBetti.estimateStratification()
