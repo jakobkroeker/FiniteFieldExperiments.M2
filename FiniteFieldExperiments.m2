@@ -24,8 +24,9 @@ needsPackage "BlackBoxIdeals";
 export {
   "Interval",
   "estimateDecomposition", 
-  "estimateStratification",
+  "estimateStratification",  
   "Experiment",
+  "RandomExperiment",
   "FFELogger"
 }
 
@@ -64,9 +65,12 @@ FiniteFieldExperimentsProtect = ()->
   protect stratificationIntervalView;
   protect countsByCount;  protect countsByCount;
 
-  protect setIdealPropertiesAt;
- protect  estimateStratification2;
-  
+ 
+  protect  estimateStratification2;
+  protect experimentData; 
+  protect isRandom;
+  protect compatible;
+  protect createExperimentData;
 )
 
 FiniteFieldExperimentsExport  = ()->
@@ -107,11 +111,15 @@ FiniteFieldExperimentsExport  = ()->
   exportMutable( setMinPointsPerComponent);
   exportMutable( stratificationIntervalView);
 
-   exportMutable( setIdealPropertiesAt);
+ 
   exportMutable( countsByCount);
 
  exportMutable (  estimateStratification2);
-
+ exportMutable (  experimentData);
+ exportMutable (  isRandom );
+ exportMutable (  compatible );
+ 
+ exportMutable (  createExperimentData );
 )
 
 
@@ -335,20 +343,108 @@ TEST ///
 ExperimentData = new Type of MutableHashTable;
 
 
-new ExperimentData from HashTable := (E,coeffRing) -> (
+new ExperimentData from Ring := (E,coeffRing) -> (
      print (toString E);
      e := new MutableHashTable;
-     --e.blackBoxIdeal = blackBoxIdeal;
      e.coefficientRing = coeffRing;
      e.points = new MutableHashTable;
      e.count = new Tally;
      e.trials = 0;
      e.propertyList = {};
+     e.isRandom = null;
      return e;
-     )
+     );
 
-     
 
+createExperimentData = (coeffRing,points,count,trials,propertyList,isRandom) -> (
+     e := new ExperimentData;
+     e.coefficientRing = coeffRing;
+     e.points = new MutableHashTable from points;
+     e.count = count;
+     e.trials = trials;
+     e.propertyList = propertyList;
+     e.isRandom = isRandom;
+     return e;
+)
+
+new ExperimentData from ExperimentData := (E,ed) -> (
+     print (toString E);
+     e := new MutableHashTable;
+     e.coefficientRing = ed.coefficientRing;
+     e.points = copy ed.points;
+     e.count = copy ed.count;
+     e.trials = ed.trials;
+     e.propertyList = copy ed.propertyList;
+     e.isRandom = ed.isRandom;
+     return e;
+     );
+
+     ExperimentData == ExperimentData := Boolean=>(ed1,ed2)->
+(
+
+   if ( ed1.coefficientRing === ed2.coefficientRing and
+            ed1.propertyList    == ed2.propertyList and
+            keys ed1.points      == keys ed2.points and    
+            keys ed1.count      == keys ed2.count and  
+            ed1.isRandom        == ed2.isRandom  and
+            ed1.trials        == ed2.trials  
+) then 
+  (
+   
+    
+    for key in keys ed2.points do
+    ( 
+        if not ed1.points#key == ed2.points#key then 
+          return false;
+    );
+
+     for key in keys ed2.points do
+    ( 
+        if not ed1.count#key == ed2.count#key then 
+          return false;
+    );
+     return true;
+  )
+  else return false; 
+);
+
+--coeffRing,points,count,trials,propertyList,isRandom
+
+toExternalString(ExperimentData) := String=> (ed)->
+( 
+   return "createExperimentData " | "(" 
+   | toExternalString ed.coefficientRing | ","
+   | toString (new HashTable from ed.points) | ","
+   | toExternalString ed.count | ","
+   | toExternalString ed.trials | ","
+   | toExternalString ed.propertyList | ","
+   | toExternalString ed.isRandom 
+   | ")" ;
+)
+
+ExperimentData + ExperimentData := ExperimentData=>(ed1,ed2)->
+(
+
+   if ( ed1.coefficientRing === ed2.coefficientRing and
+        ed1.propertyList    == ed2.propertyList and
+        keys ed1.count      == keys ed2.count and    
+        ed1.isRandom        == ed2.isRandom  ) then 
+  (
+    edNew := new ExperimentData from ed1;
+    
+    for key in keys ed2.points do
+    ( 
+      if not edNew.points#?key then 
+         edNew.points#key = copy ed2.points#key
+      else
+         edNew.points#key = edNew.points#key | copy ed2.points#key;
+    );
+     edNew.count = ed1.count + ed2.count;
+     edNew.trials = ed1.trials + ed2.trials;
+     return edNew;
+  )
+  else error ("+: experiment data not compatible");                   
+);
 
 
 
@@ -497,8 +593,8 @@ estimateStratification2 := (experiment) -> (
           );
 
       );
-
-      toSort := apply( keys counts, key -> (counts#key));
+      --bug fixed (unique missing) todo: test for this bug!
+      toSort := unique apply( keys counts, key -> (counts#key));
       sorted := sort (toSort); 
       rearrangedData := {};
       for count in sorted do
@@ -510,11 +606,43 @@ estimateStratification2 := (experiment) -> (
       return new List from rearrangedData;
    );
 
+
 Experiment = new Type of HashTable;
 
+new Experiment from Thing := (E, thing) -> 
+(
+   error("not impelemted");
+)
 
 
-new Experiment from HashTable := (E, pBlackBoxIdeal) -> 
+RandomExperiment = new Type of Experiment;
+
+new RandomExperiment from Thing := (E, thing) -> 
+(
+   error("not impelemted");
+)
+
+
+ 
+
+
+RandomExperiment + RandomExperiment := RandomExperiment => (re1,re2)->
+(
+    bb1 := re1.blackBoxIdeal();
+    bb2 := re2.blackBoxIdeal();
+
+    if  re1.compatible(re2)    then
+   (
+     re := copy re1;
+     re.merge(re2);
+       return re;
+   )
+   else error ("experiments not compatible");
+);
+
+
+
+new RandomExperiment from BlackBoxIdeal := (E, pBlackBoxIdeal) -> 
 (
 
 
@@ -529,6 +657,16 @@ new Experiment from HashTable := (E, pBlackBoxIdeal) ->
    propertiesAt := (point)->{};
    isInteresting := (point)->true;
 
+   experiment.experimentData=()->
+   (
+      return new ExperimentData  from experimentData;
+   );
+
+   experiment.blackBoxIdeal=()->
+   ( 
+      return blackBoxIdeal;
+   );
+
    experiment.estimateDecomposition = () -> (estimateDecomposition(experimentData));
 
 
@@ -536,7 +674,39 @@ new Experiment from HashTable := (E, pBlackBoxIdeal) ->
 
    experiment.estimateStratification2 = () -> ( estimateStratification2(experiment) );
 
-   
+   experiment.compatible = method();
+     experiment.compatible (RandomExperiment) := Boolean =>(re2)->
+    (
+        bb1 := experiment.blackBoxIdeal();
+        bb2 := re2.blackBoxIdeal();
+
+     return (  experiment.minPointsPerComponent() ==  re2.minPointsPerComponent() and
+               experiment.coefficientRing()       === re2.coefficientRing() and
+               experiment.watchedProperties()     ==  re2.watchedProperties() and
+               experiment.jacobianAtKey()         ==  re2.jacobianAtKey() and
+               --experiment.isInteresting           ===  re2.isInteresting -- um sicher zu gehen, kann man  alle punkte in re2 durch isInteresting von e jagen und umgekehrt.
+               experiment.pointKeys()             ==  re2.pointKeys() and
+
+              bb1.numVariables            ==   bb2.numVariables and
+              bb1.imageRank()             ==   bb2.imageRank() and
+              bb1.coefficientRing         ===  bb2.coefficientRing 
+             );
+    );
+
+
+   experiment.merge = method();
+
+   -- todo: how to prevent from self-merging?
+   experiment.merge (RandomExperiment)  := RandomExperiment => (re)->
+   (
+      if (experimentData==re.experimentData() ) then 
+          error ("attempt to merge with itself");
+
+      if   experiment.compatible(re) then 
+        experimentData = experimentData + re.experimentData()
+      else
+       error ("experiments not compatible!");
+   );
    
    experiment.stratificationIntervalView = ()->
    (
@@ -555,7 +725,7 @@ new Experiment from HashTable := (E, pBlackBoxIdeal) ->
        return countsByCount( experimentData ); 
    );
 
- 
+   
   
 
     
@@ -687,7 +857,7 @@ new Experiment from HashTable := (E, pBlackBoxIdeal) ->
        numVariables := blackBoxIdeal.numVariables;
 
        apply(trials, trial-> (  randomPoint := random( K^1,  K^numVariables );     
-           experimentData.trials = experimentData.trials + 1;    --at first increase trial num!
+           experimentData.trials = experimentData.trials + 1;    --at first increase trial num, otherwise statistic computations fail ( because trials==0 or reduced by 1) !
            runExperimentOnce( experimentData, randomPoint, minPointsPerComponent );
            
            )
@@ -701,7 +871,7 @@ new Experiment from HashTable := (E, pBlackBoxIdeal) ->
      ( 
        while pointIterator.next() do
        (
-           experimentData.trials = experimentData.trials + 1; --at first increase trial num!
+           experimentData.trials = experimentData.trials + 1; --at first increase trial num, otherwise statistic computations fail ( because trials==0 or reduced by 1)!
            runExperimentOnce( experimentData, pointIterator.point(), minPointsPerComponent );
 
        );
@@ -850,7 +1020,7 @@ TEST ///
 
     bbRankM = bbRankM.rebuild()
 
-    e = new Experiment from bbRankM
+    e = new RandomExperiment from bbRankM
     assert (e.coefficientRing()===coeffRing);
 
     e.setMinPointsPerComponent(20);

@@ -18,6 +18,7 @@ newPackage(
 export {
     --clearCoeffDenominators,
     "clearCoeffDenominators",
+    BlackBoxIdeal,
     blackBoxIdeal,
     blackBoxIdealFromEvaluation,
     blackBoxIdealFromProperties,
@@ -630,7 +631,7 @@ basicBlackBox(ZZ,Ring) := HashTable => ( numVariables, coeffRing ) ->
  	  );         
        );
 
-       return new HashTable from bb;
+       return new BlackBoxIdeal from new HashTable from bb;
    );
 
    return blackBox;
@@ -660,6 +661,13 @@ basicBlackBox(Ring) := HashTable => ( pRing ) ->
    return blackBox;
 )
 
+BlackBoxIdeal = new Type of HashTable;
+
+new BlackBoxIdeal from HashTable := (E, ht) -> 
+(
+  return ht;
+);
+
 
 blackBoxIdeal = method();
 
@@ -668,7 +676,7 @@ blackBoxIdeal(Ring) := HashTable => ( pRing ) ->
     blackBox := basicBlackBox( pRing);
     blackBox.setThis(blackBox);
     blackBox.clearInternal();
-    return new HashTable from blackBox;
+    return new BlackBoxIdeal from new HashTable from blackBox;
 );
 
 
@@ -688,7 +696,7 @@ blackBoxIdeal(ZZ, Ring) := HashTable => ( numVariables, coeffRing )  ->
     blackBox := basicBlackBox( numVariables, coeffRing );
     blackBox.setThis(blackBox);
     blackBox.clearInternal();
-    return new HashTable from blackBox;
+    return new BlackBoxIdeal from  new HashTable from blackBox;
 )
 
 
@@ -728,7 +736,7 @@ blackBoxIdeal (Ideal) := HashTable =>(equationsIdeal)->
      blackBox.setThis(blackBox);
      blackBox.clearInternal();
 
-     return new HashTable from blackBox;
+     return new BlackBoxIdeal from new HashTable from blackBox;
 )
 
 
@@ -800,7 +808,7 @@ blackBoxIdealFromEvaluation(ZZ, Ring, Function) := HashTable => ( numVariables, 
     blackBox.setThis(blackBox);-- not necessary?
     blackBox.clearInternal();
 
-    return new HashTable from blackBox ;
+    return new BlackBoxIdeal from new HashTable from blackBox ;
 )
 
 
@@ -868,7 +876,7 @@ testBlackBoxIdealFromEvaluation = ()->
 --    blackBox.setThis(blackBox);
 --    blackBox.clearInternal();
 
---    return new HashTable from blackBox;
+--    return new BlackBoxIdeal from new HashTable from blackBox;
 --)
 
 --beginDocumentation()
