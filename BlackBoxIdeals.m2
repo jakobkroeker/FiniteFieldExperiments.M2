@@ -421,30 +421,30 @@ dropDegreeInfo (Matrix) := Matrix=> (mat)->
 
 JetAtSingleTrial = method();
 
--- todo: optionally pass jacobianAt?
+-- todo: optionally pass jacobianAt? No
 -- problem No 1: need same eps for all BlackBoxes?
 -- problem No 2: need same epsRng for all ? 
 
-JetAtSingleTrial(HashTable, Matrix, ZZ) := MutableHashTable => ( blackBox,  point, liftDepth )  ->
-(
+-- here we improve precision by 1 in each step
+-- using newtons-Algorithm one could double precision in each step, but
+-- for this we also need high precision jacobi-Matrices
+-- For black-Box-Jacobi-Matrices we might not have high precision Jacobi-Matrices
 
-    print ("liftDepth",liftDepth);
+JetAtSingleTrial(HashTable, Matrix, ZZ) := MutableHashTable => ( blackBox,  point, jetLength )  ->
+(
 
     if not (blackBox.isZeroAt(point)) then error(" function is not zero at the point ");
 
 
     liftingFailed := false;
-    failedLiftDepth := null;
+    failedJetLength := null;
 
     jacobianM2Transposed := transpose blackBox.jacobianAt(point) ;
     
     jtColumns := numColumns jacobianM2Transposed ;
     jtRows    :=  numRows jacobianM2Transposed ;
 
-    if not ( rank jacobianM2Transposed == min( jtRows,jtColumns ) ) then 
-       error ("computing jets: point is not smooth !");
-
-    jacobianKernel := generators kernel jacobianM2Transposed ;
+    jacobianKernel := generators kernel jacobianM2Transposed ; -- syz would also work
 
     epsRng := getEpsRing( blackBox.coefficientRing,  1 );
     eps = (gens epsRng)#0;
@@ -457,63 +457,70 @@ JetAtSingleTrial(HashTable, Matrix, ZZ) := MutableHashTable => ( blackBox,  poin
     (   
         while  zero(rnd) do
         (
-            rnd = random( coeffRng^numColumns(jacobianKernel), coeffRng^1 );
+            rnd = random( coeffRng^(numColumns(jacobianKernel)), coeffRng^1 );
         );
     );
     
-    lenghtOneLift := sub(point,epsRng) + sub( jacobianKernel*rnd, epsRng) *eps;
+    lengthOneLift := sub(point,epsRng) + transpose(sub( jacobianKernel*rnd, epsRng) *eps);
 
-    lift := lenghtOneLift;
+    jet := lengthOneLift;
 
     epsPrecision := 1;     -- first lift should succeed for a smooth point! 
-    lastLiftNr    := epsPrecision ; 
+    lastJetNr    := epsPrecision ; 
+    
+ 
 
-    for  epsPrecision in 2..liftDepth do 
+    for  epsPrecision in 2..jetLength do 
     (
-        values := blackBox.valuesAt( lift );
+     	epsRng = getEpsRing( coeffRng, epsPrecision);
+	eps = (gens epsRng)#0;
+  
+        valuesAtJet := blackBox.valuesAt( sub(jet,epsRng) );
 
-        rightHandSide := matrix mutableMatrix( coeffRng, numColumns values ,1 );
+        rightHandSide := matrix mutableMatrix( coeffRng, numColumns valuesAtJet ,1 );
         
         -- notwendig:
    
-        if not zero(values) then 
-            rightHandSide = transpose last coefficients (values, Monomials=>{ eps^epsPrecision });
-
+        if not zero(valuesAtJet) then 
+            rightHandSide = transpose last coefficients (valuesAtJet, Monomials=>{ eps^epsPrecision });
+     	 -- one could also use contract since eps^epsPrec is the highest possible degree
  
+        rightHandSide = sub(rightHandSide,coeffRng);
+	
+--	if not (jacobianM2Transposed * x == rightHandSide) then (
+	if not (0==rightHandSide % jacobianM2Transposed ) then (
+	      failedJetLength = epsPrecision;
+	      liftingFailed=true; break; 
+	      );
 
-        --transposedM2JacobianAtSolution =  transpose blackBox.jacobianAt( lift ) ;
+        x := rightHandSide // jacobianM2Transposed ;
+	--jacobianKernel = generators kernel jacobianM2Transposed ;
+	x = x + jacobianKernel* random(coeffRng^(numColumns(jacobianKernel)), coeffRng^1 );
+       	x = transpose x;
 
-        -- try is not good for debugging
-        --try (
-                 x := rightHandSide // jacobianM2Transposed ;
-                 --jacobianKernel = generators kernel jacobianM2Transposed ;
-                 x = x + jacobianKernel* random(coeffRng^(numColumns(jacobianKernel)), coeffRng^1 );
+        --epsRng = getEpsRing( coeffRng, epsPrecision);
+        --eps = (gens epsRng)#0;
+ 
+        jet2 := sub (jet, epsRng )-sub( x, epsRng ) *eps^epsPrecision;
+	
+	assert ( 0==blackBox.valuesAt(jet2));
 
-        -- ) else (
-         --    failedLiftDepth = epsPrecision;
-         --    liftingFailed=true; break; 
-        --);
-        x = transpose x;
-
-        epsRng = getEpsRing( coeffRng, epsPrecision  );
-        eps = (gens epsRng)#0;
-        
-        lift = sub( x, epsRng ) *eps^epsPrecision + sub (lift, epsRng );
+	jet = jet2;
     );
     -- todo: create a datatype or a hashTable
 
-    retVal := new HashTable from { "succeeded" => not liftingFailed, "lift" => lift, "failedLiftDepth" =>failedLiftDepth };
+    retVal := new HashTable from { "succeeded" => not liftingFailed, "jet" => jet, "failedJetLength" =>failedJetLength };
     return retVal;
 )
     
 JetAt = method();
 
-JetAt(HashTable, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, liftDepth, trials )  ->
+JetAt(HashTable, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, trials )  ->
 (
     
     for i in 1..trials do
     (
-        jetTrialResult := JetAtSingleTrial ( blackBox,  point, liftDepth);
+        jetTrialResult := JetAtSingleTrial ( blackBox,  point, jetLength);
 
         if (jetTrialResult#"succeeded") then 
             return jetTrialResult;
@@ -522,12 +529,12 @@ JetAt(HashTable, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, lift
     
 )
 
-
-JetAtWrapper = method( Options=>{"liftDepth" =>4, "trials"=>5} );
+-- options makes more sense for trials (=1)
+JetAtWrapper = method( Options=>{"jetLength" =>4, "trials"=>5} );
 
 JetAtWrapper(HashTable, Matrix)  := MutableHashTable => opts -> ( blackBox,  point )  ->
 (
-    return JetAt( blackBox,  point, opts#"liftDepth", opts#"trials");
+    return JetAt( blackBox,  point, opts#"jetLenth", opts#"trials");
 );
 
 
