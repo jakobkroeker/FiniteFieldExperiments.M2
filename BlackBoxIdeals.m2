@@ -21,6 +21,8 @@ export {
     blackBoxIdeal,
     blackBoxIdealFromEvaluation,
     blackBoxIdealFromProperties,
+    getEpsRing,
+    JetAt,
     createLogger
 }
 
@@ -33,7 +35,9 @@ jacobianAt = global jacobianAt;
 
 idealBlackBoxesProtect = ()->
 (
+
 protect jacobianAt;
+protect jetAt;
 protect jacobianMatrix;
 protect transposedJacobianAt;
 protect transposedJacobian;
@@ -76,7 +80,10 @@ protect knownPointProperties;
 --todo: fix dublicate code,  -  padicLiftProtect and padicLiftExport
 idealBlackBoxesExport = ()->
 (
+    exportMutable( eps );
     exportMutable( jacobianAt);
+    exportMutable( jetAt);
+
     exportMutable( jacobianMatrix);
     exportMutable( transposedJacobian);
     exportMutable( transposedJacobianAt);
@@ -141,6 +148,42 @@ needsPackage "Text";
 
 
 --net (String) := Net =>(str)->(   strl := "\""| str| "\"" ;   return stack separate strl; );
+
+savedEpsRings := new MutableHashTable;
+
+getEpsRing = method();
+
+getEpsRing(Ring, ZZ) := Ring => (coeffring, epsDim)->
+(
+    --eps := null;
+    --eps = symbol eps; -- w
+    -- how to use a global symbol
+    --geps := getGlobalSymbol(BlackBoxIdeals.Dictionary, "eps"); 
+    geps := getSymbol "eps"; 
+    if (epsDim<0) then error("expected epsDim>0 ");
+    
+    if not (savedEpsRings#?(coeffring,epsDim) ) then 
+     (
+        polRing:=coeffring[geps];
+        geps=(gens(polRing))#0;
+        savedEpsRings#(coeffring,epsDim) = polRing/geps^(epsDim+1);    
+    ); 
+    return savedEpsRings#(coeffring, epsDim);
+)
+
+testEpsRing= ()->
+(
+    rng := getEpsRing(ZZ,1);
+    eps:= (gens rng)#0;
+    assert (1_rng+eps_rng + eps_rng*eps_rng == 1_rng+eps_rng );
+
+    rng1 := getEpsRing(ZZ,1);
+ 
+    rng2 := getEpsRing(ZZ,1);
+
+    assert(rng1===rng2 );
+);
+
 
 
 createLogger = ()->
@@ -375,6 +418,119 @@ dropDegreeInfo (Matrix) := Matrix=> (mat)->
 );
 
 
+
+JetAtSingleTrial = method();
+
+-- todo: optionally pass jacobianAt?
+-- problem No 1: need same eps for all BlackBoxes?
+-- problem No 2: need same epsRng for all ? 
+
+JetAtSingleTrial(HashTable, Matrix, ZZ) := MutableHashTable => ( blackBox,  point, liftDepth )  ->
+(
+
+    print ("liftDepth",liftDepth);
+
+    if not (blackBox.isZeroAt(point)) then error(" function is not zero at the point ");
+
+
+    liftingFailed := false;
+    failedLiftDepth := null;
+
+    jacobianM2Transposed := transpose blackBox.jacobianAt(point) ;
+    
+    jtColumns := numColumns jacobianM2Transposed ;
+    jtRows    :=  numRows jacobianM2Transposed ;
+
+    if not ( rank jacobianM2Transposed == min( jtRows,jtColumns ) ) then 
+       error ("computing jets: point is not smooth !");
+
+    jacobianKernel := generators kernel jacobianM2Transposed ;
+
+    epsRng := getEpsRing( blackBox.coefficientRing,  1 );
+    eps = (gens epsRng)#0;
+
+    coeffRng := (blackBox.coefficientRing); -- klammern sind Notwendig!
+
+     
+    rnd := random( coeffRng^(numColumns(jacobianKernel)), coeffRng^1 );
+    if (numColumns(jacobianKernel)>0) then 
+    (   
+        while  zero(rnd) do
+        (
+            rnd = random( coeffRng^numColumns(jacobianKernel), coeffRng^1 );
+        );
+    );
+    
+    lenghtOneLift := sub(point,epsRng) + sub( jacobianKernel*rnd, epsRng) *eps;
+
+    lift := lenghtOneLift;
+
+    epsPrecision := 1;     -- first lift should succeed for a smooth point! 
+    lastLiftNr    := epsPrecision ; 
+
+    for  epsPrecision in 2..liftDepth do 
+    (
+        values := blackBox.valuesAt( lift );
+
+        rightHandSide := matrix mutableMatrix( coeffRng, numColumns values ,1 );
+        
+        -- notwendig:
+   
+        if not zero(values) then 
+            rightHandSide = transpose last coefficients (values, Monomials=>{ eps^epsPrecision });
+
+ 
+
+        --transposedM2JacobianAtSolution =  transpose blackBox.jacobianAt( lift ) ;
+
+        -- try is not good for debugging
+        --try (
+                 x := rightHandSide // jacobianM2Transposed ;
+                 --jacobianKernel = generators kernel jacobianM2Transposed ;
+                 x = x + jacobianKernel* random(coeffRng^(numColumns(jacobianKernel)), coeffRng^1 );
+
+        -- ) else (
+         --    failedLiftDepth = epsPrecision;
+         --    liftingFailed=true; break; 
+        --);
+        x = transpose x;
+
+        epsRng = getEpsRing( coeffRng, epsPrecision  );
+        eps = (gens epsRng)#0;
+        
+        lift = sub( x, epsRng ) *eps^epsPrecision + sub (lift, epsRng );
+    );
+    -- todo: create a datatype or a hashTable
+
+    retVal := new HashTable from { "succeeded" => not liftingFailed, "lift" => lift, "failedLiftDepth" =>failedLiftDepth };
+    return retVal;
+)
+    
+JetAt = method();
+
+JetAt(HashTable, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, liftDepth, trials )  ->
+(
+    
+    for i in 1..trials do
+    (
+        jetTrialResult := JetAtSingleTrial ( blackBox,  point, liftDepth);
+
+        if (jetTrialResult#"succeeded") then 
+            return jetTrialResult;
+    );
+    return  new HashTable from { "succeeded" =>false, "lift" => null };
+    
+)
+
+
+JetAtWrapper = method( Options=>{"liftDepth" =>4, "trials"=>5} );
+
+JetAtWrapper(HashTable, Matrix)  := MutableHashTable => opts -> ( blackBox,  point )  ->
+(
+    return JetAt( blackBox,  point, opts#"liftDepth", opts#"trials");
+);
+
+
 basicBlackBox = method();
 --basicBlackBox (Ring) :=  HashTable =>( parrng ) ->
 basicBlackBox(ZZ,Ring) := HashTable => ( numVariables, coeffRing ) ->
@@ -398,8 +554,8 @@ basicBlackBox(ZZ,Ring) := HashTable => ( numVariables, coeffRing ) ->
         if blackBox.coefficientRing =!= ZZ  
            and ring point =!= blackBox.coefficientRing
            then 
-	   (
-		try ( if coefficientRing ring point=!= blackBox.coefficientRing then error errorMsg )  then () else ( error (errorMsg) );
+       (
+           try ( if coefficientRing ring point=!= blackBox.coefficientRing then error errorMsg )  then () else ( error (errorMsg) );
            );
        if (numColumns point=!=blackBox.numVariables) then error (" illegal point : expected " | toString blackBox.numVariables | " coordinates");
      );
@@ -440,7 +596,7 @@ basicBlackBox(ZZ,Ring) := HashTable => ( numVariables, coeffRing ) ->
       pointProperties = new MutableHashTable from pointProperties;
  
       
-     pointProperties#propertyName = (point )-> ( 
+          pointProperties#propertyName = (point )-> ( 
           checkInputPoint(point);
           try { return propertyMethod(  point); } then {  return propertyMethod(  point); } else {     return propertyMethod(blackBox,   point);  };
      );
@@ -555,7 +711,7 @@ basicBlackBox(ZZ,Ring) := HashTable => ( numVariables, coeffRing ) ->
 
     -- external function 
 
- blackBox.registerPointProperty = method();
+   blackBox.registerPointProperty = method();
 
    -- was passiert bei Zirkelschlüssen?
    blackBox.registerPointProperty(String, Symbol, Function, Function) := Thing => ( propertyName, propertySymbol, propertyMethod, preconditionsTest )->
@@ -565,7 +721,7 @@ basicBlackBox(ZZ,Ring) := HashTable => ( numVariables, coeffRing ) ->
       if  ( not  pointProperties#?propertySymbol  and  not  pointProperties#?propertyName 
       and not  blackBox#?propertySymbol          and   not  blackBox#?propertyName  ) then 
       (
-           outerSetPointProperty( propertySymbol, propertyMethod );( propertySymbol, propertyMethod );
+           outerSetPointProperty( propertySymbol, propertyMethod );
       )
       else error(" method "| propertyName |" is already registered");
 
@@ -625,9 +781,9 @@ basicBlackBox(ZZ,Ring) := HashTable => ( numVariables, coeffRing ) ->
               bb#property = (point)->( blackBox.pointProperty(property)(point) );
           )
           else 
-	  (
-	    
- 	  );         
+      (
+        
+       );         
        );
 
        return new HashTable from bb;
@@ -651,7 +807,7 @@ basicBlackBox(Ring) := HashTable => ( pRing ) ->
         if not ( blackBox.ring === ring unknown) then 
         ( 
             print "the unknown is not element of the equations ideal ring";
-	        return false;
+            return false;
         );
         return true;
    );
@@ -714,8 +870,9 @@ blackBoxIdeal (Ideal) := HashTable =>(equationsIdeal)->
     -- maybe blackBox.addProperty( jacobian, jacobian gens  equationsIdeal )
     blackBox.jacobian = jacobian gens  equationsIdeal;
 
-    -- needs updatePointProperty, because "jacobianAt" is present. Todo: introduce force mode option? (overwriting registered property?)
-    --todo: introduce for all methods a precomposition with checkInputPoint
+    -- needs updatePointProperty, because "jacobianAt" is present. 
+    -- Todo: introduce force mode option? (overwriting registered property?)
+    -- todo: introduce for all methods a precomposition with checkInputPoint
     blackBox.updatePointProperty( "jacobianAt",
 
        (point)->
@@ -723,7 +880,8 @@ blackBoxIdeal (Ideal) := HashTable =>(equationsIdeal)->
           jacobianM2MatrixAt := sub( blackBox.jacobian , point);
           return jacobianM2MatrixAt;
        )
-    );      
+    );   
+
    
      blackBox.setThis(blackBox);
      blackBox.clearInternal();
@@ -1001,29 +1159,29 @@ assert (B.isZeroAt(sub(smoothPoint,K)));
 assert(B.isZeroAt(sub(offPoint,K)));
 
 apply(100,i->(
-	  r = random(K^1,K^4);
-	  assert ((B.isZeroAt r) == ((B.valuesAt r) == 0));
-	  ));
+      r = random(K^1,K^4);
+      assert ((B.isZeroAt r) == ((B.valuesAt r) == 0));
+      ));
 
-	  
+      
 evalLinePlusConic = point -> (
      ePoint = flatten entries point;
      M = matrix{
-	  {ePoint#0,ePoint#1,0},
-	  {ePoint#1,ePoint#2,ePoint#3}
-	  };
+      {ePoint#0,ePoint#1,0},
+      {ePoint#1,ePoint#2,ePoint#3}
+      };
       matrix{{det M_{0,1},det M_{0,2},det M_{1,2}}}
      )
 
 B2 = blackBoxIdealFromEvaluation( 4, ZZ, evalLinePlusConic)
 
 apply(100,i->(
-	  r = random(K^1,K^4);
-	  assert (B2.isZeroAt(r) == B.isZeroAt(r));
-	  assert (B2.valuesAt(r) == B.valuesAt(r));
-      	  if B2.isZeroAt(r) then 
+      r = random(K^1,K^4);
+      assert (B2.isZeroAt(r) == B.isZeroAt(r));
+      assert (B2.valuesAt(r) == B.valuesAt(r));
+            if B2.isZeroAt(r) then 
           (             
-	      assert (B2.jacobianAt(r) == B.jacobianAt(r));
+          assert (B2.jacobianAt(r) == B.jacobianAt(r));
           ) else ();
      ));
 
