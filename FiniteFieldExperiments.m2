@@ -25,6 +25,9 @@ export {
   "Interval",
   "estimateDecomposition", 
   "estimateStratification",
+  "estimateCodim", 
+  "estimateNumberOfComponents",    	    	 
+  "poissonEstimate",
   "Experiment",
   "FFELogger"
 }
