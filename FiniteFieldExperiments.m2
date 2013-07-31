@@ -726,8 +726,8 @@ new Experiment from HashTable := (E, pBlackBoxIdeal) ->
    (  
       if experimentData.trials=!=0 then error ("cannot change watched properties - experiment was already run! You could clear() the statistics and retry.");
 
-      if jacobianAtKey =!=null then 
-      propertyStringList = { jacobianAtKey } | propertyStringList;
+      --if jacobianAtKey =!=null then 
+      --propertyStringList = { jacobianAtKey } | propertyStringList;
 
       for propertyName in propertyStringList do
       (
