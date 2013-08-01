@@ -12,7 +12,7 @@ restart
 loadPackage"BlackBoxIdeals"
 
 n = 8
-K = ZZ/5
+K = ZZ/11
 R = K[x_1..x_n]
 cycMonomial = (start,len) -> (
      product apply(len,i->(
@@ -41,8 +41,8 @@ loadPackage"FiniteFieldExperiments"
 --viewHelp"FiniteFieldExperiments"
 
 cycE = new Experiment from cycBB
-time cycE.run(100000)
--- used 4.69959 seconds
+time cycE.run(1000000)
+-- used 469.959 seconds
 apply(unique cycE.points(),P->rank cycBB.jacobianAt(P))
 
 --dCyc = decompose cycIdeal

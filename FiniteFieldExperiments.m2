@@ -330,6 +330,7 @@ estimateNumberOfComponents(ZZ,ZZ,ZZ,ZZ) := HashTable => opts->    (trials,estima
     estimateNumberOfComponents(trials,estimatedCodim*1.0,numPoints,fieldCardinality)
 )
 
+
 TEST ///
   debug FiniteFieldExperiments
   FiniteFieldExperimentsProtect()
@@ -353,6 +354,8 @@ TEST ///
   assert (estimateCodim(11^2*10,10,11) == new Interval from (1.8,2.4))
 ///
 
+Experiment = new Type of HashTable;
+
 ExperimentData = new Type of MutableHashTable;
 
 
@@ -368,6 +371,21 @@ new ExperimentData from HashTable := (E,coeffRing) -> (
      return e;
      )
 
+-- here one should use Experiment oder ExperimentData
+estimateNumberOfComponents(MutableHashTable,List) := HashTable => opts->    (experiment,key) -> 
+(
+     count := experiment.countData();
+     posRankJacobianAt := position(experiment.watchedProperties(),i->i=="rankJacobianAt");
+     if posRankJacobianAt === null then error("To estimate number of components, \"rankJacobianAt\" must be watched");
+     cardinality := null;
+     if char experiment.coefficientRing() ==0 then   cardinality  = infinity;
+     try { cardinality = (experiment.coefficientRing()).order } then () else();
+     estimateNumberOfComponents(
+	  experiment.trials(),
+	  key#posRankJacobianAt,
+	  count#key,
+	  cardinality)
+)
      
 
 
@@ -447,23 +465,42 @@ createPointIterator = ( pPoints )->
     );
 
 
-estimateDecomposition := (experimentData) -> (
-       count := experimentData.count;
+
+
+estimateDecompositionOld := (experiment) -> (
+       count := experiment.countData();
+       posRankJacobianAt := position(experiment.watchedProperties(),i->i=="rankJacobianAt");
+       if posRankJacobianAt === null then error("To estimate the decomposition, \"rankJacobianAt\" must be watched");
        cardinality := null;
-       if char experimentData.coefficientRing ==0 then   cardinality  = infinity;
-       try { cardinality = experimentData.coefficientRing.order } then () else();
-       new Tally from apply( keys count, countKey->
-	    countKey => estimateNumberOfComponents(
-	         experimentData.trials,
-	         (estimateCodim( experimentData.trials,  count#countKey, cardinality )).center,
-	         count#countKey, 
-	         cardinality
-	       )
-	  )
+       if char experiment.coefficientRing() ==0 then   cardinality  = infinity;
+       try { cardinality = (experiment.coefficientRing()).order } then () else();
+       print "(estimated codim, estimated number of components [confidence interval] <= {watched Properties})";
+       print "";
+       apply(sort apply(keys count,key->
+		 (net(
+		      key#posRankJacobianAt,
+		      estimateNumberOfComponents(
+			   experiment.trials(),
+			   key#posRankJacobianAt,
+			   count#key,
+			   cardinality))
+		 )|" <= "|net key),
+       print);
+   );
+
+estimateDecomposition := (experiment) -> (
+       posRankJacobianAt := position(experiment.watchedProperties(),i->i=="rankJacobianAt");
+       if posRankJacobianAt === null then error("To estimate the decomposition, \"rankJacobianAt\" must be watched");
+       print "(estimated codim, estimated number of components [confidence interval] <= {watched Properties})";
+       print "";
+       apply(sort apply(keys experiment.countData(),key->
+		      net(key#posRankJacobianAt,estimateNumberOfComponents(experiment,key))
+		 |" <= "|net key),
+       print);
    );
 
 
-estimateStratification2 := (experiment) -> (
+estimateStratification := (experiment) -> (
      trials := experiment.trials();
      orderK := (experiment.coefficientRing()).order; -- this must be read from the experimentdata
      print "--";
@@ -477,20 +514,6 @@ estimateStratification2 := (experiment) -> (
 
 
 
-  estimateStratification := experimentData -> (
-       count := experimentData.count;
-       cardinality := null;
-       if char experimentData.coefficientRing ==0 then   cardinality  = infinity;
-       try { cardinality = experimentData.coefficientRing.order } then () else();
-
-       new Tally from apply( keys count, countKey->
-	    countKey => estimateCodim(
-	         experimentData.trials,
-	         count#countKey,
-	         cardinality
-	       )
-	  )
-   );
 
    stratificationIntervalView := (stratificationData )->
    (
@@ -531,7 +554,6 @@ estimateStratification2 := (experiment) -> (
       return new List from rearrangedData;
    );
 
-Experiment = new Type of HashTable;
 
 
 
@@ -558,12 +580,12 @@ new Experiment from HashTable := (E, pBlackBoxIdeal) ->
    propertiesAt := (point)->{};
    isInteresting := (point)->true;
 
-   experiment.estimateDecomposition = () -> (estimateDecomposition(experimentData));
+   experiment.estimateDecomposition = () -> (estimateDecomposition(experiment));
 
 
-   experiment.estimateStratification = () -> (estimateStratification(experimentData));
+   experiment.estimateStratification = () -> (estimateStratification(experiment));
 
-   experiment.estimateStratification2 = () -> ( estimateStratification2(experiment) );
+--   experiment.estimateStratification2 = () -> ( estimateStratification2(experiment) );
 
    
    
@@ -681,7 +703,9 @@ new Experiment from HashTable := (E, pBlackBoxIdeal) ->
             (
                 FFELogger.log(4, "update wanted points");
                 rankJacobian := rank  jacobianAt(point); 
-                upperEstimate := ((estimateDecomposition( experimentData ))#countKey).max;
+		upperEstimate := (estimateNumberOfComponents(experiment,countKey)).max;
+                --upperEstimate := ((estimateDecompositionOld( experimentData ))#countKey).max;
+		--upperEstimate := 1; -- test
                 wantedPoints = max(1,upperEstimate)*wantedPoints;
             ); 	       
 
@@ -889,7 +913,7 @@ new Experiment from HashTable := (E, pBlackBoxIdeal) ->
           --print("isInteresting"| toString  (blackBoxIdeal.isZeroAt ));
           isInteresting = blackBoxIdeal.pointProperty("isZeroAt");
 
-               experiment.watchProperties( {"isZeroAt"} );
+          --     experiment.watchProperties( {"isZeroAt"} );
        );
 
        if blackBoxIdeal.hasPointProperty("jacobianAt") then 
@@ -900,9 +924,11 @@ new Experiment from HashTable := (E, pBlackBoxIdeal) ->
               error(" when for a balck box the property 'jacobianAt' is available, it is also expected that the black box has the point property 'isZeroAt' ");  
        );
 
+ 
        if blackBoxIdeal.hasPointProperty("rankJacobianAt") then
        ( 
-            experiment.watchProperties( {"isZeroAt","rankJacobianAt"} );
+            --experiment.watchProperties( {"isZeroAt","rankJacobianAt"} );
+            experiment.watchProperties( {"rankJacobianAt"} );
        );
 
    --end init:
