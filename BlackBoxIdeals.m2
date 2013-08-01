@@ -11,9 +11,13 @@ newPackage(
            HomePage => "http://www.crcg.de/wiki/Bothmer"}    
       },
      Configuration => {},
+     PackageExports => {"M2Logging"},
      Headline => "black boxes for explicit and implicitly given ideals",
      DebuggingMode => true
 )
+
+needsPackage "M2Logging";
+
 
 export {
     --clearCoeffDenominators,
@@ -21,7 +25,7 @@ export {
     blackBoxIdeal,
     blackBoxIdealFromEvaluation,
     blackBoxIdealFromProperties,
-    createLogger
+    BlackBoxLogger
 }
 
 --undocumented {
@@ -66,7 +70,7 @@ protect pointProperty;
 protect updatePointProperty;
 protect setJacobianAt;
 protect equations;
-protect setLevel;
+
 protect pointPropertyByName;
 protect hasPointProperty;
 
@@ -132,9 +136,26 @@ Symbol ? String := (str,symb)->
 --idealBlackBoxesProtect() -- protect the symbols for checking package correctness: no symbol variables should be overwritten by accident!
 idealBlackBoxesExport(); -- export the symbols to make the package work 
 
+-- needsPackage "M2Logging";
+--loadPackage ("M2Logging", Reload=>true);
+
+
+
+--M2LoggerExport();
 
 needsPackage "SimpleDoc";
 needsPackage "Text";
+
+
+BlackBoxLogger = Logger("BlackBoxIdeals");
+
+if BlackBoxIdeals#Options#DebuggingMode then 
+    BlackBoxLogger.setLogLevel(LogLevel.DEBUG);
+
+
+bblog := BlackBoxLogger;
+
+ 
 
 -- Estring = new Type of String - goal was to distinguies string keys from symbol keys without changing string visuaulization (net())
 -- but that turned out to be impossible, because e.g. operator '#' cannot be overloaded.
@@ -143,28 +164,7 @@ needsPackage "Text";
 --net (String) := Net =>(str)->(   strl := "\""| str| "\"" ;   return stack separate strl; );
 
 
-createLogger = ()->
-(
-    logger := new MutableHashTable;
-    --
-    level := 0;
-    logger.setLevel = method();
-    --
-    logger.setLevel(ZZ) := (pLevel)->
-    ( 
-       assert(level>=0 and level<5);
-       level = pLevel;
-    );
-    --    
-    logger.log = method();
-    logger.log (ZZ,String) := (msgLvl,msg )->
-    (
-       if (msgLvl<=level) then
-       print( "--" | msg );
-    );
-    --
-    return new HashTable from logger;
-);
+
 
 
 -- polynomialLCMDenominator computes the least common multiple of the denominators of the polynomial (rational) cofficients.
@@ -319,7 +319,9 @@ deduceImageRank := (blackBox)->
           try (
               tmppoint := matrix random(rng^1,rng^(blackBox.numVariables) );
               valuesMatrix := blackBox.valuesAt( tmppoint );
+  
               --print valuesMatrix;
+
               assert (numRows valuesMatrix==1);
               imageRank = numColumns valuesMatrix;
 
@@ -333,13 +335,15 @@ deduceImageRank := (blackBox)->
      );
 
 
-
-deducedJacobianAt = (blackBox,point)->
+-- constructs a jacobian at a point supposing that the blackBox implements evaluation at a point.
+deducedJacobianAt = ( blackBox, point )->
 (
   
     valuesAt := null; imageRank := null;
     valuesAt = global valuesAt;
     imageRank = global imageRank;
+    if not  blackBox#?(global valuesAt) 
+       then error("deducedJacobianAt: to construct jacobian at a point the black box need at least the property 'valuesAt' ");
     assert( blackBox#?(global valuesAt) );
     assert( blackBox#?(global imageRank) ); 
 
@@ -425,6 +429,9 @@ basicBlackBox(ZZ,Ring) := HashTable => ( numVariables, coeffRing ) ->
    setPointProperty := method();
    setPointProperty ( Symbol, Function, Function) := Thing => ( propertySymbol, propertyMethod, preconditionsTest )->
    (
+
+     bblog.debug(" called setPointProperty ") ;
+
       -- propertySymbol := getGlobalSymbol propertyName;
       propertyName := toString propertySymbol;
 
@@ -442,7 +449,18 @@ basicBlackBox(ZZ,Ring) := HashTable => ( numVariables, coeffRing ) ->
       
      pointProperties#propertyName = (point )-> ( 
           checkInputPoint(point);
-          try { return propertyMethod(  point); } then {  return propertyMethod(  point); } else {     return propertyMethod(blackBox,   point);  };
+          try { return propertyMethod(  point); } then   { 
+
+                bblog.debug(" succeeded call propertyMethod(  point);  ") ;
+
+                return propertyMethod(  point);  
+
+          } else {
+
+            bblog.debug(" failed call propertyMethod(  point); trying   propertyMethod(blackBox,point); ") ;
+
+            return propertyMethod(blackBox,   point);  
+          };
      );
 
      pointProperties#propertySymbol = pointProperties#propertyName;
@@ -474,9 +492,23 @@ basicBlackBox(ZZ,Ring) := HashTable => ( numVariables, coeffRing ) ->
       return null;
    );
 
+
    valuesAtWrapper := ( pValuesAt, point) ->
    (
-      result := pValuesAt(point);
+     result := null;
+     try { result = pValuesAt(  point); } then   { 
+
+                bblog.debug(" succeeded call pValuesAt(  point);  ") ;
+
+    
+
+          } else {
+
+            bblog.debug(" failed call pValuesAt(  point); trying   pValuesAt(blackBox,point); ") ;
+
+          result = pValuesAt( blackBox, point);
+          };
+
       assert(numRows result==1);
       return result;
    );
@@ -502,17 +534,20 @@ basicBlackBox(ZZ,Ring) := HashTable => ( numVariables, coeffRing ) ->
 
    setValuesAt := (pValuesAt) ->
    (      
-        print "setValuesAt: updates (isZeroAt, jacobianAt)" ;      
+       bblog.info( "setValuesAt: updates (isZeroAt, jacobianAt)" );      
 
        localValuesAt := (point)->return valuesAtWrapper(pValuesAt, point ) ;
+
        -- when using valuesAt instead of localValuesAt we get the wrong  (symbol valuesAt) (local valuesAt)
        --blackBox.setPointProperty( global valuesAt  ,  localValuesAt );
+
        setPointProperty( global valuesAt  ,  localValuesAt );
        
     
        imageRank =   deduceImageRank(blackBox)  ; --depends on valuesAt.
 
-      print ( "updated blackBox.imageRank to " | toString blackBox.imageRank );   
+      -- todo: replace with the logger!
+       bblog.info( "updated blackBox.imageRank to " | toString blackBox.imageRank );   
 
        setIsZeroAt(
           (point)->( return blackBox.valuesAt(point)==0 ;) 
@@ -650,7 +685,7 @@ basicBlackBox(Ring) := HashTable => ( pRing ) ->
    (
         if not ( blackBox.ring === ring unknown) then 
         ( 
-            print "the unknown is not element of the equations ideal ring";
+             bblog.error( "the unknown is not element of the equations ideal ring" );
 	        return false;
         );
         return true;
@@ -848,31 +883,7 @@ testBlackBoxIdealFromEvaluation = ()->
     assert( not evaluation.unknownIsValid (  y ) );
 
 );
-
-
---blackBoxIdealFromProperties = method();
-
---blackBoxIdealFromProperties(ZZ, Ring, Function) := HashTable => ( numVariables, coeffRing, pPropertiesAt )  ->
---(
---    blackBox := basicBlackBox( numVariables, coeffRing );
---    blackBox.setThis(blackBox);
---
---    blackBox.setIsZeroAt( (point)->(true) );
---    propertiesAt  := (point)->null;
---
---    --blackBox.propertiesAt = (point)->propertiesAt(point);
-   
---    --blackBox.setPropertiesAt ( pPropertiesAt );
-
-
---    blackBox.setThis(blackBox);
---    blackBox.clearInternal();
-
---    return new HashTable from blackBox;
---)
-
---beginDocumentation()
-    
+ 
     
 
 doc ///
@@ -1121,8 +1132,77 @@ TEST ///
    
  ///
 
+doc ///
+    Key
+        BlackBoxIdeals
+    Headline
+          black boxes for explicit and implicitly given ideals
+    Description
+        Text
+            Implements an unified interface for some explicit and implicit given ideals \break  
+            \break
+            Currently two BlackBox constructors are available:\break
+            \,\,  \bullet \,   @TO blackBoxIdeal@  \break
+            \,\,  \bullet \,  @TO blackBoxIdealFromEvaluation@  \break \break
+
+            The black boxes implement (if possible) \break 
+            \,\, \bullet \,{\tt isZeroAt(P) }: a check, if the ideal generators vanishes at a given  point {\tt P} \break 
+            \,\, \bullet \,{\tt valuesAt(P)}: evaluation (of the ideal generators) at a point {\tt P}, \break 
+            \,\, \bullet \,{\tt jacobianAt(P)}: computation of the Jacobian (of the ideal generators) at a given point {\tt P}, \break
+            \break  
+            \,\, \bullet \,{\tt knownPointProperties() }: returnts a list of all known properties at a point for a blackbox \break 
+            \,\, \bullet  \,{\tt registerPointProperty(propertyName, propertyMethod) }: register a new Point property for a Blackbox. \break
+            \,\, \, \, expected Interface of {\tt propertyMethod} is (blackBox(HashTable), point(Matrix) ) \break \break 
+
+            The blackbox interface allows implementation of some algorithms e.g. 
+            
+            
+      
+    Caveat
+         the blackbox properties are write-protected to prevent accidental modification  by the user; \break 
+         however implementing write-protection leads to undesired code compexity and at the same time it is still possible to overcome the  protection.
+         Currently adding properties to the blackBox with more than one parameter (point) is not implemented. \break
+         Also not done yet is the implementation of the Observable interface for the BlackBox (FiniteFieldExperiment will be one Observer) 
+         Finally, the package is probably not threadsafe.
+         
+         
+///
+
+TEST  /// 
+ debug BlackBoxIdeals
+ idealBlackBoxesProtect()
+
+ -- bblog is not defined... why ?
+
+ BlackBoxLogger.debug("test update valuesAt property ")
+ rng := ZZ/7[x]
+
+  I = ideal 6*x
+
+  bb=blackBoxIdeal I
+
+  result :=  matrix{{5}};
+
+  point := matrix{{0_rng}};
+
+  bb.updatePointProperty ("valuesAt", (bla,point)->result )  --fails
+
+ 
+
+  assert (result==bb.valuesAt(point) );
+  
+ result =  matrix{{0}};
+
+ bb.updatePointProperty ("valuesAt", (point)->result )  --fails
+
+  assert (result==bb.valuesAt(point) );
+
+ 
+ 
+///
+
 end
 -- need test for randomIterator (for fixed error : to less trials  )
-
+--@TO2{JetAt,"jet"}@ computations at a point independently of the ideal representation. \break \break 
 
 
