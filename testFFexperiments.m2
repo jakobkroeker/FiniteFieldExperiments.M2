@@ -5,7 +5,8 @@
 restart
 uninstallPackage"FiniteFieldExperiments"
 installPackage"FiniteFieldExperiments"
-
+uninstallPackage"BlackBoxIdeals"
+installPackage"BlackBoxIdeals"
 
 -- here the test case start
 restart
@@ -21,25 +22,39 @@ I = ideal (x*z,y*z)
 -- make a black box from the ideal
 bbI = blackBoxIdeal I
 bbI.knownPointProperties()
--- {isZeroAt, jacobianAt, isZeroAt, valuesAt, valuesAt, jacobianAt, bareJacobianAt, bareJacobianAt}
+bbI.knownPointPropertiesAsSymbols()
+-- {isZeroAt, jacobianAt,, valuesAt, valuesAt, jacobianAt, bareJacobianAt, bareJacobianAt}
 -- ERROR: Why to properties appear several times???
+---- no, they do not appear several times , Macaulay2 does print key strings without quotes, so in fact we can
+--access the properties by .jacobianAt (fragile, because of how M2 deals with symbols) and #"jacobianAt" 
+-- fixed, by returning only strings.
+
 -- MANDATORY: rankJacobianAt must exist in BlackBoxIdeals
-rank bbI.jacobianAt(matrix{{0,0,1_K}})
-rank bbI.jacobianAt(matrix{{1,2,0_K}})
-rank bbI.jacobianAt(matrix{{0,0,0_K}})
+-- Fixed
+bbI.rankJacobianAt(matrix{{0,0,1_K}})
+bbI.rankJacobianAt(matrix{{1,2,0_K}})
+bbI.rankJacobianAt(matrix{{0,0,0_K}})
 
 -- register new property
-bbI.registerPointProperty("rankJacobianAt",(bb,point)->(rank bb.jacobianAt(point)))
+ bbI.registerPointProperty("rankJacobianAtDup",(bb,point)->(rank bb.jacobianAt(point)))
+
+propSymb:= bbI.knownPointPropertiesAsSymbols()
+
 -- better: nil when not isZero(point)
 assert (2==(bbI.pointProperty("rankJacobianAt"))(matrix{{0,0,1_K}}))
-assert (1==(bbI.pointProperty("rankJacobianAt"))(matrix{{1,2,0_K}}))
+assert (1==(bbI.pointProperty("rankJacobianAt"))(matrix{{1_K,2_K,0_K}}))
 assert (0==(bbI.pointProperty("rankJacobianAt"))(matrix{{0,0,0_K}}))
 -- OK
 
-bbI.rebuild()
-bbI.rankJacobianAt
+bbI = rebuildBlackBox bbI   
+propSymb := bbI.knownPointPropertiesAsSymbols()
+bbI#(propSymb#5) --# ok
+bbI.rankJacobianAtDup --ok
+
+
 -- stdio:20:4:(3): error: key not found in hash table
 -- does not work. Not exported?
+--fixed
 
 -- make an experiment from the black box
 e = new Experiment from bbI

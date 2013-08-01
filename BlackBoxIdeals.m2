@@ -23,7 +23,8 @@ export {
     blackBoxIdealFromProperties,
     getEpsRing,
     JetAt,
-    createLogger
+    createLogger,
+    "rebuildBlackBox"
 }
 
 --undocumented {
@@ -37,6 +38,7 @@ idealBlackBoxesProtect = ()->
 (
 
 protect jacobianAt;
+protect rankJacobianAt;
 protect jetAt;
 protect jacobianMatrix;
 protect transposedJacobianAt;
@@ -62,7 +64,7 @@ protect setPropertiesAt;
 protect setIsZeroAt;
 protect dropDegreeInfo;
 protect bareJacobianAt;
-protect rebuild;
+protect rebuildInternal;
 protect setThis;
 protect clearInternal;
 protect unknowns;
@@ -75,6 +77,7 @@ protect pointPropertyByName;
 protect hasPointProperty;
 
 protect knownPointProperties;
+protect knownPointPropertiesAsSymbols;
 );
 
 --todo: fix dublicate code,  -  padicLiftProtect and padicLiftExport
@@ -82,6 +85,7 @@ idealBlackBoxesExport = ()->
 (
     exportMutable( eps );
     exportMutable( jacobianAt);
+    exportMutable( rankJacobianAt);
     exportMutable( jetAt);
 
     exportMutable( jacobianMatrix);
@@ -108,7 +112,8 @@ idealBlackBoxesExport = ()->
     exportMutable( setIsZeroAt );
     exportMutable( dropDegreeInfo );
     exportMutable( bareJacobianAt );
-   exportMutable( rebuild );
+   exportMutable( rebuildInternal );
+
    exportMutable( setThis );
    exportMutable( clearInternal );
  exportMutable( unknowns );
@@ -120,6 +125,8 @@ idealBlackBoxesExport = ()->
  exportMutable( pointPropertyByName );
  exportMutable( hasPointProperty );
   exportMutable( knownPointProperties );
+  exportMutable( knownPointPropertiesAsSymbols );
+
 )
 
 
@@ -538,6 +545,10 @@ JetAtWrapper(HashTable, Matrix)  := MutableHashTable => opts -> ( blackBox,  poi
 );
 
 
+
+
+
+
 basicBlackBox = method();
 --basicBlackBox (Ring) :=  HashTable =>( parrng ) ->
 basicBlackBox(ZZ,Ring) := HashTable => ( numVariables, coeffRing ) ->
@@ -625,9 +636,19 @@ basicBlackBox(ZZ,Ring) := HashTable => ( numVariables, coeffRing ) ->
   
    );
 
-   blackBox.knownPointProperties = ()->
+   internalKnownPointProperties := ()->
    (
       return keys pointProperties;
+   );
+
+   blackBox.knownPointProperties = ()->
+   (   
+      return unique apply (keys pointProperties, key->toString key);
+   );
+
+   blackBox.knownPointPropertiesAsSymbols = ()->
+   (   
+      return select (keys pointProperties, key->(class key===Symbol));
    );
 
 
@@ -660,12 +681,21 @@ basicBlackBox(ZZ,Ring) := HashTable => ( numVariables, coeffRing ) ->
          return dropDegreeInfo( blackBox.jacobianAt(point) );
       );
       setPointProperty( global bareJacobianAt , blackBox.bareJacobianAt );
+
+      blackBox.rankJacobianAt= (point)->
+      (
+         return  rank blackBox.jacobianAt(point) ;
+      );
+
+      setPointProperty( global rankJacobianAt , blackBox.rankJacobianAt );
+
+     -- blackBox.registerPointProperty("rankJacobianAt",(point)->  (    return  rank blackBox.jacobianAt(  point);   ));  
    );
 
 
    setValuesAt := (pValuesAt) ->
    (      
-        print "setValuesAt: updates (isZeroAt, jacobianAt)" ;      
+        print "setValuesAt: updates (isZeroAt, jacobianAt, rankJacobianAt)" ;      
 
        localValuesAt := (point)->return valuesAtWrapper(pValuesAt, point ) ;
        -- when using valuesAt instead of localValuesAt we get the wrong  (symbol valuesAt) (local valuesAt)
@@ -775,7 +805,8 @@ basicBlackBox(ZZ,Ring) := HashTable => ( numVariables, coeffRing ) ->
        blackBox = bb;
    );
 
-   blackBox.rebuild = ()->
+   -- a user should not call this method...
+   blackBox.rebuildInternal  = ()->
    (
        bb := new MutableHashTable from  blackBox;
        blackBox = bb;
@@ -796,8 +827,17 @@ basicBlackBox(ZZ,Ring) := HashTable => ( numVariables, coeffRing ) ->
        return new HashTable from bb;
    );
 
+
+  
    return blackBox;
 )
+
+rebuildBlackBox = method() ;
+
+rebuildBlackBox(HashTable) := HashTable => ( bb )->
+(
+       return  bb.rebuildInternal();
+);
 
 
 basicBlackBox(Ring) := HashTable => ( pRing ) ->
@@ -844,7 +884,15 @@ blackBoxIdeal(Ring) := HashTable => ( pRing ) ->
 --    return basicBlackBox( rng );
 --)
 
+BlackBoxIdeal = new Type of  HashTable;
 
+-- how to hide this method?
+new BlackBoxIdeal from HashTable := ( E, htableBBIdeal) -> (
+
+   assert(htableBBIdeal#?(symbol knownPointProperties) );
+   assert(htableBBIdeal#?(symbol hasPointProperty) );
+   return htableBBIdeal;
+)
 
 blackBoxIdeal(ZZ, Ring) := HashTable => ( numVariables, coeffRing )  ->
 (
@@ -852,6 +900,7 @@ blackBoxIdeal(ZZ, Ring) := HashTable => ( numVariables, coeffRing )  ->
     blackBox.setThis(blackBox);
     blackBox.clearInternal();
     return new HashTable from blackBox;
+    --return new BlackBoxIdeal from blackBox;
 )
 
 
@@ -889,6 +938,7 @@ blackBoxIdeal (Ideal) := HashTable =>(equationsIdeal)->
        )
     );   
 
+    --blackBox.registerPointProperty("rankJacobianAt",(point)->  (    return  rank blackBox.jacobianAt(  point);   ));
    
      blackBox.setThis(blackBox);
      blackBox.clearInternal();
@@ -949,7 +999,7 @@ blackBoxIdealFromEvaluation(ZZ, Ring, Function) := HashTable => ( numVariables, 
 
     --blackBox.setValuesAt ( valuesAt ); --sets isZeroAt, jacobianAt and imageRank
 
-    blackBox.registerPointProperty ("valuesAt", valuesAt ); --sets isZeroAt, jacobianAt and imageRank
+    blackBox.registerPointProperty ("valuesAt", valuesAt ); --sets isZeroAt, jacobianAt, rankJacobianAt and imageRank
 
     check := ()->
     (
@@ -1228,7 +1278,7 @@ TEST ///
     assert( rankMatNew(point) == (bbRankM.pointProperty(getGlobalSymbol "rankMat"))(point) );
 
 
-    bbRankMNew = bbRankM.rebuild()
+    bbRankMNew = rebuildBlackBox bbRankM;
     assert bbRankMNew#?(global rankMat);
     assert bbRankMNew#?("rankMat");
 
@@ -1273,7 +1323,7 @@ TEST ///
 
     bbRankM.registerPointProperty("valuesAt",valuesAt);
 
-    bbRankM = bbRankM.rebuild();
+    bbRankM = rebuildBlackBox bbRankM;
 
     point  = sub(point,ZZ/7); 
 

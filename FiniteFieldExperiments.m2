@@ -48,6 +48,14 @@ FiniteFieldExperimentsProtect = ()->
   protect countData;
   protect setIsInteresting;
   protect isInteresting;
+
+  protect getExperimentData;
+  protect setObservedProperties;
+  protect observeProperty;
+  protect ignoreProperty;
+  protect ignoreProperties;
+  protect observedProperties;
+
   protect update;
   protect updateExperiment;
 
@@ -72,6 +80,8 @@ FiniteFieldExperimentsProtect = ()->
   
 )
 
+ 
+
 FiniteFieldExperimentsExport  = ()->
 (
   exportMutable( center);
@@ -90,6 +100,14 @@ FiniteFieldExperimentsExport  = ()->
 
   exportMutable( setIsInteresting);
   exportMutable( isInteresting);
+
+  exportMutable( getExperimentData);
+  exportMutable( setObservedProperties);
+  exportMutable( observeProperty);
+  exportMutable( ignoreProperty);
+  exportMutable( ignoreProperties);
+  exportMutable( observedProperties);
+
 
   exportMutable( update);
   exportMutable( updateExperiment);
@@ -525,6 +543,14 @@ new Experiment from HashTable := (E, pBlackBoxIdeal) ->
    experimentData := new ExperimentData from blackBoxIdeal.coefficientRing;
    experiment := new MutableHashTable;
 
+
+   -- todo: maype return a (deep) copy 
+   experiment.getExperimentData = ()->
+   (
+      print(" warning : you got a reference to experiment data, do not modify! ");
+      return experimentData;
+   );
+
    -- some of the  following values initialized at end ( e.g. propertiesAt initialization depends presence of some functions defined later)
    minPointsPerComponent := 10;
    jacobianAtKey := null;
@@ -724,8 +750,23 @@ new Experiment from HashTable := (E, pBlackBoxIdeal) ->
         );
      );
 
-  
-   experiment.watchProperties = ( propertyStringList )->
+   -- add 'setObservedProperties' (reinitializes observed properties)  and 'observeProperty' (adds a property to observe)
+
+   setObservedPropertiesInternal := (propListToObserve)->
+   ( 
+      for propertyName in propListToObserve do
+      (
+          if not blackBoxIdeal.hasPointProperty(propertyName) then 
+              error ("blackBoxIdeal seems not to have property" | propertyName );
+      );
+      experimentData.propertyList=propListToObserve;
+      propertiesAt = (point)->
+      ( 
+        apply( experimentData.propertyList, propertyName->( (blackBoxIdeal.pointProperty(propertyName))(point) ) )  
+      );   
+   );
+
+   experiment.setObservedProperties = ( propertyStringList )->
    (  
       if experimentData.trials=!=0 then error ("cannot change watched properties - experiment was already run! You could clear() the statistics and retry.");
 
@@ -737,22 +778,54 @@ new Experiment from HashTable := (E, pBlackBoxIdeal) ->
           if not blackBoxIdeal.hasPointProperty(propertyName) then 
               error ("blackBoxIdeal seems not to have property" | propertyName );
       );
-      propertiesAt = (point)->
-      ( 
-        --apply(propertyStringList, propertyName->( blackBoxIdeal.pointPropertyByName(propertyName)(point) ) )
-        apply(propertyStringList, propertyName->( (blackBoxIdeal.pointProperty(propertyName))(point) ) )  
-      );
 
-      experimentData.propertyList =  propertyStringList;
+      setObservedPropertiesInternal(propertyStringList);
       update(experimentData);
    );
 
- 
-   experiment.watchedProperties =  ()->
+
+  
+
+   experiment.watchProperties=experiment.setObservedProperties;
+
+   experiment.observeProperty=(propertyName)->
+   (
+       if experimentData.trials=!=0 then error ("cannot change watched properties - experiment was already run! You could clear() the statistics and retry.");
+
+          if not blackBoxIdeal.hasPointProperty(propertyName) then 
+              error ("blackBoxIdeal seems not to have property" | propertyName );
+
+      experimentData.propertyList = unique (experimentData.propertyList | { propertyName }) ;
+      setObservedPropertiesInternal( experimentData.propertyList );   
+      update(experimentData);
+   );
+
+   experiment.ignoreProperty=(propertyName)->
+   (
+       if experimentData.trials=!=0 then error ("cannot change observed properties - experiment was already run! You could clear() the statistics and retry.");
+
+      experimentData.propertyList = delete(propertyName, experimentData.propertyList ) ;
+      setObservedPropertiesInternal( experimentData.propertyList );   
+        
+      update(experimentData);
+   );
+
+   experiment.ignoreProperties = (ignorePropertyStringList)->
+   (
+       if experimentData.trials=!=0 then error ("cannot change observed properties - experiment was already run! You could clear() the statistics and retry.");
+
+      apply( ignorePropertyStringList, propToIgnore-> ( experimentData.propertyList = delete(propToIgnore, experimentData.propertyList ); ));
+      setObservedPropertiesInternal( experimentData.propertyList );    
+      update(experimentData);
+   );
+
+   -- maybe observed Properties is not a good name - is 'recordedProperties' better ?
+   experiment.observedProperties =  ()->
    (
       return experimentData.propertyList;
    );
 
+   experiment.watchedProperties = experiment.observedProperties;
 
    experiment.setIsInteresting = (pIsInteresting)->
    (  
@@ -807,21 +880,30 @@ new Experiment from HashTable := (E, pBlackBoxIdeal) ->
    
 
    --init:
- -- todo: test if changing blackBoxIdeal.jacobianAt is transparent (means after blackBoxIdeal.updatePointProperty("jacobianAt") the new one is called)
+   -- todo: test if changing blackBoxIdeal.jacobianAt is transparent (means after blackBoxIdeal.updatePointProperty("jacobianAt") the new one is called)
  
+    experiment.watchProperties( {} );
+
        if  blackBoxIdeal.hasPointProperty("isZeroAt") then
        (
           --print("isInteresting"| toString  (blackBoxIdeal.isZeroAt ));
           isInteresting = blackBoxIdeal.pointProperty("isZeroAt");
+
+               experiment.watchProperties( {"isZeroAt"} );
        );
 
        if blackBoxIdeal.hasPointProperty("jacobianAt") then 
        (
           jacobianAtKey = "jacobianAt";
           jacobianAt =  blackBoxIdeal.pointProperty("jacobianAt");
+          if  not blackBoxIdeal.hasPointProperty("isZeroAt") then 
+              error(" when for a balck box the property 'jacobianAt' is available, it is also expected that the black box has the point property 'isZeroAt' ");  
        );
 
-       experiment.watchProperties( {} );
+       if blackBoxIdeal.hasPointProperty("rankJacobianAt") then
+       ( 
+            experiment.watchProperties( {"isZeroAt","rankJacobianAt"} );
+       );
 
    --end init:
 
