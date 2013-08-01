@@ -24,9 +24,18 @@ bbI.knownPointProperties()
 -- {isZeroAt, jacobianAt, isZeroAt, valuesAt, valuesAt, jacobianAt, bareJacobianAt, bareJacobianAt}
 -- ERROR: Why to properties appear several times???
 -- MANDATORY: rankJacobianAt must exist in BlackBoxIdeals
-rank bbI.jacobianAt(matrix{{0,0,1_K}})
-rank bbI.jacobianAt(matrix{{1,2,0_K}})
-rank bbI.jacobianAt(matrix{{0,0,0_K}})
+assert (2==rank bbI.jacobianAt(matrix{{0,0,1_K}}))
+assert (1==rank bbI.jacobianAt(matrix{{1,2,0_K}}))
+assert (0==rank bbI.jacobianAt(matrix{{0,0,0_K}}))
+-- this is a point where the ideal does not vanish.
+-- the rank here has no meaning
+assert (2==rank bbI.jacobianAt(matrix{{1,1,1_K}}))
+
+-- make an experiment without rankJacobian at
+e = new Experiment from bbI
+-- test: here rankJacobianAt is not watched
+e.watchedProperties()
+-- niceToHave: make a test like this for a blackbox not from an ideal
 
 -- register new property
 bbI.registerPointProperty("rankJacobianAt",(bb,point)->(rank bb.jacobianAt(point)))
@@ -43,13 +52,7 @@ bbI.rankJacobianAt
 
 -- make an experiment from the black box
 e = new Experiment from bbI
-
--- watch rank of jacobi matrix
--- MAYOR: This should be set automatically when making a new experiment from an ideal
-e.clear()
-e.watchProperties({"isZeroAt"})
-e.watchedProperties()
-e.watchProperties({"rankJacobianAt"})
+-- test: here "rankJacobianAt" is watched
 e.watchedProperties()
 
 -- look at 1000 random points
@@ -63,39 +66,34 @@ e.countData()
 
 -- some points with these properties
 e.pointLists()
--- only about 20 points for each component are collected:
+-- only about 10 points for each component are collected:
 apply(keys e.pointLists(),k->print (k => #((e.pointLists())#k)));
--- {0} => 6
--- {1} => 17
--- {2} => 18
+-- {0} => 7
+-- {1} => 12
+-- {2} => 13
 -- 
--- here the estimated number of components are calculated without
--- using jacobiRankAt. If jacobiRankAt is watched, it should also be used 
--- (see estimateDecomposition below)
+-- here the estimated number of components are calculated with rankJacobianAt
+-- I do not know what happens when rankJacobianAt does not exist.
 --
--- the estimated number of components for {1} and {2} is somewhat lower than 1
--- since there is the singular origin that lies on both components, but is
--- counted at {0}
+-- the collected number is somewhat higher than 10 since the maximum 
+-- of the confidence interval is used at every step.
+--
+-- MANDATORY: Use estimate components to calculate wanted number of points.
+-- At the moment this does not work, since estimateNumberOfComponents was rewritten
+-- It now takes an experiment and a countKey, at the point where
+-- this is coded the experiment does not jet exist, but just "experimentData".
+-- If estimateNumberOfComponents is changed to take an experimentData, then
+-- it can not be used in estimateDecomposition.
+-- WORK AROUND: numberOfComponents now takes a MutableHashTable
 
-e.estimateStratification2()
+e.estimateStratification()
 -----
 -- 3.4 <= {0}
 -- 2.2 <= {2}
 -- 1.1 <= {1}
 -----
 -- estimated codimension <= {watched properites}
-
-e.estimateStratification()
--- {0} =>  4.35 [3, 5.7]}
--- {1} =>  1 [0.9, 1.1]
--- {2} =>  2.2 [2, 2.4]
-
--- why are estimates different?
--- ERROR: problem with new interval. Center of interval is calculated not given. 
---        In a poisson Interval the center is not the average of the max and min
-
--- In applications Stratification (with intervals) was to much information. 
--- Stratification2 turned out to be much more useful 
+-- niceToHave: see trailing zeros
 
 e.estimateDecomposition()
 -- {0} =>  2.23 [0.27, 4.2]
@@ -106,21 +104,16 @@ e.estimateDecomposition()
 -- not good
 
 -- estimate Decomposition is only useful if jacobianRankAt was watched. 
--- here comes a rudementary implementation
-assert ((e.watchedProperties())#0 == "rankJacobianAt")
--- later: find position of "rankJacobianAt"
-c = e.countData()
-print "(estimated codim, estimated number of Components <= {watched Properties})"
-apply(sort apply(keys c,k->(net(k#0,estimateNumberOfComponents(e.trials(),k#0,c#k,char K)))|" <= "|net k),print)
--- (0,  0.01 [0., 0.01]) <= {0}
--- (1,  0.94 [0.84, 1.03]) <= {1}
--- (2,  0.74 [0.55, 0.93]) <= {2}
--- 
--- (est codim, est number of Components <= {watched Properties})
---
+
+-- this does not work since at the point where estimateNumberOfComponents is
+-- called experiment is not an Experiment but a MutableHashTable
+-- WORK AROUND: numberOfComponents now takes a MutableHashTable
+
 -- NiceToHave: trailing zeros to correct length
 -- NiceToHave: maybe without showing the center of the estimation
 
+estimateDecomposition(e)
+-- I have no Ideal why this does not work
 
 -- interpolation using jets
 interpolate = (mons,jet) -> if jetP#"succeeded" then (
