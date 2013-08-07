@@ -3,7 +3,7 @@
 -- using finite field experiments
 
 needsPackage"BlackBoxIdeals"
-load"FiniteFieldExperiments.m2"
+needsPackage"FiniteFieldExperiments"
 
 K = ZZ/3
 R = K[x,y,z,w]
@@ -58,6 +58,14 @@ end
 ---
 
 restart
+uninstallPackage"BlackBoxIdeals"
+installPackage"BlackBoxIdeals"
+uninstallPackage"FiniteFieldExperiments"
+installPackage"FiniteFieldExperiments"
+
+---
+
+restart
 load"codim1foliations.m2"
 
 bbRankM = blackBoxIdeal(#(gens B),K)
@@ -79,8 +87,9 @@ e.watchedProperties()  -- {rankMat}
 
 time e.run(1000)
 e.pointLists()  -- returns points  categorized by watchedProperties.
-points := e.points(); --returns pure points
+points := e.points({58}); --returns pure points
 #points
+
 
 -- howto apply properties:
 bbRankM.rankMat(points#0)
@@ -88,11 +97,12 @@ bbRankM.rankMat(points#0)
 
 e.countsByCount()
 e.estimateStratification()
+e.estimateStratification2()
 e.estimateDecomposition()
 e.stratificationIntervalView()
 e.collectedCount()
 e.jacobianAtKey() --null
-
+keys e
 
 --tally apply( e.pointKeys(), key ->( #((e.pointLists())#key)=>key))
 -- lieber e.points().

@@ -1,9 +1,11 @@
 
 
 
-.PHONY: installPadicLift installBlackBoxIdeals installFiniteFieldExperiments  uninstallPadicLift uninstallBlackBoxIdeals uninstallFiniteFieldExperiments install uninstall
+.PHONY: installPadicLift installBlackBoxIdeals installFiniteFieldExperiments  uninstallPadicLift \
+        uninstallBlackBoxIdeals uninstallFiniteFieldExperiments installM2Logging uninstallM2Logging \
+        install uninstall
  
-install: installPadicLift installBlackBoxIdeals installFiniteFieldExperiments installM2Logger
+install: installPadicLift installBlackBoxIdeals installFiniteFieldExperiments installM2Logging
    
 
 installPadicLift:  
@@ -14,10 +16,10 @@ installPadicLift:
 	@echo "rm  -rf ~/.Macaulay2/local/share/Macaulay2/padicLift/" >>  ~/.Macaulay2/local/share/Macaulay2/padicLiftUninstall.sh
 
 
-installM2Logger: 
+installM2Logging: 
 	mkdir -p   ~/.Macaulay2/local/share/Macaulay2/
-	cp M2Logger.m2 ~/.Macaulay2/local/share/Macaulay2/
-	@echo  -e "#"'!'"/bin/bash \n rm  ~/.Macaulay2/local/share/Macaulay2/M2Logger.m2 " > ~/.Macaulay2/local/share/Macaulay2/M2LoggerUninstall.sh
+	cp M2Logging.m2 ~/.Macaulay2/local/share/Macaulay2/
+	@echo  -e "#"'!'"/bin/bash \n rm  ~/.Macaulay2/local/share/Macaulay2/M2Logging.m2 " > ~/.Macaulay2/local/share/Macaulay2/M2LoggingUninstall.sh
 
 
 installBlackBoxIdeals: 
@@ -45,4 +47,4 @@ uninstallFiniteFieldExperiments:
 	bash ~/.Macaulay2/local/share/Macaulay2/FiniteFieldExperimentsUninstall.sh
 
 
-uninstall: uninstallPadicLift uninstallBlackBoxIdeals uninstallFiniteFieldExperiments uninstallM2Logger
+uninstall: uninstallPadicLift uninstallBlackBoxIdeals uninstallFiniteFieldExperiments uninstallM2Logging

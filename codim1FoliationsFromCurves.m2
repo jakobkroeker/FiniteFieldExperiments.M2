@@ -2,16 +2,6 @@
 -- from curves in IP^3
 
 restart
--- M a matrix
--- d a degree
--- ring must be singly graded
-random(ZZ,Matrix) := opts -> (d,m) -> (m*random(source m,(ring m)^{ -d}))
-
--- I an ideal
--- d a degree
--- ring must be singly graded
-random(ZZ,Ideal) := opts -> (d,I) -> (random(d,matrix mingens I))_0_0
-
 K = ZZ/101
 R = K[x,y,z,w]
 D = K[dx,dy,dz,SkewCommutative=>true]
@@ -88,3 +78,4 @@ betti ideal mingens sub(Iint,sub(vars A,AB)|pointB)
 betti res (Icoeff = sub(ideal contract(super basis ({0,2},RD),domega),R))
 betti super basis(7,ker mingens Icoeff)
 betti res sub(ideal contract(super basis ({0,2},RD),domega),R)
+
