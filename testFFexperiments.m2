@@ -23,22 +23,14 @@ I = ideal (x*z,y*z)
 bbI = blackBoxIdeal I
 bbI.knownPointProperties()
 bbI.knownPointPropertiesAsSymbols()
--- {isZeroAt, jacobianAt,, valuesAt, valuesAt, jacobianAt, bareJacobianAt, bareJacobianAt}
--- ERROR: Why to properties appear several times???
----- no, they do not appear several times , Macaulay2 does print key strings without quotes, so in fact we can
---access the properties by .jacobianAt (fragile, because of how M2 deals with symbols) and #"jacobianAt" 
--- fixed, by returning only strings.
-
--- MANDATORY: rankJacobianAt must exist in BlackBoxIdeals
- 
--- Fixed
+--  {rankJacobianAt, rankJacobianAtDup, valuesAt, bareJacobianAt, isZeroAt jacobianAt}
 
 assert (2== bbI.rankJacobianAt(matrix{{0,0,1_K}}))
 assert (1== bbI.rankJacobianAt(matrix{{1,2,0_K}}))
 assert (0== bbI.rankJacobianAt(matrix{{0,0,0_K}}))
 -- this is a point where the ideal does not vanish.
 -- the rank here has no meaning
-assert (2==rank bbI.rankJacobianAt(matrix{{1,1,1_K}}))
+assert (2== bbI.rankJacobianAt(matrix{{1,1,1_K}}))
 
 -- make an experiment without rankJacobian at
 e = new Experiment from bbI
@@ -59,11 +51,6 @@ propSymb := bbI.knownPointPropertiesAsSymbols()
 bbI#(propSymb#5) --# ok
 bbI.rankJacobianAtDup --ok
 
-
--- stdio:20:4:(3): error: key not found in hash table
--- does not work. Not exported?
---fixed
-
 -- make an experiment from the black box
 e = new Experiment from bbI
 -- test: here "rankJacobianAt" is watched
@@ -81,7 +68,8 @@ e.countData()
 -- some points with these properties
 e.pointLists()
 -- only about 10 points for each component are collected:
-apply(keys e.pointLists(),k->print (k => #((e.pointLists())#k)));
+apply(keys e.pointLists(),k->print (k => #((e.pointLists())#k))); --jk: not necessary to program; see collectedCount
+e.collectedCount() -- jk, Q: rename this method?
 -- {0} => 7
 -- {1} => 12
 -- {2} => 13
@@ -128,6 +116,7 @@ e.estimateDecomposition()
 
 estimateDecomposition(e)
 -- I have no Ideal why this does not work
+-- jk: fixed 
 
 -- interpolation using jets
 interpolate = (mons,jet) -> if jetP#"succeeded" then (
@@ -140,7 +129,7 @@ interpolate = (mons,jet) -> if jetP#"succeeded" then (
 maxDeg = 2
 mons = matrix {flatten apply(maxDeg+1,i->flatten entries super(basis(i,R)))}
 
-apply(keys e.pointLists(),k->(
+decomposeResult := apply(keys e.pointLists(),k->(
 	  L = (e.pointLists())#k;
 	  -- nice to have: e.pointList(key)
      	  unique flatten apply(unique L,P->(
@@ -149,6 +138,9 @@ apply(keys e.pointLists(),k->(
 	  	    {interpolate(mons,jetP)}
 	  	    ))
      	  ))
+
+assert(decomposeResult==={{null}, {ideal(z)}, {ideal (y, x)}});
+
 -- better: 
 --    0) empty ideal list
 --    1) for each point make a short jet (eg. length 10) and check if it is contained

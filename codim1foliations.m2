@@ -69,37 +69,40 @@ restart
 load"codim1foliations.m2"
 
 bbRankM = blackBoxIdeal(#(gens B),K)
-bbRankM.registerPointProperty("rankMat",rankMat)
+--bbRankM.registerPointProperty("rankMat",rankMat)
+bbRankM.registerPointProperty("rankJacobianAt",rankMat)
 keys bbRankM
 bbRankM.knownPointProperties()
-bbRankM.pointProperty("rankMat") -- basic access to properties
+bbRankM.pointProperty("rankJacobianAt") -- basic access to properties
 
-bbRankM.rankMat -- only available after rebuild() :
-bbRankM = bbRankM.rebuild()
-bbRankM.rankMat --ok
+bbRankM.rankJacobianAt -- only available after rebuild :
+bbRankM = rebuildBlackBox bbRankM 
+bbRankM.rankJacobianAt --ok
 
 e = new Experiment from bbRankM
 keys e
 e.setMinPointsPerComponent(20);
 e.minPointsPerComponent() --20
-e.watchProperties {"rankMat"};
+e.watchProperties {"rankJacobianAt"};
 e.watchedProperties()  -- {rankMat}
 
-time e.run(1000)
+time e.run(4000)
 e.pointLists()  -- returns points  categorized by watchedProperties.
-points := e.points({58}); --returns pure points
+points := (e.pointLists())#{59};
+--points := e.points({58}); --returns pure points
 #points
-
+points
+keys points
 
 -- howto apply properties:
-bbRankM.rankMat(points#0)
+bbRankM.rankJacobianAt(points#0)
 (bbRankM.pointProperty("rankMat"))(points#0) 
 
 e.countsByCount()
 e.estimateStratification()
 e.estimateStratification2()
 e.estimateDecomposition()
-e.stratificationIntervalView()
+-- e.stratificationIntervalView() -- (jk) does not work any more, because stratification() method was modified... 
 e.collectedCount()
 e.jacobianAtKey() --null
 keys e
@@ -268,9 +271,15 @@ betti (M = transpose matrix apply(3,i->apply(indB,j->b_{i,j})))
 (M^{0})
 
 -- Blackbox
-bb.Mat = (point) -> sub(M,point)
-bb.Iat = (point) -> ideal(mons*Mat(point))
-bb.bettiAt = (point) -> betti res Iat(point)
+Iat = (point) -> ideal(mons*Mat(point))
+
+numVariables = #(gens B)
+coefficientRing B
+bb= blackBoxIdealFromEvaluation(numVariables,K,Iat)
+
+bb.registerPointProperty("Mat" , (point) -> sub(M,point))
+bb.registerPointProperty("bettiAt" , (point) -> betti res Iat(point) )
+
 --
 
 

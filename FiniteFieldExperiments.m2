@@ -35,6 +35,7 @@ export {
 FiniteFieldExperimentsProtect = ()->
 (
   protect center;
+  protect testDebug;
   protect next;
   protect begin;
   protect count;
@@ -85,6 +86,7 @@ FiniteFieldExperimentsProtect = ()->
 FiniteFieldExperimentsExport  = ()->
 (
   exportMutable( center);
+  exportMutable( testDebug);
   exportMutable( next);
   exportMutable( begin);
   exportMutable( count);
@@ -327,7 +329,7 @@ estimateNumberOfComponents(ZZ,RR,ZZ,ZZ) := HashTable => opts->
     )
 estimateNumberOfComponents(ZZ,ZZ,ZZ,ZZ) := HashTable => opts->    (trials,estimatedCodim,numPoints,fieldCardinality) -> 
 (
-    estimateNumberOfComponents(trials,estimatedCodim*1.0,numPoints,fieldCardinality)
+    estimateNumberOfComponents(trials,estimatedCodim*1.0,numPoints,fieldCardinality,opts)
 )
 
 
@@ -371,8 +373,11 @@ new ExperimentData from HashTable := (E,coeffRing) -> (
      return e;
      )
 
+
 -- here one should use Experiment oder ExperimentData
-estimateNumberOfComponents(MutableHashTable,List) := HashTable => opts->    (experiment,key) -> 
+
+estimateNumberOfComponentsInternal := method(Options => (options poissonEstimate));
+estimateNumberOfComponentsInternal(HashTable,List) := HashTable => opts->    (experiment,key) -> 
 (
      count := experiment.countData();
      posRankJacobianAt := position(experiment.watchedProperties(),i->i=="rankJacobianAt");
@@ -384,10 +389,14 @@ estimateNumberOfComponents(MutableHashTable,List) := HashTable => opts->    (exp
 	  experiment.trials(),
 	  key#posRankJacobianAt,
 	  count#key,
-	  cardinality)
+	  cardinality,opts)
 )
-     
 
+
+estimateNumberOfComponents(Experiment,List) := HashTable => opts->    (experiment,key) -> 
+(
+        return estimateNumberOfComponentsInternal(experiment,key,opts);
+)
 
 
 
@@ -467,7 +476,7 @@ createPointIterator = ( pPoints )->
 
 
 
-estimateDecompositionOld := (experiment) -> (
+estimateDecompositionOldInternal := (experiment) -> (
        count := experiment.countData();
        posRankJacobianAt := position(experiment.watchedProperties(),i->i=="rankJacobianAt");
        if posRankJacobianAt === null then error("To estimate the decomposition, \"rankJacobianAt\" must be watched");
@@ -488,19 +497,23 @@ estimateDecompositionOld := (experiment) -> (
        print);
    );
 
-estimateDecomposition := (experiment) -> (
+estimateDecompositionInternal := (experiment) -> (
        posRankJacobianAt := position(experiment.watchedProperties(),i->i=="rankJacobianAt");
        if posRankJacobianAt === null then error("To estimate the decomposition, \"rankJacobianAt\" must be watched");
        print "(estimated codim, estimated number of components [confidence interval] <= {watched Properties})";
        print "";
        apply(sort apply(keys experiment.countData(),key->
-		      net(key#posRankJacobianAt,estimateNumberOfComponents(experiment,key))
+		      net(key#posRankJacobianAt,estimateNumberOfComponentsInternal(experiment,key))
 		 |" <= "|net key),
        print);
    );
 
+estimateDecomposition =  (experiment) -> (
+        return estimateDecompositionInternal(experiment);
+)
 
-estimateStratification := (experiment) -> (
+--needs to be documented
+estimateStratificationInternal := (experiment) -> (
      trials := experiment.trials();
      orderK := (experiment.coefficientRing()).order; -- this must be read from the experimentdata
      print "--";
@@ -512,7 +525,10 @@ estimateStratification := (experiment) -> (
      print "--";
      )
 
-
+-- todo: find out 
+estimateStratification =  (experiment) -> (
+        return estimateStratificationInternal(experiment);
+)
 
 
    stratificationIntervalView := (stratificationData )->
@@ -607,7 +623,12 @@ new Experiment from HashTable := (E, pBlackBoxIdeal) ->
    );
 
  
-  
+   experiment.testDebug=()->
+   (
+      a:=5;
+      1/0;
+      return a;
+   );
 
     
    experiment.isInteresting=(point)->
@@ -703,8 +724,8 @@ new Experiment from HashTable := (E, pBlackBoxIdeal) ->
             (
                 FFELogger.log(4, "update wanted points");
                 rankJacobian := rank  jacobianAt(point); 
-		upperEstimate := (estimateNumberOfComponents(experiment,countKey)).max;
-                --upperEstimate := ((estimateDecompositionOld( experimentData ))#countKey).max;
+		upperEstimate := (estimateNumberOfComponentsInternal(experiment,countKey)).max;
+                --upperEstimate := ((estimateDecompositionOldInternal( experimentData ))#countKey).max;
 		--upperEstimate := 1; -- test
                 wantedPoints = max(1,upperEstimate)*wantedPoints;
             ); 	       
@@ -882,6 +903,7 @@ new Experiment from HashTable := (E, pBlackBoxIdeal) ->
       return new HashTable from experimentData.points;
    );
  
+   -- returns a HashTable with recprded BlackBoxIdeal properties as keys and corresponding occured count as values.
    experiment.countData = ()->
    (
       return new Tally from experimentData.count;
@@ -934,8 +956,33 @@ new Experiment from HashTable := (E, pBlackBoxIdeal) ->
    --end init:
 
 
+ experiment.clearInternal = ()-> 
+   (
+      remove( experiment, getGlobalSymbol "setThis" );
+      remove( experiment, getSymbol "setThis" );
+      remove( experiment, symbol setThis );
+      assert( not experiment#?(symbol setThis) );
+      assert( not experiment#?( getSymbol "setThis" ) );
+
+      remove( experiment, getGlobalSymbol "clearInternal" );
+      remove( experiment, getSymbol "clearInternal" );
+      remove( experiment, symbol clearInternal );
+      assert( not experiment#?(symbol clearInternal) );
+      assert( not experiment#?(getSymbol "clearInternal") );
+   );
+
+   experiment.setThis = (ex)->
+   (
+       experiment = ex;
+   );
+
+
+
    return new HashTable from experiment; 
 );
+
+
+ 
 
 
 -- tryProperty = (experiment, property) ->(
