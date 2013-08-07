@@ -572,6 +572,7 @@ estimateStratification =  (experiment) -> (
 
 
 
+-- needs to be modified. should only accept black boxes 
 
 new Experiment from HashTable := (E, pBlackBoxIdeal) -> 
 (
@@ -903,7 +904,7 @@ new Experiment from HashTable := (E, pBlackBoxIdeal) ->
       return new HashTable from experimentData.points;
    );
  
-   -- returns a HashTable with recprded BlackBoxIdeal properties as keys and corresponding occured count as values.
+   -- returns a HashTable with recorded BlackBoxIdeal properties as keys and corresponding occured count as values.
    experiment.countData = ()->
    (
       return new Tally from experimentData.count;
@@ -956,25 +957,10 @@ new Experiment from HashTable := (E, pBlackBoxIdeal) ->
    --end init:
 
 
- experiment.clearInternal = ()-> 
-   (
-      remove( experiment, getGlobalSymbol "setThis" );
-      remove( experiment, getSymbol "setThis" );
-      remove( experiment, symbol setThis );
-      assert( not experiment#?(symbol setThis) );
-      assert( not experiment#?( getSymbol "setThis" ) );
-
-      remove( experiment, getGlobalSymbol "clearInternal" );
-      remove( experiment, getSymbol "clearInternal" );
-      remove( experiment, symbol clearInternal );
-      assert( not experiment#?(symbol clearInternal) );
-      assert( not experiment#?(getSymbol "clearInternal") );
-   );
-
-   experiment.setThis = (ex)->
-   (
-       experiment = ex;
-   );
+  -- to fix the issue that the internal experiment reference
+  -- is not of type Experiment, there are two solutions:
+  -  either to introduce to different method signatures (ones accept a HashTable and others an Experiment)
+  -- or to make the internal experiment variable as an Experiment , too 
 
 
 
