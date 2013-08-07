@@ -3,10 +3,13 @@
 
 -- this has to be run after any change in FiniteFieldExperiments
 restart
-uninstallPackage"FiniteFieldExperiments"
-installPackage"FiniteFieldExperiments"
 uninstallPackage"BlackBoxIdeals"
 installPackage"BlackBoxIdeals"
+check BlackBoxIdeals
+uninstallPackage"FiniteFieldExperiments"
+installPackage"FiniteFieldExperiments"
+check FiniteFieldExperiments
+
 
 -- here the test case start
 restart
@@ -21,6 +24,9 @@ I = ideal (x*z,y*z)
 
 -- make a black box from the ideal
 bbI = blackBoxIdeal I
+bbI = new BlackBoxIdeal from I  -- same as above
+
+
 bbI.knownPointProperties()
 bbI.knownPointPropertiesAsSymbols()
 --  {rankJacobianAt, rankJacobianAtDup, valuesAt, bareJacobianAt, isZeroAt jacobianAt}
@@ -87,6 +93,8 @@ e.collectedCount() -- jk, Q: rename this method?
 -- If estimateNumberOfComponents is changed to take an experimentData, then
 -- it can not be used in estimateDecomposition.
 -- WORK AROUND: numberOfComponents now takes a MutableHashTable
+-- fixed: the class of experiment is set to 'Experiment' using 'newClass'.
+
 
 e.estimateStratification()
 -----
@@ -157,3 +165,5 @@ assert(decomposeResult==={{null}, {ideal(z)}, {ideal (y, x)}});
 -- possibly: ideal list could be stored in the experiment. 
 -- possibly: a watchable property could be the ideal which contains a jet of
 --           a found point. 
+
+

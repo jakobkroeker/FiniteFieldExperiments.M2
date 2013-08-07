@@ -376,10 +376,10 @@ new ExperimentData from HashTable := (E,coeffRing) -> (
 
 -- here one should use Experiment oder ExperimentData
 
-estimateNumberOfComponentsInternal := method(Options => (options poissonEstimate));
-estimateNumberOfComponentsInternal(HashTable,List) := HashTable => opts->    (experiment,key) -> 
+
+estimateNumberOfComponents(Experiment,List) := HashTable => opts->    (experiment,key) -> 
 (
-     count := experiment.countData();
+      count := experiment.countData();
      posRankJacobianAt := position(experiment.watchedProperties(),i->i=="rankJacobianAt");
      if posRankJacobianAt === null then error("To estimate number of components, \"rankJacobianAt\" must be watched");
      cardinality := null;
@@ -390,12 +390,6 @@ estimateNumberOfComponentsInternal(HashTable,List) := HashTable => opts->    (ex
 	  key#posRankJacobianAt,
 	  count#key,
 	  cardinality,opts)
-)
-
-
-estimateNumberOfComponents(Experiment,List) := HashTable => opts->    (experiment,key) -> 
-(
-        return estimateNumberOfComponentsInternal(experiment,key,opts);
 )
 
 
@@ -476,7 +470,7 @@ createPointIterator = ( pPoints )->
 
 
 
-estimateDecompositionOldInternal := (experiment) -> (
+estimateDecompositionOld := (experiment) -> (
        count := experiment.countData();
        posRankJacobianAt := position(experiment.watchedProperties(),i->i=="rankJacobianAt");
        if posRankJacobianAt === null then error("To estimate the decomposition, \"rankJacobianAt\" must be watched");
@@ -497,24 +491,25 @@ estimateDecompositionOldInternal := (experiment) -> (
        print);
    );
 
-estimateDecompositionInternal := (experiment) -> (
+ 
+
+estimateDecomposition =  (experiment) -> (
        posRankJacobianAt := position(experiment.watchedProperties(),i->i=="rankJacobianAt");
        if posRankJacobianAt === null then error("To estimate the decomposition, \"rankJacobianAt\" must be watched");
        print "(estimated codim, estimated number of components [confidence interval] <= {watched Properties})";
        print "";
        apply(sort apply(keys experiment.countData(),key->
-		      net(key#posRankJacobianAt,estimateNumberOfComponentsInternal(experiment,key))
+		      net(key#posRankJacobianAt,estimateNumberOfComponents(experiment,key))
 		 |" <= "|net key),
        print);
-   );
-
-estimateDecomposition =  (experiment) -> (
-        return estimateDecompositionInternal(experiment);
 )
 
 --needs to be documented
-estimateStratificationInternal := (experiment) -> (
-     trials := experiment.trials();
+ 
+
+-- todo: find out 
+estimateStratification =  (experiment) -> (
+          trials := experiment.trials();
      orderK := (experiment.coefficientRing()).order; -- this must be read from the experimentdata
      print "--";
      apply(experiment.countsByCount(),i->(
@@ -523,11 +518,6 @@ estimateStratificationInternal := (experiment) -> (
 	       )
 	  ;
      print "--";
-     )
-
--- todo: find out 
-estimateStratification =  (experiment) -> (
-        return estimateStratificationInternal(experiment);
 )
 
 
@@ -574,7 +564,7 @@ estimateStratification =  (experiment) -> (
 
 -- needs to be modified. should only accept black boxes 
 
-new Experiment from HashTable := (E, pBlackBoxIdeal) -> 
+new Experiment from BlackBoxSpace := (E, pBlackBoxIdeal) -> 
 (
 
 
@@ -725,8 +715,8 @@ new Experiment from HashTable := (E, pBlackBoxIdeal) ->
             (
                 FFELogger.log(4, "update wanted points");
                 rankJacobian := rank  jacobianAt(point); 
-		upperEstimate := (estimateNumberOfComponentsInternal(experiment,countKey)).max;
-                --upperEstimate := ((estimateDecompositionOldInternal( experimentData ))#countKey).max;
+		upperEstimate := (estimateNumberOfComponents(experiment,countKey)).max;
+                --upperEstimate := ((estimateDecompositionOld( experimentData ))#countKey).max;
 		--upperEstimate := 1; -- test
                 wantedPoints = max(1,upperEstimate)*wantedPoints;
             ); 	       
@@ -959,14 +949,15 @@ new Experiment from HashTable := (E, pBlackBoxIdeal) ->
 
   -- to fix the issue that the internal experiment reference
   -- is not of type Experiment, there are two solutions:
-  -  either to introduce to different method signatures (ones accept a HashTable and others an Experiment)
-  -- or to make the internal experiment variable as an Experiment , too 
+  --  either to introduce to different method signatures (ones accept a HashTable and others an Experiment)
+  -- or to make the internal experiment variable as an Experiment , too  - done with 'newClass'
 
 
+   experiment = newClass( Experiment, experiment );
 
+   -- ffelog.debug ("type of internal experiment variable is : " | toString class experiment );
    return new HashTable from experiment; 
 );
-
 
  
 
@@ -984,15 +975,15 @@ TEST ///
     debug FiniteFieldExperiments
     FiniteFieldExperimentsProtect()
     coeffRing := ZZ/3;
-    bbRankM = blackBoxIdeal( 5 ,coeffRing )
+    bbRankM = blackBoxSpace( 5 ,coeffRing )
     rankMat := (point)->5
-    bbRankM.registerPointProperty("rankMat",rankMat)
+    bbRankM.registerPointProperty("rankJacobianAt",rankMat)
 
 
     point := matrix {{1,2,3,4,5}};
     point = sub( point, coeffRing);
 
-    bbRankM = bbRankM.rebuild()
+    bbRankM = rebuildBlackBox bbRankM
 
     e = new Experiment from bbRankM
     assert (e.coefficientRing()===coeffRing);
@@ -1000,12 +991,12 @@ TEST ///
     e.setMinPointsPerComponent(20);
     assert( e.minPointsPerComponent()==20);
     FFELogger.setLevel(4);
-    e.watchProperties {"rankMat"};
+    e.watchProperties {"rankJacobianAt"};
     e.watchedProperties()
     assert( 1== # select( e.watchedProperties() , 
-                       (prop)->(prop=="rankMat") ) 
+                       (prop)->(prop=="rankJacobianAt") ) 
      )
-    e.useJacobianAt("rankMat");
+    e.useJacobianAt("rankJacobianAt");
     e.useJacobianAt(null);
    
     e.countsByCount()
@@ -1018,12 +1009,15 @@ TEST ///
 
     e.estimateStratification()
     e.estimateDecomposition()
-    e.stratificationIntervalView()
+  
     e.collectedCount()
     e.watchedProperties()
     e.jacobianAtKey()
 
     bbRankM.knownPointProperties()
+
+    e.stratificationIntervalView() -- test fails here 
+
 ///
 
 
