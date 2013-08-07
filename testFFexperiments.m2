@@ -115,8 +115,10 @@ e.estimateDecomposition()
 -- NiceToHave: maybe without showing the center of the estimation
 
 estimateDecomposition(e)
--- I have no Ideal why this does not work
--- jk: fixed 
+-- I have no Ideal why this does not work -
+--
+-- (jk) because estimateDecomposition expected a mutable hash table,
+-- but the experiment is a nonmutable hash table.  fixed 
 
 -- interpolation using jets
 interpolate = (mons,jet) -> if jetP#"succeeded" then (
