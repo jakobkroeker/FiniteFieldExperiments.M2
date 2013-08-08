@@ -36,6 +36,7 @@ export {
 
 FiniteFieldExperimentsProtect = ()->
 (
+  protect testDebug;
   protect next;
   protect begin;
   protect count;
@@ -47,6 +48,7 @@ FiniteFieldExperimentsProtect = ()->
 
   protect coefficientRingCardinality;
   protect pointLists;
+  protect pointsByKey;
   protect countData;
   protect setIsInteresting;
   protect isInteresting;
@@ -89,7 +91,7 @@ FiniteFieldExperimentsProtect = ()->
 
 FiniteFieldExperimentsExport  = ()->
 (
-
+  exportMutable( testDebug);
   exportMutable( next);
   exportMutable( begin);
   exportMutable( count);
@@ -101,6 +103,7 @@ FiniteFieldExperimentsExport  = ()->
  
   exportMutable(coefficientRingCardinality);
   exportMutable( pointLists );
+  exportMutable( pointsByKey );
 
   exportMutable( countData );
 
@@ -202,7 +205,7 @@ estimateNumberOfComponents( ZZ, RR, ZZ, ZZ ) := HashTable => opts->
 
 estimateNumberOfComponents( ZZ, ZZ, ZZ, ZZ ) := HashTable => opts->    (trials, estimatedCodim, numPoints, fieldCardinality) -> 
 (
-    estimateNumberOfComponents(trials,estimatedCodim*1.0,numPoints,fieldCardinality)
+    estimateNumberOfComponents(trials,estimatedCodim*1.0,numPoints,fieldCardinality,opts)
 )
 
 
@@ -252,25 +255,22 @@ new ExperimentData from HashTable := (E,coeffRing) -> (
 
 
 
--- here one should use Experiment or ExperimentData (hc)
--- why experimentData? (jk)
 
-estimateNumberOfComponents( MutableHashTable, List ) := HashTable => opts->    ( experiment, key ) -> 
+
+
+estimateNumberOfComponents(Experiment,List) := HashTable => opts->    (experiment,key) -> 
 (
-     count := experiment.countData();
-     posRankJacobianAt := experiment.position( "rankJacobianAt" );
-
+      count := experiment.countData();
+      posRankJacobianAt := experiment.position( "rankJacobianAt" );
      if posRankJacobianAt === null then error("To estimate number of components, \"rankJacobianAt\" must be watched");
     
      cardinality := experiment.coefficientRingCardinality();
-
      estimateNumberOfComponents(
-	                             experiment.trials(),
-	                             key#posRankJacobianAt,
-	                             count#key,
-	                             cardinality              )
-);
-     
+	  experiment.trials(),
+	  key#posRankJacobianAt,
+	  count#key,
+	  cardinality,opts)
+)
 
 
 
@@ -371,10 +371,10 @@ estimateDecompositionOld := (experiment) -> (
 		 ) |" <= " |net key ),
        print);
    );
+ 
 
-
-estimateDecomposition := (experiment) -> (
-       posRankJacobianAt := experiment.position( "rankJacobianAt" );
+estimateDecomposition =  (experiment) -> (
+        posRankJacobianAt := experiment.position( "rankJacobianAt" );
        if posRankJacobianAt === null then error("To estimate the decomposition, \"rankJacobianAt\" must be watched");
        print "(estimated codim, estimated number of components [confidence interval] <= {watched Properties})";
        print "";
@@ -382,12 +382,15 @@ estimateDecomposition := (experiment) -> (
 		      net( key#posRankJacobianAt, estimateNumberOfComponents(experiment,key) )
 		 |" <= " | net key),
        print);
-   );
+)
 
+--needs to be documented
+ 
 
-estimateStratification := (experiment) -> (
+ 
+estimateStratification =  (experiment) -> (
      trials := experiment.trials();
-     orderK := (experiment.coefficientRing()).order; -- this must be read from the experimentdata (hc)
+     orderK := experiment.coefficientRingCardinality(); -- this must be read from the experimentdata
      -- (jk): need more advice. Did we want to use a different ring for search that the ideal coefficient ring? If so, 
      print "--";
      apply(experiment.countsByCount(),i->(
@@ -396,9 +399,7 @@ estimateStratification := (experiment) -> (
 	       )
 	  ;
      print "--";
-     )
-
-
+)
 
 
    stratificationIntervalView := (stratificationData )->
@@ -443,7 +444,6 @@ estimateStratification := (experiment) -> (
    );
 
 
-
 ringCardinality = (rng)->
 (
    cardinality := null;
@@ -453,7 +453,8 @@ ringCardinality = (rng)->
 );
 
 
-new Experiment from HashTable := (E, pBlackBoxIdeal) -> 
+
+new Experiment from BlackBoxSpace := (E, pBlackBoxIdeal) -> 
 (
 
 
@@ -507,13 +508,20 @@ new Experiment from HashTable := (E, pBlackBoxIdeal) ->
        return countsByCount( experimentData ); 
    );
 
+
    experiment.coefficientRingCardinality=()->
    (
        -- return    ringCardinality( blackBoxIdeal.coefficientRing );
        return    coefficientRingCardinality;
    );
 
-  
+ 
+   experiment.testDebug=()->
+   (
+      a:=5;
+      1/0;
+      return a;
+   );
 
     
    experiment.isInteresting=(point)->
@@ -787,11 +795,20 @@ new Experiment from HashTable := (E, pBlackBoxIdeal) ->
       --return runRandomExperiment( experimentData, trials );
    );
   
+ 
    experiment.pointLists = ()->
    (
       return new HashTable from experimentData.points;
    );
+
+   experiment.pointsByKey = (key)->
+   (
+      if not (experimentData.points)#?key then 
+         error "invalid key";
+      return  (experimentData.points)#key;
+   );
  
+   -- returns a HashTable with recorded BlackBoxIdeal properties as keys and corresponding occured count as values.
    experiment.countData = ()->
    (
       return new Tally from experimentData.count;
@@ -845,8 +862,19 @@ new Experiment from HashTable := (E, pBlackBoxIdeal) ->
    --end init:
 
 
-   return new HashTable from experiment; 
+  -- to fix the issue that the internal experiment reference
+  -- is not of type Experiment, there are two solutions:
+  --  either to introduce to different method signatures (ones accept a HashTable and others an Experiment)
+  -- or to make the internal experiment variable as an Experiment , too  - done with 'newClass'
+
+
+   experiment = newClass( Experiment, experiment );
+   ffelog.debug ("type of internal experiment variable is : " | toString class experiment );
+   return experiment; 
+   -- return new HashTable from experiment; 
 );
+
+ 
 
 
 -- tryProperty = (experiment, property) ->(
@@ -862,15 +890,17 @@ TEST ///
     debug FiniteFieldExperiments
     FiniteFieldExperimentsProtect()
     coeffRing := ZZ/3;
-    bbRankM = blackBoxIdeal( 5 ,coeffRing )
+    bbRankM = blackBoxSpace( 5 ,coeffRing )
     rankMat := (point)->5
-    bbRankM.registerPointProperty("rankMat",rankMat)
+    bbRankM.registerPointProperty("rankJacobianAt",rankMat)
 
 
     point := matrix {{1,2,3,4,5}};
     point = sub( point, coeffRing);
 
+ 
     bbRankM = bbRankM.getUpdatedBlackbox()
+ 
 
     e = new Experiment from bbRankM
     assert (e.coefficientRing()===coeffRing);
@@ -878,12 +908,12 @@ TEST ///
     e.setMinPointsPerComponent(20);
     assert( e.minPointsPerComponent()==20);
     FFELogger.setLogLevel(4);
-    e.watchProperties {"rankMat"};
+    e.watchProperties {"rankJacobianAt"};
     e.watchedProperties()
     assert( 1== # select( e.watchedProperties() , 
-                       (prop)->(prop=="rankMat") ) 
+                       (prop)->(prop=="rankJacobianAt") ) 
      )
-    e.useJacobianAt("rankMat");
+    e.useJacobianAt("rankJacobianAt");
     e.useJacobianAt(null);
    
     e.countsByCount()
@@ -896,12 +926,15 @@ TEST ///
 
     e.estimateStratification()
     e.estimateDecomposition()
-    e.stratificationIntervalView()
+  
     e.collectedCount()
     e.watchedProperties()
     e.jacobianAtKey()
 
     bbRankM.knownPointProperties()
+
+    e.stratificationIntervalView() -- test fails here 
+
 ///
 
 

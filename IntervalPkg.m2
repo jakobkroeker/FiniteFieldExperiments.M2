@@ -153,6 +153,9 @@ Interval ? Interval := (I1,I2) ->
    )
 )
 
+Interval == Interval := (I1,I2) -> (
+     (I1.min == I2.min) and (I1.max == I2.max)
+     )
 
 
 IntervalWithCenter = new Type of Interval;

@@ -3,10 +3,23 @@
 
 -- this has to be run after any change in FiniteFieldExperiments
 restart
-uninstallPackage"FiniteFieldExperiments"
-installPackage"FiniteFieldExperiments"
+
+uninstallPackage"M2Logging"
+installPackage"M2Logging"
+check M2Logging
+
+uninstallPackage"IntervalPkg"
+installPackage"IntervalPkg"
+check IntervalPkg
+
 uninstallPackage"BlackBoxIdeals"
 installPackage"BlackBoxIdeals"
+check BlackBoxIdeals
+
+uninstallPackage"FiniteFieldExperiments"
+installPackage"FiniteFieldExperiments"
+check FiniteFieldExperiments
+
 
 -- here the test case start
 restart
@@ -21,24 +34,27 @@ I = ideal (x*z,y*z)
 
 -- make a black box from the ideal
 bbI = blackBoxIdeal I
+bbI = new BlackBoxIdeal from I  -- same as above
+
+
 bbI.knownPointProperties()
 bbI.knownPointPropertiesAsSymbols()
--- {isZeroAt, jacobianAt,, valuesAt, valuesAt, jacobianAt, bareJacobianAt, bareJacobianAt}
--- ERROR: Why to properties appear several times???
----- no, they do not appear several times , Macaulay2 does print key strings without quotes, so in fact we can
---access the properties by .jacobianAt (fragile, because of how M2 deals with symbols) and #"jacobianAt" 
--- fixed, by returning only strings.
+--  {rankJacobianAt, rankJacobianAtDup, valuesAt, bareJacobianAt, isZeroAt jacobianAt}
 
--- MANDATORY: rankJacobianAt must exist in BlackBoxIdeals
- 
--- Fixed
+bbI.knownMethods()
+-- { knownMethods, knownPointProperties, knownPointPropertiesAsSymbols,  hasPointProperty, pointProperty,
+--   registerPointProperty,  updatePointProperty   }
+
+bbI.knownAttributes()
+--  {ideal, numVariables, jacobian, numGenerators, ring, type, unknowns, coefficientRing, equations}
+
 
 assert (2== bbI.rankJacobianAt(matrix{{0,0,1_K}}))
 assert (1== bbI.rankJacobianAt(matrix{{1,2,0_K}}))
 assert (0== bbI.rankJacobianAt(matrix{{0,0,0_K}}))
 -- this is a point where the ideal does not vanish.
--- the rank here has no meaning
 assert (2==bbI.rankJacobianAt(matrix{{1,1,1_K}}))
+
 
 -- make an experiment without rankJacobian at
 e = new Experiment from bbI
@@ -59,14 +75,14 @@ propSymb := bbI.knownPointPropertiesAsSymbols()
 bbI#(propSymb#5) --# ok
 bbI.rankJacobianAtDup --ok
 
-
 -- make an experiment from the black box
-e = new Experiment from bbI
+-- not necessary!
+--e = new Experiment from bbI
 -- test: here "rankJacobianAt" is watched
 e.watchedProperties()
 
 -- look at 1000 random points
-time e.run(1000)
+time e.run(1000,"numPointsPerComponentToCollect"=>20)
 
 -- how many times was each wached property oberved?
 e.countData()
@@ -77,7 +93,8 @@ e.countData()
 -- some points with these properties
 e.pointLists()
 -- only about 10 points for each component are collected:
-apply(keys e.pointLists(),k->print (k => #((e.pointLists())#k)));
+apply(keys e.pointLists(),k->print (k => #((e.pointLists())#k))); --jk: not necessary to program; see collectedCount
+e.collectedCount() -- jk, Q: rename this method?
 -- {0} => 7
 -- {1} => 12
 -- {2} => 13
@@ -95,6 +112,8 @@ apply(keys e.pointLists(),k->print (k => #((e.pointLists())#k)));
 -- If estimateNumberOfComponents is changed to take an experimentData, then
 -- it can not be used in estimateDecomposition.
 -- WORK AROUND: numberOfComponents now takes a MutableHashTable
+-- fixed: the class of experiment is set to 'Experiment' using 'newClass'.
+
 
 e.estimateStratification()
 -----
@@ -117,13 +136,16 @@ e.estimateDecomposition()
 
 -- this does not work since at the point where estimateNumberOfComponents is
 -- called experiment is not an Experiment but a MutableHashTable
--- WORK AROUND: numberOfComponents now takes a MutableHashTable
+-- WORK AROUND: numberOfComponents now takes a MutableHashTable -- fixed
 
 -- NiceToHave: trailing zeros to correct length
 -- NiceToHave: maybe without showing the center of the estimation
 
 estimateDecomposition(e)
--- I have no Ideal why this does not work
+-- I have no Ideal why this does not work -
+--
+-- (jk) because estimateDecomposition expected a mutable hash table,
+-- but the experiment is a nonmutable hash table.  fixed 
 
 -- interpolation using jets
 interpolate = (mons,jet) -> if jetP#"succeeded" then (
@@ -136,15 +158,20 @@ interpolate = (mons,jet) -> if jetP#"succeeded" then (
 maxDeg = 2
 mons = matrix {flatten apply(maxDeg+1,i->flatten entries super(basis(i,R)))}
 
-apply(keys e.pointLists(),k->(
-	  L = (e.pointLists())#k;
-	  -- nice to have: e.pointList(key)
+decomposeResult := apply(keys e.pointLists(),k->(
+	  L = e.pointsByKey(k);
+	  -- nice to have: e.pointList(key) 
+          --   (jk): same method name with 0 and 1 parameters not easily possible 
+          --         opt todo: ask Dan about syntax
      	  unique flatten apply(unique L,P->(
 	  	    rank bbI.jacobianAt(P);
 	  	    time jetP = JetAt(bbI,P,20,1);
 	  	    {interpolate(mons,jetP)}
 	  	    ))
      	  ))
+
+assert(decomposeResult==={{null}, {ideal(z)}, {ideal (y, x)}});
+
 -- better: 
 --    0) empty ideal list
 --    1) for each point make a short jet (eg. length 10) and check if it is contained
@@ -159,3 +186,5 @@ apply(keys e.pointLists(),k->(
 -- possibly: ideal list could be stored in the experiment. 
 -- possibly: a watchable property could be the ideal which contains a jet of
 --           a found point. 
+
+
