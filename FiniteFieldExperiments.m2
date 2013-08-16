@@ -454,7 +454,7 @@ ringCardinality = (rng)->
 
 
 
-new Experiment from BlackBoxSpace := (E, pBlackBoxIdeal) -> 
+new Experiment from BlackBoxParameterSpace := (E, pBlackBoxIdeal) -> 
 (
 
 
@@ -890,7 +890,7 @@ TEST ///
     debug FiniteFieldExperiments
     FiniteFieldExperimentsProtect()
     coeffRing := ZZ/3;
-    bbRankM = blackBoxSpace( 5 ,coeffRing )
+    bbRankM = blackBoxParameterSpace( 5 ,coeffRing )
     rankMat := (point)->5
     bbRankM.registerPointProperty("rankJacobianAt",rankMat)
 
@@ -899,7 +899,7 @@ TEST ///
     point = sub( point, coeffRing);
 
  
-    bbRankM = bbRankM.getUpdatedBlackbox()
+    bbRankM = bbRankM.getUpdatedBlackBox()
  
 
     e = new Experiment from bbRankM
