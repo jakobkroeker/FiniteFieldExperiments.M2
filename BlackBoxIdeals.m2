@@ -950,10 +950,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
    -- 'knownPointPropertiesAsSymbols' : 
    --   returns a list of all registered point properties (as Symbols)
    --
-   blackBox.knownPointPropertiesAsSymbols = ()->
-   (   
-      return select (keys pointProperties, key->(class key===Symbol));
-   );
+
 
 
    getPropertySymbol := method ();
@@ -967,6 +964,11 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
       -- todo first question : is the behaviour above same as for 'global 'symbol'? 
       -- second question: should 
       return propertySymbol;
+   );
+
+   blackBox.knownPointPropertiesAsSymbols = ()->
+   (   
+      return apply( blackBox.knownPointProperties(), propertyName-> getPropertySymbol(propertyName) );
    );
 
 
@@ -1031,7 +1033,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
           -- remember: cannot return in a try statement!
           pointProperties#propertyName = ( point )-> ( 
           checkInputPoint(point);
-            result := propertyMethod(  point ); 
+            result := (propertyMethod)(  point ); 
           return result;
      );
 

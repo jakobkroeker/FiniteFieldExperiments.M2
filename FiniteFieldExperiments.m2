@@ -36,6 +36,7 @@ export {
 
 FiniteFieldExperimentsProtect = ()->
 (
+  protect clearRecordList;
   protect testDebug;
   protect next;
   protect begin;
@@ -91,6 +92,8 @@ FiniteFieldExperimentsProtect = ()->
 
 FiniteFieldExperimentsExport  = ()->
 (
+  
+  exportMutable( clearRecordList);
   exportMutable( testDebug);
   exportMutable( next);
   exportMutable( begin);
@@ -639,12 +642,12 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBoxIdeal) ->
                 if #(experimentData.points#countKey) < wantedPoints then 
                 (
                     FFELogger.debug( "attaching point" );
-                    experimentData.points#countKey = experimentData.points#countKey | {point}
+                    experimentData.points#countKey = experimentData.points#countKey | {point};
                 );
             )
             else (
                 FFELogger.debug( "attaching first point for some key");
-                experimentData.points#countKey = {point}
+                experimentData.points#countKey = {point};
             );
         );
     -- count this trial even if no solution is found
@@ -714,6 +717,12 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBoxIdeal) ->
         apply( experimentData.propertyList, propertyName->( (blackBoxIdeal.pointProperty(propertyName))(point) ) )  
       );   
    );
+
+  experiment.clearRecordList = (   )->
+  (
+      setRecordedPropertiesInternal({});
+  );
+
 
    experiment.setRecordedProperties = ( propertyStringList )->
    (  
@@ -791,8 +800,9 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBoxIdeal) ->
    experiment.run(ZZ) := Thing=> (trials)->
    (
       rpi := createRandomPointIterator ( blackBoxIdeal.numVariables, experimentData.coefficientRing, trials );
-      return  runExperiment( experimentData, rpi );
-      --return runRandomExperiment( experimentData, trials );
+       runExperiment( experimentData, rpi );
+       --runRandomExperiment( experimentData, trials );
+       return experiment.countData();
    );
   
  

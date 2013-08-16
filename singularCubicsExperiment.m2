@@ -41,7 +41,15 @@ degreeSingularLocusAt = (point) -> (
      )
 degreeSingularLocusAt(coeffCubicCone)
 
-tally apply(100,i->degreeSingularLocusAt(random(K^1,K^20)))
+bb = blackBoxParameterSpace(20,K)
+bb= bb.registerPointProperty("degreeSingularLocusAt", degreeSingularLocusAt)
+
+e = new Experiment from bb
+-- e.recordedProperties()
+e.recordProperty("degreeSingularLocusAt")
+--tally apply(100,i->degreeSingularLocusAt(random(K^1,K^20)))
+e.run(100)
+-- e.countData()
 
 multiplicitiesSingularLocusAt = (point) -> (
      sing := singularLocusAt(point);
@@ -57,7 +65,14 @@ multiplicitiesSingularLocusAt = (point) -> (
 	       )))
      )
 
-tally apply(1250,i->multiplicitiesSingularLocusAt(random(K^1,K^20)))
+bb= bb.registerPointProperty("multiplicitiesSingularLocusAt", multiplicitiesSingularLocusAt)
+e.clear() --should it also clear the list of recorded properties?
+e.clearRecordList()
+e.recortProperty( "multiplicitiesSingularLocusAt" )
+-- tally apply(1250,i->multiplicitiesSingularLocusAt(random(K^1,K^20)))
+e.run(1250)-- should it always return countData?
+--e.countData()
+
     
      
 

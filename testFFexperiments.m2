@@ -71,7 +71,8 @@ propSymb:= bbI.knownPointPropertiesAsSymbols()
 
 
 bbI = rebuildBlackBox bbI   
-propSymb := bbI.knownPointPropertiesAsSymbols()
+bbI.knownPointProperties()
+propSymb := bbI.knownPointPropertiesAsSymbols() -- not ok any more...
 bbI#(propSymb#5) --# ok
 bbI.rankJacobianAtDup --ok
 
@@ -82,7 +83,8 @@ bbI.rankJacobianAtDup --ok
 e.watchedProperties()
 
 -- look at 1000 random points
-time e.run(1000,"numPointsPerComponentToCollect"=>20)
+e. setMinPointsPerComponent(20)
+time e.run(1000)
 
 -- how many times was each wached property oberved?
 e.countData()
@@ -186,5 +188,3 @@ assert(decomposeResult==={{null}, {ideal(z)}, {ideal (y, x)}});
 -- possibly: ideal list could be stored in the experiment. 
 -- possibly: a watchable property could be the ideal which contains a jet of
 --           a found point. 
-
-

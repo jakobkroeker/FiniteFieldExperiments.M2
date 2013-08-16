@@ -68,7 +68,7 @@ installPackage"FiniteFieldExperiments"
 restart
 load"codim1foliations.m2"
 
-bbRankM = blackBoxIdeal(#(gens B),K)
+bbRankM = blackBoxParameterSpace(#(gens B),K)
 --bbRankM.registerPointProperty("rankMat",rankMat)
 bbRankM.registerPointProperty("rankJacobianAt",rankMat)
 keys bbRankM
@@ -87,6 +87,7 @@ e.watchProperties {"rankJacobianAt"};
 e.watchedProperties()  -- {rankMat}
 
 time e.run(4000)
+-- 
 e.pointLists()  -- returns points  categorized by watchedProperties.
 points := (e.pointLists())#{59};
 --points := e.points({58}); --returns pure points
@@ -96,7 +97,7 @@ keys points
 
 -- howto apply properties:
 bbRankM.rankJacobianAt(points#0)
-(bbRankM.pointProperty("rankMat"))(points#0) 
+--(bbRankM.pointProperty("rankJacobianAt"))(points#0) 
 
 e.countsByCount()
 e.estimateStratification()
@@ -171,7 +172,7 @@ coeffBat = (point) -> sub(sub(coeffB,sub(vars A,ABRD)|point|sub(vars RD,ABRD)),R
 bettiAt = (point) -> betti res ideal coeffBat(point)
 bettiAtEx = (bb,point)->bettiAt(point)
 --bbBetti = blackBoxIdealFromProperties(#(gens B),K,i->(rankMat i, bettiAt i))
-bbBetti = blackBoxIdeal(#(gens B),K)
+bbBetti = blackBoxParameterSpace(#(gens B),K)
 bbBetti.registerPointProperty("bettiAt",bettiAt)
 bettiInteresting = (point) -> (rankMat(point) < #(gens A))
 
@@ -217,7 +218,7 @@ closedBettiAt = (point) -> betti res ideal coeffBat(closedPointBat(point))
 closedMat = (point) -> Mat(closedPointBat(point))
 closedRankMat = (point) -> rank closedMat(point)
 
-bbClosed = blackBoxIdeal(rank target basisClosed,K)
+bbClosed = blackBoxParameterSpace(rank target basisClosed,K)
 bbClosed.numVariables
 bbClosed.registerPointProperty("closedBettiAt",closedBettiAt)
 eClosedBetti = new Experiment from bbClosed
@@ -258,7 +259,7 @@ tryProperty(eClosedBetti,i->(closedIsAclosedAt i,closedRankJacobiAt i))
 -- sysygies of three cubics
 restart
 needsPackage"BlackBoxIdeals"
-load"FiniteFieldExperiments.m2"
+needsPackage"FiniteFieldExperiments"
 
 K = ZZ/3
 R = K[x,y,z,w]
@@ -269,27 +270,38 @@ B = K[flatten apply(3,i->apply(indB,j->b_{i,j}))]
 
 betti (M = transpose matrix apply(3,i->apply(indB,j->b_{i,j})))
 (M^{0})
-
+M
+Mat = (point) -> sub(M,point)
 -- Blackbox
 Iat = (point) -> ideal(mons*Mat(point))
 
+
+
 numVariables = #(gens B)
 coefficientRing B
-bb= blackBoxIdealFromEvaluation(numVariables,K,Iat)
+--bb= blackBoxIdealFromEvaluation(numVariables,K,Iat) --fails.
+bbBetti = blackBoxParameterSpace(#(gens B),K)
 
-bb.registerPointProperty("Mat" , (point) -> sub(M,point))
-bb.registerPointProperty("bettiAt" , (point) -> betti res Iat(point) )
+bbBetti.registerPointProperty("Mat" , (point) -> sub(M,point))
+bbBetti = bbBetti.registerPointProperty("Iat" , (bb,point) -> ideal(mons*bb.Mat(point) ))
+
+bbBetti = bbBetti.registerPointProperty("bettiAt" , (bb,point) -> betti res bb.Iat(point) )
 
 --
 
 
---bbBetti = blackBoxIdealFromProperties(#(gens B),K,bettiAt)
-eBetti = new Experiment from K
-eBetti.numVariables = #(gens B)
+--bbBetti = blackBoxParameterSpace(#(gens B),K)
+--bbBetti.registerPointProperty("bettiAt",bettiAt)
+eBetti = new Experiment from bbBetti
+--eBetti.numVariables = #(gens B)
 --eBetti.coefficientRing = K
-eBetti.property = bb.bettiAt
-eBetti.isInteresting = (i->true) -- default
+--eBetti.property = bb.bettiAt
+eBetti.recordProperty("bettiAt")
+eBetti.setIsInteresting ( (i)->true)  -- default
 
+time eBetti.run(1000)
+-- used 9.11658 seconds on my old ThinkPad
+time eBetti.run(10000)
 
 time eBetti.run(100000)
 --eBetti.estimateStratification()
