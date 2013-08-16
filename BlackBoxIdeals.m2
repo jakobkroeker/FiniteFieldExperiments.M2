@@ -49,7 +49,7 @@ export {
 --
 --}
 
--- why is setting 'jacobianAt' necessary??? (jk)
+-- why is/was setting 'jacobianAt' necessary??? (jk)
 
 -- jacobianAt := global jacobianAt;
 -- jacobianAt = global jacobianAt;
@@ -169,12 +169,6 @@ undocumented {
 --idealBlackBoxesProtect() -- protect the symbols for checking package correctness: no symbol variables should be overwritten by accident!
 idealBlackBoxesExport(); -- export the symbols to make the package work 
 
--- needsPackage "M2Logging";
---loadPackage ("M2Logging", Reload=>true);
-
-
-
---M2LoggerExport();
 
 needsPackage "SimpleDoc";
 needsPackage "Text";
@@ -189,7 +183,7 @@ BlackBoxLogger = Logger("BlackBoxIdeals");
 
 bblog := BlackBoxLogger;
 
--- why did I need this??? jk
+-- why did I need comparison between a string and a symbol ? (jk)
 
 String ? Symbol := (str,symb)->
 (
@@ -202,6 +196,9 @@ Symbol ? String := (str,symb)->
 );
 
 
+-- find out for a function, how many parameters it does accept.
+-- if a function accepts variable number of parameters, returns null
+-- if it did not find 'numparms:' in the disasseble string, returns null.
 acceptedParameterNumber = method();
 acceptedParameterNumber( Function ) := ZZ => (foo)->
 (
@@ -222,12 +219,16 @@ acceptedParameterNumber( Function ) := ZZ => (foo)->
          );
 
      if numparmsPos===null then 
-             bblog.warning (" warning: did not find the position of 'numparms:' in dissasseble string ")
+     (
+             bblog.warning (" warning: did not find the position of 'numparms:' in dissasseble string ");
+             return null; 
+     )
      else
          return  value lst#(numparmsPos+1);
 );
 
-
+-- find out for a method , how many parameters it does accept, only if a single function is installed for that method
+-- if multiple functions are installed for the same method, returns null.
 acceptedParameterNumber( MethodFunction ) := ZZ=>(foo)->
 (
    func := apply( methods foo , m-> lookup m);
