@@ -3,9 +3,19 @@
 
 -- this has to be run after any change in FiniteFieldExperiments
 restart
+
+uninstallPackage"M2Logging"
+installPackage"M2Logging"
+check M2Logging
+
+uninstallPackage"IntervalPkg"
+installPackage"IntervalPkg"
+check IntervalPkg
+
 uninstallPackage"BlackBoxIdeals"
 installPackage"BlackBoxIdeals"
 check BlackBoxIdeals
+
 uninstallPackage"FiniteFieldExperiments"
 installPackage"FiniteFieldExperiments"
 check FiniteFieldExperiments
@@ -31,12 +41,20 @@ bbI.knownPointProperties()
 bbI.knownPointPropertiesAsSymbols()
 --  {rankJacobianAt, rankJacobianAtDup, valuesAt, bareJacobianAt, isZeroAt jacobianAt}
 
+bbI.knownMethods()
+-- { knownMethods, knownPointProperties, knownPointPropertiesAsSymbols,  hasPointProperty, pointProperty,
+--   registerPointProperty,  updatePointProperty   }
+
+bbI.knownAttributes()
+--  {ideal, numVariables, jacobian, numGenerators, ring, type, unknowns, coefficientRing, equations}
+
+
 assert (2== bbI.rankJacobianAt(matrix{{0,0,1_K}}))
 assert (1== bbI.rankJacobianAt(matrix{{1,2,0_K}}))
 assert (0== bbI.rankJacobianAt(matrix{{0,0,0_K}}))
 -- this is a point where the ideal does not vanish.
--- the rank here has no meaning
-assert (2== bbI.rankJacobianAt(matrix{{1,1,1_K}}))
+assert (2==bbI.rankJacobianAt(matrix{{1,1,1_K}}))
+
 
 -- make an experiment without rankJacobian at
 e = new Experiment from bbI
@@ -58,12 +76,13 @@ bbI#(propSymb#5) --# ok
 bbI.rankJacobianAtDup --ok
 
 -- make an experiment from the black box
-e = new Experiment from bbI
+-- not necessary!
+--e = new Experiment from bbI
 -- test: here "rankJacobianAt" is watched
 e.watchedProperties()
 
 -- look at 1000 random points
-time e.run(1000)
+time e.run(1000,"numPointsPerComponentToCollect"=>20)
 
 -- how many times was each wached property oberved?
 e.countData()
@@ -117,7 +136,7 @@ e.estimateDecomposition()
 
 -- this does not work since at the point where estimateNumberOfComponents is
 -- called experiment is not an Experiment but a MutableHashTable
--- WORK AROUND: numberOfComponents now takes a MutableHashTable
+-- WORK AROUND: numberOfComponents now takes a MutableHashTable -- fixed
 
 -- NiceToHave: trailing zeros to correct length
 -- NiceToHave: maybe without showing the center of the estimation
@@ -140,8 +159,10 @@ maxDeg = 2
 mons = matrix {flatten apply(maxDeg+1,i->flatten entries super(basis(i,R)))}
 
 decomposeResult := apply(keys e.pointLists(),k->(
-	  L = (e.pointLists())#k;
-	  -- nice to have: e.pointList(key)
+	  L = e.pointsByKey(k);
+	  -- nice to have: e.pointList(key) 
+          --   (jk): same method name with 0 and 1 parameters not easily possible 
+          --         opt todo: ask Dan about syntax
      	  unique flatten apply(unique L,P->(
 	  	    rank bbI.jacobianAt(P);
 	  	    time jetP = JetAt(bbI,P,20,1);

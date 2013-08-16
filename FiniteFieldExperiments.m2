@@ -13,28 +13,29 @@ newPackage(
            HomePage => "http://www.crcg.de/wiki/User:Kroeker"}
       },
      Configuration => {},
-     PackageExports => {"BlackBoxIdeals"},
+     PackageExports => {"BlackBoxIdeals", "IntervalPkg" },
      Headline => "black boxes for explicit and implicitly given ideals",
      DebuggingMode => true
 )
 
+
+needsPackage "IntervalPkg";
 needsPackage "BlackBoxIdeals";
 
 
 export {
-  "Interval",
   "estimateDecomposition", 
   "estimateStratification",
   "estimateCodim", 
   "estimateNumberOfComponents",    	    	 
   "poissonEstimate",
   "Experiment",
-  "FFELogger"
+  "FFELogger",
+  "ringCardinality"
 }
 
 FiniteFieldExperimentsProtect = ()->
 (
-  protect center;
   protect testDebug;
   protect next;
   protect begin;
@@ -45,14 +46,16 @@ FiniteFieldExperimentsProtect = ()->
   protect points;
   protect trials;
 
+  protect coefficientRingCardinality;
   protect pointLists;
+  protect pointsByKey;
   protect countData;
   protect setIsInteresting;
   protect isInteresting;
 
   protect getExperimentData;
-  protect setObservedProperties;
-  protect observeProperty;
+  protect setRecordedProperties;
+  protect recordProperty;
   protect ignoreProperty;
   protect ignoreProperties;
   protect observedProperties;
@@ -64,8 +67,11 @@ FiniteFieldExperimentsProtect = ()->
   protect clear;
   protect jacobianAtKey;
   protect watchProperties;
+  protect recordProperties;
+
   protect propertyName;
   protect propertyAt;
+  protect recordedProperties;
   protect watchedProperties;
   protect useProperties;
   protect useJacobianAt;
@@ -85,7 +91,6 @@ FiniteFieldExperimentsProtect = ()->
 
 FiniteFieldExperimentsExport  = ()->
 (
-  exportMutable( center);
   exportMutable( testDebug);
   exportMutable( next);
   exportMutable( begin);
@@ -96,7 +101,9 @@ FiniteFieldExperimentsExport  = ()->
   exportMutable( points);
   exportMutable( trials );
  
+  exportMutable(coefficientRingCardinality);
   exportMutable( pointLists );
+  exportMutable( pointsByKey );
 
   exportMutable( countData );
 
@@ -104,8 +111,8 @@ FiniteFieldExperimentsExport  = ()->
   exportMutable( isInteresting);
 
   exportMutable( getExperimentData);
-  exportMutable( setObservedProperties);
-  exportMutable( observeProperty);
+  exportMutable( setRecordedProperties);
+  exportMutable( recordProperty);
   exportMutable( ignoreProperty);
   exportMutable( ignoreProperties);
   exportMutable( observedProperties);
@@ -117,9 +124,11 @@ FiniteFieldExperimentsExport  = ()->
  exportMutable( propertyList);
  exportMutable( clear);
  exportMutable( jacobianAtKey);
- exportMutable( watchProperties);
+ exportMutable( watchProperties );
+ exportMutable( recordProperties );
  exportMutable( propertyName);
  exportMutable( propertyAt);
+ exportMutable( recordedProperties);
  exportMutable( watchedProperties);
  exportMutable( useProperties);
  exportMutable( useJacobianAt);
@@ -140,93 +149,19 @@ FiniteFieldExperimentsExport  = ()->
 
 FiniteFieldExperimentsExport();
 
-FFELogger = createLogger();
 
 
 
+FFELogger = Logger("FiniteFieldExperiments");
 
-Interval = new Type of HashTable;
-
-roundInterval = method();
-
-
-roundInterval ( HashTable, ZZ) := Interval=>(I,n)->
-(
-     return new Interval from ( round(n,I.min), round(n,I.max) );
-)
-
-intervalCenter = method();
-
-intervalCenter (HashTable) := Interval=>(I)->
-(
-    return (I.min+I.max)/2.0;
-)
+ffelog := FFELogger;
 
 
-new Interval from Thing := (E,ll) -> 
-(
-   error ("this interface is not implemented");
-);
 
---new Interval from HashTable := (E,ll) -> 
-new Interval from List := (E,ll) -> 
+poissonEstimate = method( Options => {"confidence" => 1.96} );
+
+poissonEstimate(ZZ) := HashTable => opts -> (numPoints) -> 
 ( 
-  ht := new MutableHashTable from ll;
-  --print "new Interval from HashTable";
-  assert(ht#?(symbol min) );
-  assert(ht#?(symbol max) );
-  assert(ht.min<=ht.max);
- 
-  ht.round = method();
-  ht.round(ZZ) := Interval => (n)->
-  (
-     return roundInterval( ht, n);
-  );
-
-  ht.center = intervalCenter(ht);
-
-  --print( keys ht);
-  return new HashTable from ht;
-);
-
--- maybe Interval coould also contain statistical information?
-
-new Interval from Sequence := (E,seq) -> 
-(
-    --print "new Interval from Sequence";
-    assert(#seq==2);
-    ht := { (symbol min)=>seq#0*1.0, (symbol max)=>seq#1*1.0};
-    return new Interval from ht;
-);
-
-
-
-formatIntervalBounds = (num)->
-(
-  f :=(pnum) ->format(10,2,2,2,pnum);
-  str:="";
-  if (value f num)==0 then return "0.";
-  if (abs(value f num)<1) then 
-  str = str|"0";
-  origstr := format(10,2,2,2,num);
-  if origstr#0=="-" then
-  (
-    origstr = origstr_(1..#origstr-1);
-     str = "-"|str;
-  );
-  str = str|origstr;
-  return str;
-)
-
-
-net (Interval) := Net =>(interval)->
-(
-   str :=  " " | formatIntervalBounds  interval.center  | " " | "[" | formatIntervalBounds  interval.min | ", " | formatIntervalBounds interval.max | "]";
-   return net str;
-)
-
-poissonEstimate = method(Options => {"confidence" => 1.96});
-poissonEstimate(ZZ) := HashTable => opts -> (numPoints) -> ( 
      -- we use a poisson approximation since there are only 
      -- very few solution points compared to the number of trials
      --
@@ -235,86 +170,22 @@ poissonEstimate(ZZ) := HashTable => opts -> (numPoints) -> (
      --
      -- for a Poisson distribution the standard deviation is
      -- the square root of the expected value
+
      err := opts#"confidence"*sqrt(numPoints); 
-     estimate := new Interval from (max(round(1,numPoints-err),0.0001),round(1,numPoints+err));
+     estimate := new Interval from   (  max(round(1,numPoints-err), 0.0001),    round(1,numPoints+err)  );
      return estimate;
      )
 
 TEST ///
   debug FiniteFieldExperiments
   FiniteFieldExperimentsProtect()
-  assert ((poissonEstimate(16,"confidence" => 2)).min == 8);
-  assert ((poissonEstimate(16,"confidence" => 2)).max == 24);
+  assert ( (poissonEstimate(16,"confidence" => 2)).min == 8  );
+  assert ( (poissonEstimate(16,"confidence" => 2)).max == 24 );
 ///
 
-RR * Interval := (scalingFactor,I) -> (
-     new Interval from (scalingFactor*I.min,scalingFactor*I.max)
-     )
-
-Interval * RR := (I,scalingFactor) -> (
-     scalingFactor*I
-     )
-
-ZZ * Interval := (scalingFactor,I) -> (
-     (scalingFactor*1.0)*I
-     )
-
-Interval * ZZ := (I,scalingFactor) -> (
-     (scalingFactor*1.0)*I
-     )
-
-QQ * Interval := (scalingFactor,I) -> (
-     (scalingFactor*1.0)*I
-     )
-
-Interval * QQ := (I,scalingFactor) -> (
-     (scalingFactor*1.0)*I
-     )
-
--- problem: sortierung nicht ohne weiteres austauschbar -> wrappertyp muss eingeführt werden, der eine andere sortierung implementiert
--- und alle objekte müssen in den Wrappertyp konvertiert werden.
-
-Interval ? Interval := (I1,I2) ->
-(
-   if  (I1.center==I2.center ) then 
-   (
-        I2.min ? I1.min 
-   )
-   else 
-   (  
-         I1.center ? I2.center
-   )
-)
 
 
-
-TEST ///
-   debug FiniteFieldExperiments
-   FiniteFieldExperimentsProtect()
-   assert (2*(new Interval from (1,2)) == new Interval from (2,4))
-   assert (2.0*(new Interval from (1,2)) == new Interval from (2,4))
-///
-
-Interval == Interval := (I1,I2) -> (
-     (I1.min == I2.min) and (I1.max == I2.max)
-     )
-
-TEST ///
-  debug FiniteFieldExperiments
-  FiniteFieldExperimentsProtect()
-  new Interval from { (symbol min)=>0, (symbol max)=>1};
-  i2 := new Interval from (1, 1.04);
-  i3 := new Interval from (1, 1.045);
-  assert( i3.round(2)== i2);
-  i4 :=  new Interval from (2.5,3.5);
-  assert(i4.center == 3.0);
-  i2<i3;
-  i2?i3;
-  assert ( (i2?i3) === (1?2));
-  assert ( (i2?i2) === (1?1));
-  i2?i2;
-///
-
+ 
 
 TEST ///
   debug FiniteFieldExperiments
@@ -322,12 +193,17 @@ TEST ///
   assert (poissonEstimate(16,"confidence"=>2) == new Interval from (8,24))
 ///
 
-estimateNumberOfComponents = method(Options => (options poissonEstimate));
-estimateNumberOfComponents(ZZ,RR,ZZ,ZZ) := HashTable => opts->
-    (trials,estimatedCodim,numPoints,fieldCardinality) -> (
-    return poissonEstimate(numPoints,opts)*(fieldCardinality^estimatedCodim/trials*1.0);
-    )
-estimateNumberOfComponents(ZZ,ZZ,ZZ,ZZ) := HashTable => opts->    (trials,estimatedCodim,numPoints,fieldCardinality) -> 
+
+estimateNumberOfComponents = method( Options => (options poissonEstimate) );
+
+estimateNumberOfComponents( ZZ, RR, ZZ, ZZ ) := HashTable => opts->
+    ( trials, estimatedCodim, numPoints, fieldCardinality ) -> 
+(
+    return poissonEstimate( numPoints,opts )*( (fieldCardinality^estimatedCodim)/trials*1.0  );
+)
+
+
+estimateNumberOfComponents( ZZ, ZZ, ZZ, ZZ ) := HashTable => opts->    (trials, estimatedCodim, numPoints, fieldCardinality) -> 
 (
     estimateNumberOfComponents(trials,estimatedCodim*1.0,numPoints,fieldCardinality,opts)
 )
@@ -336,19 +212,21 @@ estimateNumberOfComponents(ZZ,ZZ,ZZ,ZZ) := HashTable => opts->    (trials,estima
 TEST ///
   debug FiniteFieldExperiments
   FiniteFieldExperimentsProtect()
-  estimate =  estimateNumberOfComponents(11^2*16,2,16,11,"confidence"=>2);
+  estimate =  estimateNumberOfComponents( 11^2*16, 2, 16, 11, "confidence"=>2 );
   estimate = estimate.round(1);
   assert ( estimate == new Interval from (0.5,1.5))
 ///
 
-estimateCodim = method(Options => (options poissonEstimate));
-estimateCodim(ZZ,ZZ,ZZ) := Interval => opts->
-    ( trials, numPoints, fieldCardinality ) -> (
+estimateCodim = method( Options => (options poissonEstimate) );
+
+estimateCodim( ZZ, ZZ, ZZ ) := Interval => opts->
+    ( trials, numPoints, fieldCardinality ) -> 
+(
     	 est := (1/trials)*poissonEstimate(numPoints,opts);
     	 logEst := new Interval from (-log est.max,-log est.min);
     	 codimEst := (1/log fieldCardinality)*logEst;
 	 new Interval from (round(1,codimEst.min),round(1,codimEst.max))
-    )
+);
 
 TEST ///
   debug FiniteFieldExperiments
@@ -362,6 +240,7 @@ ExperimentData = new Type of MutableHashTable;
 
 
 new ExperimentData from HashTable := (E,coeffRing) -> (
+
      print (toString E);
      e := new MutableHashTable;
      --e.blackBoxIdeal = blackBoxIdeal;
@@ -371,26 +250,28 @@ new ExperimentData from HashTable := (E,coeffRing) -> (
      e.trials = 0;
      e.propertyList = {};
      return e;
-     )
+
+)
 
 
--- here one should use Experiment oder ExperimentData
+
+
 
 
 estimateNumberOfComponents(Experiment,List) := HashTable => opts->    (experiment,key) -> 
 (
       count := experiment.countData();
-     posRankJacobianAt := position(experiment.watchedProperties(),i->i=="rankJacobianAt");
+      posRankJacobianAt := experiment.position( "rankJacobianAt" );
      if posRankJacobianAt === null then error("To estimate number of components, \"rankJacobianAt\" must be watched");
-     cardinality := null;
-     if char experiment.coefficientRing() ==0 then   cardinality  = infinity;
-     try { cardinality = (experiment.coefficientRing()).order } then () else();
+    
+     cardinality := experiment.coefficientRingCardinality();
      estimateNumberOfComponents(
 	  experiment.trials(),
 	  key#posRankJacobianAt,
 	  count#key,
 	  cardinality,opts)
 )
+
 
 
 
@@ -472,11 +353,11 @@ createPointIterator = ( pPoints )->
 
 estimateDecompositionOld := (experiment) -> (
        count := experiment.countData();
-       posRankJacobianAt := position(experiment.watchedProperties(),i->i=="rankJacobianAt");
+       posRankJacobianAt := experiment.position( "rankJacobianAt" );
        if posRankJacobianAt === null then error("To estimate the decomposition, \"rankJacobianAt\" must be watched");
-       cardinality := null;
-       if char experiment.coefficientRing() ==0 then   cardinality  = infinity;
-       try { cardinality = (experiment.coefficientRing()).order } then () else();
+
+       cardinality := experiment.coefficientRingCardinality();
+
        print "(estimated codim, estimated number of components [confidence interval] <= {watched Properties})";
        print "";
        apply(sort apply(keys count,key->
@@ -486,31 +367,31 @@ estimateDecompositionOld := (experiment) -> (
 			   experiment.trials(),
 			   key#posRankJacobianAt,
 			   count#key,
-			   cardinality))
-		 )|" <= "|net key),
+			   cardinality ) )
+		 ) |" <= " |net key ),
        print);
    );
-
  
 
 estimateDecomposition =  (experiment) -> (
-       posRankJacobianAt := position(experiment.watchedProperties(),i->i=="rankJacobianAt");
+        posRankJacobianAt := experiment.position( "rankJacobianAt" );
        if posRankJacobianAt === null then error("To estimate the decomposition, \"rankJacobianAt\" must be watched");
        print "(estimated codim, estimated number of components [confidence interval] <= {watched Properties})";
        print "";
        apply(sort apply(keys experiment.countData(),key->
-		      net(key#posRankJacobianAt,estimateNumberOfComponents(experiment,key))
-		 |" <= "|net key),
+		      net( key#posRankJacobianAt, estimateNumberOfComponents(experiment,key) )
+		 |" <= " | net key),
        print);
 )
 
 --needs to be documented
  
 
--- todo: find out 
+ 
 estimateStratification =  (experiment) -> (
-          trials := experiment.trials();
-     orderK := (experiment.coefficientRing()).order; -- this must be read from the experimentdata
+     trials := experiment.trials();
+     orderK := experiment.coefficientRingCardinality(); -- this must be read from the experimentdata
+     -- (jk): need more advice. Did we want to use a different ring for search that the ideal coefficient ring? If so, 
      print "--";
      apply(experiment.countsByCount(),i->(
 	       --print (net((log(trials)-log(i#0))/log(charK))|" <= "|net(i#1)));
@@ -530,6 +411,8 @@ estimateStratification =  (experiment) -> (
       rearrangedData := apply (sorted, key-> (prerearrangedData#key) );
       return new HashTable from rearrangedData;
    );
+
+
 
    --# fuer den Fall dass dich die Schlüssel nicht sortieren lassen.
    countsByCount := (experimentData)->
@@ -561,15 +444,26 @@ estimateStratification =  (experiment) -> (
    );
 
 
+ringCardinality = (rng)->
+(
+   cardinality := null;
+   if char rng ==0 then   cardinality  = infinity;
+   try { cardinality = (rng).order } then () else();
+   return cardinality;
+);
 
--- needs to be modified. should only accept black boxes 
 
-new Experiment from BlackBoxSpace := (E, pBlackBoxIdeal) -> 
+
+new Experiment from BlackBoxParameterSpace := (E, pBlackBoxIdeal) -> 
 (
 
 
    blackBoxIdeal := pBlackBoxIdeal;    
    experimentData := new ExperimentData from blackBoxIdeal.coefficientRing;
+
+   coefficientRingCardinality := ringCardinality( blackBoxIdeal.coefficientRing );
+
+
    experiment := new MutableHashTable;
 
 
@@ -604,6 +498,7 @@ new Experiment from BlackBoxSpace := (E, pBlackBoxIdeal) ->
 
    experiment.coefficientRing=()->
    (
+     
        return experimentData.coefficientRing;
    );
   
@@ -611,6 +506,13 @@ new Experiment from BlackBoxSpace := (E, pBlackBoxIdeal) ->
    experiment.countsByCount = ()->
    (  
        return countsByCount( experimentData ); 
+   );
+
+
+   experiment.coefficientRingCardinality=()->
+   (
+       -- return    ringCardinality( blackBoxIdeal.coefficientRing );
+       return    coefficientRingCardinality;
    );
 
  
@@ -655,6 +557,9 @@ new Experiment from BlackBoxSpace := (E, pBlackBoxIdeal) ->
 
    -- todo: updateExperiment?
 
+   -- maybe think about writing 'connectProperty' ... (propName, bb.propName); default is 1:1.
+   -- then, what should happen if a user requests to watch property xy ?
+   
    experiment.useJacobianAt = (jacobianAtName)->
    ( 
        if experimentData.trials=!=0 then error ("cannot change jacobianAt  - experiment was already run! You could clear() the statistics and retry. ");
@@ -674,7 +579,10 @@ new Experiment from BlackBoxSpace := (E, pBlackBoxIdeal) ->
    );
 
 
-
+   experiment.position =(property)->
+   (
+     return position( experiment.watchedProperties(), watchedProperty->watchedProperty == property );
+   );
 
    experiment.clear = ()->
    ( 
@@ -713,11 +621,13 @@ new Experiment from BlackBoxSpace := (E, pBlackBoxIdeal) ->
           
             if  jacobianAt =!= null then 
             (
-                FFELogger.log(4, "update wanted points");
+                FFELogger.debug( "update wanted points" );
                 rankJacobian := rank  jacobianAt(point); 
-		upperEstimate := (estimateNumberOfComponents(experiment,countKey)).max;
+                upperEstimate := (estimateNumberOfComponents(experiment,countKey)).max;
+                ffelog.debug ("upper estimate number of components:  " | toString upperEstimate );
                 --upperEstimate := ((estimateDecompositionOld( experimentData ))#countKey).max;
-		--upperEstimate := 1; -- test
+		        --upperEstimate := 1; -- test
+
                 wantedPoints = max(1,upperEstimate)*wantedPoints;
             ); 	       
 
@@ -728,12 +638,12 @@ new Experiment from BlackBoxSpace := (E, pBlackBoxIdeal) ->
                 -- use upper limit of estimation for this
                 if #(experimentData.points#countKey) < wantedPoints then 
                 (
-                    FFELogger.log(4, "attaching point");
+                    FFELogger.debug( "attaching point" );
                     experimentData.points#countKey = experimentData.points#countKey | {point}
                 );
             )
             else (
-                FFELogger.log(4, "attaching first point for some key");
+                FFELogger.debug( "attaching first point for some key");
                 experimentData.points#countKey = {point}
             );
         );
@@ -772,6 +682,7 @@ new Experiment from BlackBoxSpace := (E, pBlackBoxIdeal) ->
        );
      );
 
+
      update := method();
      update(ExperimentData) := Tally => opts -> (experimentData) -> 
      ( 
@@ -786,9 +697,11 @@ new Experiment from BlackBoxSpace := (E, pBlackBoxIdeal) ->
         );
      );
 
-   -- add 'setObservedProperties' (reinitializes observed properties)  and 'observeProperty' (adds a property to observe)
 
-   setObservedPropertiesInternal := (propListToObserve)->
+   -- add 'setRecordedProperties' (reinitializes observed properties)  and 'recordProperty' (adds a property to observe)
+
+
+   setRecordedPropertiesInternal := (propListToObserve)->
    ( 
       for propertyName in propListToObserve do
       (
@@ -802,66 +715,59 @@ new Experiment from BlackBoxSpace := (E, pBlackBoxIdeal) ->
       );   
    );
 
-   experiment.setObservedProperties = ( propertyStringList )->
+   experiment.setRecordedProperties = ( propertyStringList )->
    (  
       if experimentData.trials=!=0 then error ("cannot change watched properties - experiment was already run! You could clear() the statistics and retry.");
 
-      --if jacobianAtKey =!=null then 
-      --propertyStringList = { jacobianAtKey } | propertyStringList;
-
-      for propertyName in propertyStringList do
-      (
-          if not blackBoxIdeal.hasPointProperty(propertyName) then 
-              error ("blackBoxIdeal seems not to have property" | propertyName );
-      );
-
-      setObservedPropertiesInternal(propertyStringList);
+      setRecordedPropertiesInternal(propertyStringList);
       update(experimentData);
    );
 
-
+   UpdateRecordedPropertiesError := "cannot change watched properties - experiment was already run! You could clear() the statistics and retry.";
   
 
-   experiment.watchProperties=experiment.setObservedProperties;
+   experiment.watchProperties = experiment.setRecordedProperties;
 
-   experiment.observeProperty=(propertyName)->
+   experiment.recordProperty=(propertyName)->
    (
-       if experimentData.trials=!=0 then error ("cannot change watched properties - experiment was already run! You could clear() the statistics and retry.");
+       if experimentData.trials=!=0 then error (UpdateRecordedPropertiesError);
 
           if not blackBoxIdeal.hasPointProperty(propertyName) then 
               error ("blackBoxIdeal seems not to have property" | propertyName );
 
       experimentData.propertyList = unique (experimentData.propertyList | { propertyName }) ;
-      setObservedPropertiesInternal( experimentData.propertyList );   
+      setRecordedPropertiesInternal( experimentData.propertyList );   
       update(experimentData);
    );
 
    experiment.ignoreProperty=(propertyName)->
    (
-       if experimentData.trials=!=0 then error ("cannot change observed properties - experiment was already run! You could clear() the statistics and retry.");
+       if experimentData.trials=!=0 then error (UpdateRecordedPropertiesError);
 
       experimentData.propertyList = delete(propertyName, experimentData.propertyList ) ;
-      setObservedPropertiesInternal( experimentData.propertyList );   
+      setRecordedPropertiesInternal( experimentData.propertyList );   
         
       update(experimentData);
    );
 
+
    experiment.ignoreProperties = (ignorePropertyStringList)->
    (
-       if experimentData.trials=!=0 then error ("cannot change observed properties - experiment was already run! You could clear() the statistics and retry.");
+       if experimentData.trials=!=0 then error (UpdateRecordedPropertiesError);
 
       apply( ignorePropertyStringList, propToIgnore-> ( experimentData.propertyList = delete(propToIgnore, experimentData.propertyList ); ));
-      setObservedPropertiesInternal( experimentData.propertyList );    
+      setRecordedPropertiesInternal( experimentData.propertyList );    
       update(experimentData);
    );
 
+
    -- maybe observed Properties is not a good name - is 'recordedProperties' better ?
-   experiment.observedProperties =  ()->
+   experiment.recordedProperties =  ()->
    (
       return experimentData.propertyList;
    );
 
-   experiment.watchedProperties = experiment.observedProperties;
+   experiment.watchedProperties = experiment.recordedProperties;
 
    experiment.setIsInteresting = (pIsInteresting)->
    (  
@@ -889,9 +795,17 @@ new Experiment from BlackBoxSpace := (E, pBlackBoxIdeal) ->
       --return runRandomExperiment( experimentData, trials );
    );
   
+ 
    experiment.pointLists = ()->
    (
       return new HashTable from experimentData.points;
+   );
+
+   experiment.pointsByKey = (key)->
+   (
+      if not (experimentData.points)#?key then 
+         error "invalid key";
+      return  (experimentData.points)#key;
    );
  
    -- returns a HashTable with recorded BlackBoxIdeal properties as keys and corresponding occured count as values.
@@ -916,7 +830,8 @@ new Experiment from BlackBoxSpace := (E, pBlackBoxIdeal) ->
    );
    
 
-   --init:
+   --init part:
+
    -- todo: test if changing blackBoxIdeal.jacobianAt is transparent (means after blackBoxIdeal.updatePointProperty("jacobianAt") the new one is called)
  
     experiment.watchProperties( {} );
@@ -954,9 +869,9 @@ new Experiment from BlackBoxSpace := (E, pBlackBoxIdeal) ->
 
 
    experiment = newClass( Experiment, experiment );
-
-   -- ffelog.debug ("type of internal experiment variable is : " | toString class experiment );
-   return new HashTable from experiment; 
+   ffelog.debug ("type of internal experiment variable is : " | toString class experiment );
+   return experiment; 
+   -- return new HashTable from experiment; 
 );
 
  
@@ -975,7 +890,7 @@ TEST ///
     debug FiniteFieldExperiments
     FiniteFieldExperimentsProtect()
     coeffRing := ZZ/3;
-    bbRankM = blackBoxSpace( 5 ,coeffRing )
+    bbRankM = blackBoxParameterSpace( 5 ,coeffRing )
     rankMat := (point)->5
     bbRankM.registerPointProperty("rankJacobianAt",rankMat)
 
@@ -983,14 +898,16 @@ TEST ///
     point := matrix {{1,2,3,4,5}};
     point = sub( point, coeffRing);
 
-    bbRankM = rebuildBlackBox bbRankM
+ 
+    bbRankM = bbRankM.getUpdatedBlackBox()
+ 
 
     e = new Experiment from bbRankM
     assert (e.coefficientRing()===coeffRing);
 
     e.setMinPointsPerComponent(20);
     assert( e.minPointsPerComponent()==20);
-    FFELogger.setLevel(4);
+    FFELogger.setLogLevel(4);
     e.watchProperties {"rankJacobianAt"};
     e.watchedProperties()
     assert( 1== # select( e.watchedProperties() , 
@@ -1003,7 +920,7 @@ TEST ///
     points := e.points();
     #points
     apply(points,point->rankMat(point))
-    FFELogger.setLevel(2);
+    FFELogger.setLogLevel(2);
     time e.run(1000)
     assert (e.trials()==1000);
 
@@ -1025,6 +942,8 @@ end
 ---
 
 restart
+
+
 loadPackage"BlackBoxIdeals"
 load "FiniteFieldExperiments.m2"
 
