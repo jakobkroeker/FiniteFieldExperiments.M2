@@ -504,6 +504,8 @@ estimateStratification := (experiment) -> (
      trials := experiment.trials();
      orderK := (experiment.coefficientRing()).order; -- this must be read from the experimentdata
      print "--";
+     print "estimated codim <= {wachtched properties}";
+     print "--";
      apply(experiment.countsByCount(),i->(
 	       --print (net((log(trials)-log(i#0))/log(charK))|" <= "|net(i#1)));
 	       print (net(round(1,(log(trials)-log(i#0))/log(orderK)))|" <= "|net(i#1)))
@@ -946,6 +948,110 @@ new Experiment from HashTable := (E, pBlackBoxIdeal) ->
 --     	  )
 --     )
 
+doc ///
+   Key
+        Experiment
+   Headline
+        type to collect data from a finite field experiment
+   Usage   
+        e = new Experiment from bb
+	e.run(trials)
+	e.countData()
+	e.pointLists()
+	e.estimateStratification()
+	e.estimateDecomposition()
+   Inputs  
+        bb:HashTable 
+	   a blackBoxIdeal
+   Description
+        Text
+            Creates an experiment from a black box. The experiment object will keep
+	    track of all information created when the ideal is evaluated at random points.
+	    Here is a typical extremely simple minded application:
+	    	    
+	    First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+	    K = ZZ/5
+	    R = K[x,y,z]
+	    I = ideal (x*z,y*z)
+	    bb = blackBoxIdeal I; 	  
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin.
+	   
+	   The experiment will evaluate the ideal at random points. If
+	   the point is in the vanishing set of the ideal (i.e. either on the point
+	   or on the line) it will calculate the rank of the jacobi matrix at that point.
+      	   (2 on the line, 1 on the plane, 0 in the origin). 
+	Example
+	   bb.isZeroAt(matrix{{0_K,0,1}})
+	   bb.rankJacobianAt(matrix{{0_K,0,1}})
+	   bb.rankJacobianAt(matrix{{1_K,2,0}})
+	   bb.rankJacobianAt(matrix{{0_K,0,0}}) 
+	Text
+	   \break Now we create the experiment:
+	Example
+	   e = new Experiment from bb;
+	Text
+	   \break If a black box hat a property "rankJacobianAt" it is
+	   automatically watched:
+	Example
+	   e.watchedProperties() 
+	Text
+	   \break Now we run the experiment by evaluating at 1250 random points:  
+	Example
+	   time e.run(1250)      
+	Text
+	   \break Let's see what kind of points were found:
+	Example
+	   e.countData() 
+	Text
+	   There are 125 points in (F_5)^3 of which 25 are on the
+	   plane, 5 are on the line and 1 (the origin) is on the line and the plane.
+	   We therefore expect about 10 points with rankJacobian 0, 240 with rankJacobian 1
+	   and 40 with rankJacobian 2.
+	   
+	   Often it is useful to have explicit points on all components of a variety. Therefore
+	   the experiment has stored some of the points:
+	Example
+	   e.pointLists()
+	Text
+	   Since one always finds many points found on components of low
+	   codimension it is not useful to remember all of them. The experiment
+	   remembers only about 10 points per component:
+	Example
+	   apply(keys e.pointLists(),key->print (key => #((e.pointLists())#key))); 
+	Text
+	   Here we have not collected exactly 10 points per component since
+	   the experiment uses the upper end of the confidence interval for the
+	   number of components as guide for the number of points to keep. 
+	   
+	   Lets now estimate the number and codimension of reduced components
+	   of the vanishing set:
+	Example
+	   e.estimateDecomposition()	   
+	Text
+	   Indeed we see that there is probably no component of codimension 0 and about
+	   1 component of codimension 1 and 2. The count for the component of 
+	   codimension 2 is slightly lower since we see only 4 of the 5 points
+	   on the line - one is the origin that has a tangent space smaller 
+	   codimension. So we expect the heuristic count to be 4/5 = 0.8. The
+	   same problem occurs for the plane but there it is not so relevant. We
+	   expect 24/25 = 0.96 in this case. For higher characteristics this
+	   systematic error gets smaller.
+	   
+	   If one finds the confidence intervals to large one can continue
+	   to run the experiment:
+	Example
+	   time e.run(1250)
+	   e.estimateDecomposition()	 
+	Text
+	   A doubeling of the number of experiments is expected to devide the
+	   width of a confidence interval by the square root of 2.  	   
+   Caveat
+        does not check if the ideal ring is a quotient ring (not supported)
+	   
+///
+
 
 TEST ///
     debug FiniteFieldExperiments
@@ -996,6 +1102,12 @@ TEST ///
 
 end
 ---
+
+restart
+uninstallPackage"FiniteFieldExperiments"
+installPackage"FiniteFieldExperiments"
+
+viewHelp FiniteFieldExperiments
 
 restart
 loadPackage"BlackBoxIdeals"

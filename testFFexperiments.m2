@@ -7,6 +7,8 @@ uninstallPackage"FiniteFieldExperiments"
 installPackage"FiniteFieldExperiments"
 uninstallPackage"BlackBoxIdeals"
 installPackage"BlackBoxIdeals"
+viewHelp BlackBoxIdeals
+viewHelp FiniteFieldExperiments
 
 -- here the test case start
 restart
@@ -23,50 +25,17 @@ I = ideal (x*z,y*z)
 bbI = blackBoxIdeal I
 bbI.knownPointProperties()
 bbI.knownPointPropertiesAsSymbols()
--- {isZeroAt, jacobianAt,, valuesAt, valuesAt, jacobianAt, bareJacobianAt, bareJacobianAt}
--- ERROR: Why to properties appear several times???
----- no, they do not appear several times , Macaulay2 does print key strings without quotes, so in fact we can
---access the properties by .jacobianAt (fragile, because of how M2 deals with symbols) and #"jacobianAt" 
--- fixed, by returning only strings.
-
--- MANDATORY: rankJacobianAt must exist in BlackBoxIdeals
- 
--- Fixed
 
 assert (2== bbI.rankJacobianAt(matrix{{0,0,1_K}}))
 assert (1== bbI.rankJacobianAt(matrix{{1,2,0_K}}))
 assert (0== bbI.rankJacobianAt(matrix{{0,0,0_K}}))
 -- this is a point where the ideal does not vanish.
 -- the rank here has no meaning
-assert (2==rank bbI.rankJacobianAt(matrix{{1,1,1_K}}))
+assert (2==bbI.rankJacobianAt(matrix{{1,1,1_K}}))
 
 -- make an experiment without rankJacobian at
-e = new Experiment from bbI
--- test: here rankJacobianAt is not watched
-e.watchedProperties()
--- niceToHave: make a test like this for a blackbox not from an ideal
-
--- register new property
- bbI.registerPointProperty("rankJacobianAtDup",(bb,point)->(rank bb.jacobianAt(point)))
-
-propSymb:= bbI.knownPointPropertiesAsSymbols()
-
--- better: nil when not isZero(point) (for rankJacobianAt?)
-
-
-bbI = rebuildBlackBox bbI   
-propSymb := bbI.knownPointPropertiesAsSymbols()
-bbI#(propSymb#5) --# ok
-bbI.rankJacobianAtDup --ok
-
-
--- stdio:20:4:(3): error: key not found in hash table
--- does not work. Not exported?
---fixed
-
--- make an experiment from the black box
-e = new Experiment from bbI
--- test: here "rankJacobianAt" is watched
+e = new Experiment from bbI;
+-- test: here rankJacobianAt is automatically watched
 e.watchedProperties()
 
 -- look at 1000 random points
@@ -102,6 +71,8 @@ apply(keys e.pointLists(),k->print (k => #((e.pointLists())#k)));
 
 e.estimateStratification()
 -----
+-- estimated codim <= {wachtched properties}
+-----
 -- 3.4 <= {0}
 -- 2.2 <= {2}
 -- 1.1 <= {1}
@@ -110,6 +81,8 @@ e.estimateStratification()
 -- niceToHave: see trailing zeros
 
 e.estimateDecomposition()
+-- (estimated codim, estimated number of components [confidence interval] <= {watched Properties})
+--
 -- {0} =>  2.23 [0.27, 4.2]
 -- {1} =>  0.96 [0.82, 1.1]
 -- {2} =>  1.03 [0.68, 1.39]
@@ -163,3 +136,25 @@ apply(keys e.pointLists(),k->(
 -- possibly: ideal list could be stored in the experiment. 
 -- possibly: a watchable property could be the ideal which contains a jet of
 --           a found point. 
+
+
+
+-- register new property
+bbI.registerPointProperty("rankJacobianAtDup",(bb,point)->(rank bb.jacobianAt(point)))
+
+propSymb:= bbI.knownPointPropertiesAsSymbols()
+
+-- better: nil when not isZero(point) (for rankJacobianAt?)
+
+
+bbI = rebuildBlackBox bbI   
+propSymb := bbI.knownPointPropertiesAsSymbols()
+bbI#(propSymb#5) --# ok
+bbI.rankJacobianAtDup --ok
+
+
+-- stdio:20:4:(3): error: key not found in hash table
+-- does not work. Not exported?
+--fixed
+
+-- niceToHave: make a test like this for a blackbox not from an ideal
