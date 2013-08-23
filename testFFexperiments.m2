@@ -14,12 +14,17 @@ check IntervalPkg
 
 uninstallPackage"BlackBoxIdeals"
 installPackage"BlackBoxIdeals"
+<<<<<<< HEAD
 check BlackBoxIdeals
 
 uninstallPackage"FiniteFieldExperiments"
 installPackage"FiniteFieldExperiments"
 check FiniteFieldExperiments
 
+=======
+viewHelp BlackBoxIdeals
+viewHelp FiniteFieldExperiments
+>>>>>>> blackbox
 
 -- here the test case start
 restart
@@ -39,6 +44,7 @@ bbI = new BlackBoxIdeal from I  -- same as above
 
 bbI.knownPointProperties()
 bbI.knownPointPropertiesAsSymbols()
+<<<<<<< HEAD
 --  {rankJacobianAt, rankJacobianAtDup, valuesAt, bareJacobianAt, isZeroAt jacobianAt}
 
 bbI.knownMethods()
@@ -48,11 +54,14 @@ bbI.knownMethods()
 bbI.knownAttributes()
 --  {ideal, numVariables, jacobian, numGenerators, ring, type, unknowns, coefficientRing, equations}
 
+=======
+>>>>>>> blackbox
 
 assert (2== bbI.rankJacobianAt(matrix{{0,0,1_K}}))
 assert (1== bbI.rankJacobianAt(matrix{{1,2,0_K}}))
 assert (0== bbI.rankJacobianAt(matrix{{0,0,0_K}}))
 -- this is a point where the ideal does not vanish.
+<<<<<<< HEAD
 assert (2==bbI.rankJacobianAt(matrix{{1,1,1_K}}))
 
 
@@ -80,6 +89,14 @@ bbI.rankJacobianAtDup --ok
 -- not necessary!
 --e = new Experiment from bbI
 -- test: here "rankJacobianAt" is watched
+=======
+-- the rank here has no meaning
+assert (2==bbI.rankJacobianAt(matrix{{1,1,1_K}}))
+
+-- make an experiment without rankJacobian at
+e = new Experiment from bbI;
+-- test: here rankJacobianAt is automatically watched
+>>>>>>> blackbox
 e.watchedProperties()
 
 -- look at 1000 random points
@@ -119,6 +136,8 @@ e.collectedCount() -- jk, Q: rename this method?
 
 e.estimateStratification()
 -----
+-- estimated codim <= {wachtched properties}
+-----
 -- 3.4 <= {0}
 -- 2.2 <= {2}
 -- 1.1 <= {1}
@@ -127,6 +146,8 @@ e.estimateStratification()
 -- niceToHave: see trailing zeros
 
 e.estimateDecomposition()
+-- (estimated codim, estimated number of components [confidence interval] <= {watched Properties})
+--
 -- {0} =>  2.23 [0.27, 4.2]
 -- {1} =>  0.96 [0.82, 1.1]
 -- {2} =>  1.03 [0.68, 1.39]
@@ -188,3 +209,25 @@ assert(decomposeResult==={{null}, {ideal(z)}, {ideal (y, x)}});
 -- possibly: ideal list could be stored in the experiment. 
 -- possibly: a watchable property could be the ideal which contains a jet of
 --           a found point. 
+
+
+
+-- register new property
+bbI.registerPointProperty("rankJacobianAtDup",(bb,point)->(rank bb.jacobianAt(point)))
+
+propSymb:= bbI.knownPointPropertiesAsSymbols()
+
+-- better: nil when not isZero(point) (for rankJacobianAt?)
+
+
+bbI = rebuildBlackBox bbI   
+propSymb := bbI.knownPointPropertiesAsSymbols()
+bbI#(propSymb#5) --# ok
+bbI.rankJacobianAtDup --ok
+
+
+-- stdio:20:4:(3): error: key not found in hash table
+-- does not work. Not exported?
+--fixed
+
+-- niceToHave: make a test like this for a blackbox not from an ideal
