@@ -177,8 +177,8 @@ needsPackage "Text";
 BlackBoxLogger = Logger("BlackBoxIdeals");
 
 -- todo: how to switch this on and off?
- if BlackBoxIdeals#Options#DebuggingMode then 
-    BlackBoxLogger.setLogLevel(LogLevel.DEBUG);
+-- if BlackBoxIdeals#Options#DebuggingMode then 
+--    BlackBoxLogger.setLogLevel(LogLevel.DEBUG);
 
 
 bblog := BlackBoxLogger;

@@ -72,16 +72,13 @@ e.watchedProperties()
 -- niceToHave: make a test like this for a blackbox not from an ideal
 
 -- register new property
- bbI.registerPointProperty("rankJacobianAtDup",(bb,point)->(rank bb.jacobianAt(point)))
+bbI =  bbI.registerPointProperty("rankJacobianAtDup",(bb,point)->(rank bb.jacobianAt(point)))
 
 propSymb:= bbI.knownPointPropertiesAsSymbols()
 
 -- better: nil when not isZero(point) (for rankJacobianAt?)
 
-
-bbI = rebuildBlackBox bbI   
 bbI.knownPointProperties()
-propSymb := bbI.knownPointPropertiesAsSymbols() -- not ok any more...
 bbI#(propSymb#5) --# ok
 bbI.rankJacobianAtDup --ok
 
