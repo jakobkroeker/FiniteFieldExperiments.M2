@@ -1194,7 +1194,7 @@ TEST ///
     bbRankM = bbRankM.getUpdatedBlackBox()
  
 
-    e = new RandomExperiment from bbRankM
+    e = new Experiment from bbRankM
     assert (e.coefficientRing()===coeffRing);
 
     e.setMinPointsPerComponent(20);
