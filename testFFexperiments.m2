@@ -43,7 +43,7 @@ bbI = new BlackBoxIdeal from I  -- same as above
 bbI.knownPointProperties()
 bbI.knownPointPropertiesAsSymbols()
 
---  {rankJacobianAt, rankJacobianAtDup, valuesAt, bareJacobianAt, isZeroAt jacobianAt}
+--  {rankJacobianAt, rankJacobianAtDup, valuesAt, bareJacobianAt, isZeroAt, jacobianAt}
 
 bbI.knownMethods()
 -- { knownMethods, knownPointProperties, knownPointPropertiesAsSymbols,  hasPointProperty, pointProperty,
@@ -60,15 +60,22 @@ assert (0== bbI.rankJacobianAt(matrix{{0,0,0_K}}))
 assert (2==bbI.rankJacobianAt(matrix{{1,1,1_K}}))
 
 
--- make an experiment without rankJacobian at
+-- make an experiment 
 e = new Experiment from bbI
--- test: here rankJacobianAt is not watched
 -- test: here rankJacobianAt is automatically watched
 e.watchedProperties()
 -- niceToHave: make a test like this for a blackbox not from an ideal
 
+rankJacobianAtDup2 := 7 --define a local symbol, to check, if the package has problems with symbols
+rankJacobianAtDup2 = 8
+
 -- register new property
 bbI =  bbI.registerPointProperty("rankJacobianAtDup",(bb,point)->(rank bb.jacobianAt(point)))
+bbI =  bbI.registerPointProperty("rankJacobianAtDup2",(bb,point)->(rank bb.jacobianAt(point)))
+
+bbI =  bbI.updatePointProperty("rankJacobianAtDup",(bb,point)->(rank bb.jacobianAt(point)))
+bbI =  bbI.updatePointProperty("rankJacobianAtDup2",(bb,point)->(rank bb.jacobianAt(point)))
+bbI =  bbI.updatePointProperty("rankJacobianAt",(bb,point)->(rank bb.jacobianAt(point)))
 
 propSymb:= bbI.knownPointPropertiesAsSymbols()
 
@@ -77,18 +84,8 @@ propSymb:= bbI.knownPointPropertiesAsSymbols()
 bbI.knownPointProperties()
 bbI#(propSymb#5) --# ok
 bbI.rankJacobianAtDup --ok
-
--- make an experiment from the black box
--- not necessary!
---e = new Experiment from bbI
--- test: here "rankJacobianAt" is watched
-
-
-
--- make an experiment without rankJacobian at
-e = new Experiment from bbI;
-
-e.watchedProperties()
+bbI.rankJacobianAtDup2 --ok
+bbI.rankJacobianAt --ok
 
 -- look at 1000 random points
 e. setMinPointsPerComponent(20)
@@ -115,14 +112,6 @@ e.collectedCount() -- jk, Q: rename this method?
 -- the collected number is somewhat higher than 10 since the maximum 
 -- of the confidence interval is used at every step.
 --
--- MANDATORY: Use estimate components to calculate wanted number of points.
--- At the moment this does not work, since estimateNumberOfComponents was rewritten
--- It now takes an experiment and a countKey, at the point where
--- this is coded the experiment does not jet exist, but just "experimentData".
--- If estimateNumberOfComponents is changed to take an experimentData, then
--- it can not be used in estimateDecomposition.
--- WORK AROUND: numberOfComponents now takes a MutableHashTable
--- fixed: the class of experiment is set to 'Experiment' using 'newClass'.
 
 
 e.estimateStratification()
@@ -148,18 +137,10 @@ e.estimateDecomposition()
 
 -- estimate Decomposition is only useful if jacobianRankAt was watched. 
 
--- this does not work since at the point where estimateNumberOfComponents is
--- called experiment is not an Experiment but a MutableHashTable
--- WORK AROUND: numberOfComponents now takes a MutableHashTable -- fixed
-
 -- NiceToHave: trailing zeros to correct length
 -- NiceToHave: maybe without showing the center of the estimation
 
 estimateDecomposition(e)
--- I have no Ideal why this does not work -
---
--- (jk) because estimateDecomposition expected a mutable hash table,
--- but the experiment is a nonmutable hash table.  fixed 
 
 -- interpolation using jets
 interpolate = (mons,jet) -> if jetP#"succeeded" then (
@@ -202,23 +183,5 @@ assert(decomposeResult==={{null}, {ideal(z)}, {ideal (y, x)}});
 --           a found point. 
 
 
-
--- register new property
-bbI.registerPointProperty("rankJacobianAtDup",(bb,point)->(rank bb.jacobianAt(point)))
-
-propSymb:= bbI.knownPointPropertiesAsSymbols()
-
--- better: nil when not isZero(point) (for rankJacobianAt?)
-
-
-bbI = rebuildBlackBox bbI   
-propSymb := bbI.knownPointPropertiesAsSymbols()
-bbI#(propSymb#5) --# ok
-bbI.rankJacobianAtDup --ok
-
-
--- stdio:20:4:(3): error: key not found in hash table
--- does not work. Not exported?
---fixed
 
 -- niceToHave: make a test like this for a blackbox not from an ideal

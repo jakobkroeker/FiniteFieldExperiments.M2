@@ -1103,6 +1103,8 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
    --  
    setJacobianAt := (pJacobianAt) ->
    ( 
+      bblog.info( "setJacobianAt: updates also (  bareJacobianAt, rankJacobianAt)" );      
+
       setPointProperty( "jacobianAt" , pJacobianAt );
 
       localBareJacobianAt := ( point)->
@@ -1126,11 +1128,11 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
    --
    --   called by 'outerSetPointProperty'<-{'registerPointProperty', 'updatePointProperty'}, 'setValuesAt'
    --  
-   --   triggers updates for 'isZeroAt', 'jacobianAt', 'bareJacobianAt', 'rankJacobianAt'.
+   --   triggers updates for 'isZeroAt', 'numGenerators', jacobianAt', 'bareJacobianAt', 'rankJacobianAt'.
    --  
    setValuesAt := (pValuesAt) ->
    (      
-       bblog.info( "setValuesAt: updates (isZeroAt, jacobianAt, rankJacobianAt)" );      
+       bblog.info( "setValuesAt: updates (isZeroAt, numGenerators, jacobianAt, bareJacobianAt, rankJacobianAt)" );      
 
        localValuesAt := (point)->return valuesAtWrapper(pValuesAt, point ) ;
 
@@ -1193,10 +1195,10 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
               return setIsZeroAt(localPropertyMethod); --probably not necessary
 
          if propertyName==="valuesAt" then 
-             return setValuesAt(localPropertyMethod);  -- triggers initialization of 'isZeroAt' and 'jacobianAt'
+             return setValuesAt(localPropertyMethod);  -- triggers initialization of 'isZeroAt' , 'numGenerators' and 'jacobianAt'
      
          if propertyName==="jacobianAt" then 
-             return setJacobianAt(localPropertyMethod); -- triggers initialization of 'bareJacobianAt'
+             return setJacobianAt(localPropertyMethod); -- triggers initialization of 'bareJacobianAt' and 'rankJacobianAt'
 
            setPointProperty( propertySymbol, localPropertyMethod );
    );
@@ -1273,7 +1275,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
                   getGlobalSymbol( BlackBoxIdeals.Dictionary, "registerPointProperty" ), 
                   getGlobalSymbol( BlackBoxIdeals.Dictionary, "updatePointProperty" ),
                   getGlobalSymbol( BlackBoxIdeals.Dictionary, "getUpdatedBlackBox" ),
-                  getGlobalSymbol( BlackBoxIdeals.Dictionary, "unknownIsValid" ),
+                  getGlobalSymbol( BlackBoxIdeals.Dictionary, "unknownIsValid" )
             };
     --  methods:= {   knownMethods,
     --                knownAttributes,
@@ -1995,12 +1997,11 @@ doc ///
             coeffRing := ZZ/3;
             numVariables := 5;
             bbParamSpace = blackBoxParameterSpace( numVariables , coeffRing );
-            rankMat := (blackBox, point)->5
-            bbParamSpace.registerPointProperty("rankJacobianAt", rankMat )
-
-            bbParamSpace = bbParamSpace.getUpdatedBlackBox();
+            rankMat := (blackBox, point)->5;
+            bbParamSpace.knownMethods()
+            bbParamSpace = bbParamSpace.registerPointProperty("rankJacobianAt", rankMat );
         Text
-            \break Now access somepropeties via the black box interface:
+            \break Now access some propeties via the black box interface:
         Example          
             -- keys bbParamSpace
             bbParamSpace.knownAttributes()
@@ -2008,6 +2009,9 @@ doc ///
             bbParamSpace.knownPointProperties()
             point := matrix { {1,2,3,4,5} };
             point = sub( point, coeffRing); 
+            bbParamSpace.rankJacobianAt(point)
+            rankMatNew := (blackBox, point)->6;
+            bbParamSpace = bbParamSpace.updatePointProperty("rankJacobianAt", rankMatNew );
             bbParamSpace.rankJacobianAt(point)
 ///
 
@@ -2024,8 +2028,11 @@ doc ///
             \break             \break
 
             The simplest parameter space black box  implements  \break \break 
+            Attributes:\break 
             \,\, \bullet \,{\tt numVariables }: number of variables in the parameter space. \break
             \,\, \bullet \,{\tt coefficientRing }: the ring the parameter variables belong to (or embeddable to) \break
+            
+            Methods:\break 
             \,\, \bullet \,{\tt knownPointProperties() }: returns a list of all known properties at a point for a blackbox \break
             \,\, \bullet \,{\tt knownMethods() }: returns a list of all known methods of the blackbox \break 
             \,\, \bullet \,{\tt knownAttributes() }: returns a list of all known attributes  \break 
@@ -2038,7 +2045,9 @@ doc ///
             \,\, \, \, There are several special property names: {\tt valuesAt, jacobianAt}. \ break 
             \,\, \, \,  If one of this properties is registered or updated, it triggers update of dependent properties \break
             \,\, \, \,  e.g. registering evaluation {\tt 'valuesAt'}  will implicitly \break 
-            \,\, \, \, construct  {\tt 'isZeroAt', 'jacobianAt', 'bareJacobianAt' } \break 
+            \,\, \, \, construct  {\tt 'isZeroAt', 'numGenerators',  'jacobianAt', 'bareJacobianAt', 'rankJacobianAt' } \break 
+            \,\, \, \,  registering evaluation {\tt 'jacobianAt'}  will implicitly \break 
+            \,\, \, \, construct  {\tt   'bareJacobianAt' , 'rankJacobianAt' } \break 
             \break
             \,\, \bullet  \,{\tt updatePointProperty(propertyName, propertyMethod) }: update an existing point property for a BlackBox. \break
             \,\, \bullet  \,{\tt pointProperty(propertyName) }: get a point property by name . \break 
