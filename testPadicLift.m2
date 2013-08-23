@@ -7,3 +7,10 @@ installPackage"padicLift"
 check padicLift
 
 viewHelp padicLift
+
+----------
+uninstallPackage"BlackBoxIdeals"
+restart
+loadPackage"BlackBoxIdeals"
+installPackage"BlackBoxIdeals"
+JetAt

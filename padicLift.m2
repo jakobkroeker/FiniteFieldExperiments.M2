@@ -6,16 +6,17 @@
 --         caused by shadowing or overwriting symbols by local variables, etc.
 
 -- replace assert messages with error messages.
--- todo: write lift tests, where the inteterminate order is different from ring variable order.
+-- todo: write lift tests, where the indeterminate order is different from ring variable order.
 -- todo: inkonsequent: hashtables mit strings als Schlüssel und Gleichzeitig hashtables mit Symbolen als Schlüssel
 -- todo: document tests
 -- todo: clean design for message printing.
--- todo: report the 'factor 0'-bug, if still present.
 -- todo: a test for failing lift situation 
 
 -- checklist
 --    indent: no Tabs, indent-width: 4.
 
+
+-- requires Macaulay 1.6 
 
 newPackage(
      "padicLift",
@@ -51,20 +52,20 @@ needsPackage "Text";
  
 
 export{
-    gppath,
-    ReducedPadicLiftResult,
-    LiftOptions,
-    liftPoint,
+    "gppath",
+    "ReducedPadicLiftResult",
+    "LiftOptions",
+    "liftPoint",
     "nextLift",
-    computeMinPolys,
-    approxComplexSolutions,
-    approxComplexSolutionsOld,
-    computeSingleMinPoly,
-    plusOne,
-    checkLiftOptions,
-    computeRootsWithGP,
-    createLiftOptions,
-    pariGpIsPresent 
+    "computeMinPolys",
+    "approxComplexSolutions",
+    "approxComplexSolutionsOld",
+    "computeSingleMinPoly",
+    "plusOne",
+    "checkLiftOptions",
+    "computeRootsWithGP",
+    "createLiftOptions",
+    "pariGpIsPresent" 
 }
 
 

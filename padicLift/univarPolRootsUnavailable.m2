@@ -39,7 +39,14 @@ doc ///
         unavailable -  pari/gp required
    Description
        Text
-        This method is not available and currently requires presence of the pari/gp binary
+        This method requires pari/gp which could not be found on this computer when installPackage was run.
+	Install pari/gp and do
+	\break
+	\break uninstallPackage"padicLift"
+	\break restart
+	\break loadPackage"padicLift"
+	\break installPackage"padicLift"
+
 ///
 
 testComputeRootsWithGP=()->
