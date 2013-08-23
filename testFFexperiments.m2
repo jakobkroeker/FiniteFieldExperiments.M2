@@ -14,17 +14,15 @@ check IntervalPkg
 
 uninstallPackage"BlackBoxIdeals"
 installPackage"BlackBoxIdeals"
-<<<<<<< HEAD
 check BlackBoxIdeals
 
 uninstallPackage"FiniteFieldExperiments"
 installPackage"FiniteFieldExperiments"
 check FiniteFieldExperiments
 
-=======
 viewHelp BlackBoxIdeals
 viewHelp FiniteFieldExperiments
->>>>>>> blackbox
+
 
 -- here the test case start
 restart
@@ -44,7 +42,7 @@ bbI = new BlackBoxIdeal from I  -- same as above
 
 bbI.knownPointProperties()
 bbI.knownPointPropertiesAsSymbols()
-<<<<<<< HEAD
+
 --  {rankJacobianAt, rankJacobianAtDup, valuesAt, bareJacobianAt, isZeroAt jacobianAt}
 
 bbI.knownMethods()
@@ -54,20 +52,18 @@ bbI.knownMethods()
 bbI.knownAttributes()
 --  {ideal, numVariables, jacobian, numGenerators, ring, type, unknowns, coefficientRing, equations}
 
-=======
->>>>>>> blackbox
 
 assert (2== bbI.rankJacobianAt(matrix{{0,0,1_K}}))
 assert (1== bbI.rankJacobianAt(matrix{{1,2,0_K}}))
 assert (0== bbI.rankJacobianAt(matrix{{0,0,0_K}}))
 -- this is a point where the ideal does not vanish.
-<<<<<<< HEAD
 assert (2==bbI.rankJacobianAt(matrix{{1,1,1_K}}))
 
 
 -- make an experiment without rankJacobian at
 e = new Experiment from bbI
 -- test: here rankJacobianAt is not watched
+-- test: here rankJacobianAt is automatically watched
 e.watchedProperties()
 -- niceToHave: make a test like this for a blackbox not from an ideal
 
@@ -89,14 +85,12 @@ bbI.rankJacobianAtDup --ok
 -- not necessary!
 --e = new Experiment from bbI
 -- test: here "rankJacobianAt" is watched
-=======
--- the rank here has no meaning
-assert (2==bbI.rankJacobianAt(matrix{{1,1,1_K}}))
+
+
 
 -- make an experiment without rankJacobian at
 e = new Experiment from bbI;
--- test: here rankJacobianAt is automatically watched
->>>>>>> blackbox
+
 e.watchedProperties()
 
 -- look at 1000 random points
