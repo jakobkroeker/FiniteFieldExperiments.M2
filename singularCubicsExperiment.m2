@@ -1,14 +1,27 @@
 -- look at the hilbert scheme of singular
 -- cubics
 
--- this has to be run after any change in FiniteFieldExperiments
 restart
-uninstallPackage"FiniteFieldExperiments"
-installPackage"FiniteFieldExperiments"
+
+uninstallPackage"M2Logging"
+installPackage"M2Logging"
+check M2Logging
+
+uninstallPackage"IntervalPkg"
+installPackage"IntervalPkg"
+check IntervalPkg
+
 uninstallPackage"BlackBoxIdeals"
 installPackage"BlackBoxIdeals"
+check BlackBoxIdeals
+
+uninstallPackage"FiniteFieldExperiments"
+installPackage"FiniteFieldExperiments"
+check FiniteFieldExperiments
+
 viewHelp BlackBoxIdeals
 viewHelp FiniteFieldExperiments
+
 
 -- here the test case start
 restart
@@ -42,9 +55,10 @@ degreeSingularLocusAt = (point) -> (
 degreeSingularLocusAt(coeffCubicCone)
 
 bb = blackBoxParameterSpace(20,K)
-bb= bb.registerPointProperty("degreeSingularLocusAt", degreeSingularLocusAt)
+bb= bb.registerPointProperty("degreeSingularLocusAt", degreeSingularLocusAt);
 
-e = new Experiment from bb
+
+e = new Experiment from bb;
 -- e.recordedProperties()
 e.recordProperty("degreeSingularLocusAt")
 --tally apply(100,i->degreeSingularLocusAt(random(K^1,K^20)))
@@ -65,12 +79,12 @@ multiplicitiesSingularLocusAt = (point) -> (
 	       )))
      )
 
-bb= bb.registerPointProperty("multiplicitiesSingularLocusAt", multiplicitiesSingularLocusAt)
+bb= bb.registerPointProperty("multiplicitiesSingularLocusAt", multiplicitiesSingularLocusAt);
 e.clear() --should it also clear the list of recorded properties?
 e.clearRecordList()
-e.recortProperty( "multiplicitiesSingularLocusAt" )
+e.recordProperty( "multiplicitiesSingularLocusAt" )
 -- tally apply(1250,i->multiplicitiesSingularLocusAt(random(K^1,K^20)))
-e.run(1250)-- should it always return countData?
+time e.run(1250)-- should it always return countData?
 --e.countData()
 
     
