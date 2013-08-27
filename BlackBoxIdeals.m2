@@ -2095,7 +2095,7 @@ TEST  ///
  BlackBoxLogger.debug("test update valuesAt property ")
  rng := ZZ/7[x]
 
-  I = ideal 6*x
+  I = ideal(6*x)
 
   bb=blackBoxIdeal I
 
