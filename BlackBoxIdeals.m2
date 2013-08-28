@@ -1250,7 +1250,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
       (
            outerSetPointProperty( propertySymbol, propertyMethod );
       )
-      else error(" method "| propertyName |" seems already registered");
+      else error(" method "| propertyName |" seems already registered, please use 'updatePointProperty' for updating.");
       return blackBox.getUpdatedBlackBox();
    );
 
