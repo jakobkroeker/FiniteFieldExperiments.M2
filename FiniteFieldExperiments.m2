@@ -398,9 +398,12 @@ estimateStratification =  (experiment) -> (
      print "--";
      print "estimated codim <= {wachtched properties}";
      print "--";
-     apply(experiment.countsByCount(),i->(
+     count := experiment.countData();
+     -- sort keys by number of occurence
+     sortKeysCount := apply(reverse sort apply(keys count,k->(count#k,k)),i->i#1);
+     apply(sortKeysCount,k->(
 	       --print (net((log(trials)-log(i#0))/log(charK))|" <= "|net(i#1)));
-	       print (net(round(1,(log(trials)-log(i#0))/log(orderK)))|" <= "|net(i#1)))
+	       print (net(round(1,(log(trials)-log(count#k))/log(orderK)))|" <= "|net(k)))
 	       )
 	  ;
      print "--";
@@ -941,7 +944,7 @@ doc ///
 	Example
 	   e = new Experiment from bb;
 	Text
-	   \break If a black box hat a property "rankJacobianAt" it is
+	   \break If a black box has a property "rankJacobianAt" it is
 	   automatically watched:
 	Example
 	   e.watchedProperties() 
@@ -950,14 +953,10 @@ doc ///
 	Example
 	   time e.run(1250)      
 	Text
-	   \break Let's see what kind of points were found:
-	Example
-	   e.countData() 
-	Text
 	   There are 125 points in (F_5)^3 of which 25 are on the
 	   plane, 5 are on the line and 1 (the origin) is on the line and the plane.
-	   We therefore expect about 10 points with rankJacobian 0, 240 with rankJacobian 1
-	   and 40 with rankJacobian 2.
+	   We therefore expect about 10 points with rankJacobian = 0, 240 with rankJacobian = 1
+	   and 40 with rankJacobian = 2.
 	   
 	   Often it is useful to have explicit points on all components of a variety. Therefore
 	   the experiment has stored some of the points:
@@ -968,7 +967,7 @@ doc ///
 	   codimension it is not useful to remember all of them. The experiment
 	   remembers only about 10 points per component:
 	Example
-	   apply(keys e.pointLists(),key->print (key => #((e.pointLists())#key))); 
+	   e.collectedCount() 
 	Text
 	   Here we have not collected exactly 10 points per component since
 	   the experiment uses the upper end of the confidence interval for the
