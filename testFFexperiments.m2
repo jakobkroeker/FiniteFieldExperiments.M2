@@ -36,8 +36,8 @@ R = K[x,y,z]
 I = ideal (x*z,y*z)
 
 -- make a black box from the ideal
-bbI = blackBoxIdeal I
-bbI = new BlackBoxIdeal from I  -- same as above
+bbI = blackBoxIdeal I;
+bbI = new BlackBoxIdeal from I;  -- same as above
 
 
 bbI.knownPointProperties()
