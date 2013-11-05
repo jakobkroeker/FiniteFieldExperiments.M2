@@ -69,6 +69,7 @@ protect numGenerators;
 protect isZeroAt;
 protect pointProperties;
 protect registerPointProperty;
+protect rpp;
  
 protect setPointProperty;
 protect setValuesAt;
@@ -110,6 +111,7 @@ idealBlackBoxesExport = ()->
     exportMutable( isZeroAt);      
     exportMutable( pointProperties);  
     exportMutable( registerPointProperty); 
+    exportMutable(rpp);
     exportMutable( setPointProperty);
     exportMutable( setValuesAt);    
     exportMutable(  checkInputPoint);
@@ -161,6 +163,7 @@ undocumented {
     valuesAt,
     setPointProperty,
     equations,
+    rpp
 } 
 
 
@@ -1266,6 +1269,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
       --return blackBox.getUpdatedBlackBox();
    );
 
+   blackBox.rpp =  blackBox.registerPointProperty;
 
    -- return a list of known methods. Manually updated.
    blackBox.knownMethods = ()->
@@ -1956,7 +1960,8 @@ TEST ///
 
     valuesAt := ( blackBox, point )-> matrix {{1,2}};
 
-    bbRankM.registerPointProperty("valuesAt",valuesAt);
+    --bbRankM.registerPointProperty("valuesAt",valuesAt);
+    bbRankM.rpp("valuesAt",valuesAt);
 
     bbRankM = rebuildBlackBox bbRankM;
 
