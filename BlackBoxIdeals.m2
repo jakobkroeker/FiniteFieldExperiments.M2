@@ -180,6 +180,10 @@ BlackBoxLogger = Logger("BlackBoxIdeals");
 -- if BlackBoxIdeals#Options#DebuggingMode then 
 --    BlackBoxLogger.setLogLevel(LogLevel.DEBUG);
 
+if BlackBoxIdeals#Options#DebuggingMode then
+  errorDepth=0;
+
+
 
 bblog := BlackBoxLogger;
 

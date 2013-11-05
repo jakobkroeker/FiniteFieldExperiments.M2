@@ -152,7 +152,8 @@ FiniteFieldExperimentsExport  = ()->
 
 FiniteFieldExperimentsExport();
 
-
+if FiniteFieldExperiments#Options#DebuggingMode then
+  errorDepth=0;
 
 
 FFELogger = Logger("FiniteFieldExperiments");
