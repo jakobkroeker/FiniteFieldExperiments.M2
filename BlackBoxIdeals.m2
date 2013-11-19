@@ -1389,8 +1389,10 @@ blackBoxParameterSpaceInternal(Ring) := HashTable => ( pRing ) ->
 )
 
 
+
 blackBoxIdeal = method();
 
+ 
 blackBoxParameterSpace = method();
 
 
@@ -1478,7 +1480,7 @@ blackBoxIdealInternal := ( equationsIdeal)->
     );   
 
 
-     return new HashTable from blackBox;
+    return new HashTable from blackBox; 
 )
 
 -- this function is final, that means nobody should use this method for creating a derived object

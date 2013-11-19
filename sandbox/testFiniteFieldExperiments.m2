@@ -21,7 +21,7 @@ check FiniteFieldExperiments;
 
     bbRankM = bbRankM.rebuild()
 
-    e = new Experiment from bbRankM
+    e = new RandomExperiment from bbRankM
     keys e
     assert (e.coefficientRing()===coeffRing);
 
@@ -35,7 +35,7 @@ check FiniteFieldExperiments;
      )
 
 
- e.useJacobianAt("rankMat");
+    e.useJacobianAt("rankMat");
     e.useJacobianAt(null);
     e.pointKeys()
     e.countsByCount()
@@ -54,3 +54,13 @@ check FiniteFieldExperiments;
     e.jacobianAtKey()
 
     bbRankM.knownPointProperties()
+
+
+    e2 = new Experiment from bbRankM
+    e2.setMinPointsPerComponent(20);
+    e2.watchProperties {"rankMat"};
+    e2.run(1000);
+    e.merge(e2);
+
+
+

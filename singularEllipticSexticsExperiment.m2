@@ -101,13 +101,14 @@ e = new Experiment from bbC;
 e.watchedProperties()
 -- {}
 
--- NICE TO HAVE: e.wachedProperties()
 --e.watchProperty("degreeSingularLocusAt")
 e.watchProperty("codimDegSingularLocusAt")
 -- now we watch for the degree of the singular locus
 e.watchedProperties()
 
 -- lets look at 100 curves
+time e.run(1)
+time e.run(10) -- 30 sec on T42
 time e.run(100)
 -- {(4,  1)} => 10   
 -- {(4,  2)} => 4
@@ -187,6 +188,15 @@ dI#0
 dI#2
 
 -- save experiment data
+
+f = openOut("tomExperiment1char5.newIO.m2")
+f << toExternalString e.experimentData()
+f << flush
+f << close
+
+g = openIn("tomExperiment1char5.newIO.m2")
+experimentDataString = read g
+experimentDataString
 
 f = openOut("tomExperiment1char5.m2")
 f << "watchedProperties = "|toString(e.watchedProperties()) << endl
