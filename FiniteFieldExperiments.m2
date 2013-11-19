@@ -67,11 +67,16 @@ FiniteFieldExperimentsProtect = ()->
   protect propertyList;
   protect clear;
   protect jacobianAtKey;
+  protect watchProperty;
   protect watchProperties;
   protect recordProperties;
 
   protect propertyName;
   protect propertyAt;
+
+  protect tryProperty;
+  protect bbi;
+
   protect recordedProperties;
   protect watchedProperties;
   protect useProperties;
@@ -128,9 +133,14 @@ FiniteFieldExperimentsExport  = ()->
  exportMutable( clear);
  exportMutable( jacobianAtKey);
  exportMutable( watchProperties );
+ exportMutable( watchProperty );
  exportMutable( recordProperties );
  exportMutable( propertyName);
  exportMutable( propertyAt);
+
+ exportMutable( tryProperty );
+ exportMutable( bbi );
+
  exportMutable( recordedProperties);
  exportMutable( watchedProperties);
  exportMutable( useProperties);
@@ -397,7 +407,7 @@ estimateStratification =  (experiment) -> (
      orderK := experiment.coefficientRingCardinality(); -- this must be read from the experimentdata
      -- (jk): need more advice. Did we want to use a different ring for search that the ideal coefficient ring? If so, 
      print "--";
-     print "estimated codim <= {wachtched properties}";
+     print "-- estimated codim <= {wachtched properties}";
      print "--";
      count := experiment.countData();
      -- sort keys by number of occurence
@@ -463,17 +473,21 @@ ringCardinality = (rng)->
 
 
 
-new Experiment from BlackBoxParameterSpace := (E, pBlackBoxIdeal) -> 
+new Experiment from BlackBoxParameterSpace := (E, pBlackBox) -> 
 (
 
 
-   blackBoxIdeal := pBlackBoxIdeal;    
+   blackBoxIdeal := pBlackBox;    --black box ideal or black box parameter space so far
    experimentData := new ExperimentData from blackBoxIdeal.coefficientRing;
 
    coefficientRingCardinality := ringCardinality( blackBoxIdeal.coefficientRing );
 
 
    experiment := new MutableHashTable;
+
+   -- todo: issue about naming here. blackBox (what?)
+   --experiment.bbi = blackBoxIdeal; -- is this safe?
+   --experiment.blackBoxIdeal = blackBoxIdeal;
 
 
    -- todo: maype return a (deep) copy 
@@ -707,7 +721,6 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBoxIdeal) ->
      );
 
 
-   -- add 'setRecordedProperties' (reinitializes observed properties)  and 'recordProperty' (adds a property to observe)
 
 
    setRecordedPropertiesInternal := (propListToObserve)->
@@ -743,7 +756,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBoxIdeal) ->
 
    experiment.watchProperties = experiment.setRecordedProperties;
 
-   experiment.recordProperty=(propertyName)->
+   experiment.watchProperty=(propertyName)->
    (
        if experimentData.trials=!=0 then error (UpdateRecordedPropertiesError);
 
@@ -754,6 +767,8 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBoxIdeal) ->
       setRecordedPropertiesInternal( experimentData.propertyList );   
       update(experimentData);
    );
+
+   experiment.recordProperty=experiment.watchProperty;
 
    experiment.ignoreProperty=(propertyName)->
    (
@@ -882,6 +897,13 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBoxIdeal) ->
   -- is not of type Experiment, there are two solutions:
   --  either to introduce to different method signatures (ones accept a HashTable and others an Experiment)
   -- or to make the internal experiment variable as an Experiment , too  - done with 'newClass'
+
+    experiment.tryProperty = (tProp) -> (
+      print("-- ( " | toString experiment.watchedProperties() |" | " | tProp | " ) => count " );
+       pointLists = experiment.pointLists();
+       tally flatten apply(keys pointLists, key->apply(pointLists#key, point->( key, (blackBoxIdeal.pointProperty(tProp))(point))) )
+     );
+   
 
 
    experiment = newClass( Experiment, experiment );
@@ -1049,7 +1071,7 @@ TEST ///
 
     bbRankM.knownPointProperties()
 
-    e.stratificationIntervalView() -- test fails here 
+    -- e.stratificationIntervalView() -- test fails here; d
 
 ///
 

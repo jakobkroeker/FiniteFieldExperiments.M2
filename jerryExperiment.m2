@@ -54,7 +54,8 @@ jerryCubeAt = (point) -> (
 jerryCubeAt(testPoint)
 
 -- normalize Cube
-M = tomMatrixAt(testPoint)
+--something is broken here - jk
+-- M = tomMatrixAt(testPoint)
 
 jerryNormalCubeAt = (point) -> (
      C := jerryCubeAt(point);
@@ -111,15 +112,18 @@ bbC.knownPointProperties()
 
 e = new Experiment from bbC;
 -- so far nothing is observed:
-e.recordedProperties()
+e.watchedProperties()
 -- {}
 
 -- NICE TO HAVE: e.wachedProperties()
 --e.watchProperty("degreeSingularLocusAt")
-e.recordProperty("codimDegSingularLocusAt")
+e.watchProperty("codimDegSingularLocusAt")
 -- now we watch for the degree of the singular locus
 e.watchedProperties()
 
+time e.run(1)
+time e.run(5)
+time e.run(10)
 -- lets look at 100 curves
 time e.run(100)
 -- {(4, 1)} => 4 
@@ -137,13 +141,7 @@ time e.run(100)
 degComponents = (point) -> sort apply(decompose jerryIdealAt(point),degree)
 bbC = bbC.registerPointProperty("degComponents",degComponents);
 
--- black-box can not be extracted from experiment
-tryProperty = (ex,bb,tProp) -> (
-     L = ex.pointLists();
-     tally flatten apply(keys L, k->apply(L#k,point->(k,(bb.pointProperty(tProp))(point))))
-     )
-
-tally apply(primaryDecomposition jerryIdealAt(point),i->(codim i,degree i,degree radical i,betti res i))
+tally apply(primaryDecomposition jerryIdealAt(testPoint),i->(codim i,degree i,degree radical i,betti res i))
 
 -- find example with non expected codimension
 codimDegJerryAt = (point) -> (
@@ -156,16 +154,16 @@ codimDegJerryAt(testPoint)
 
 -- look at singular examples found
 bbC = bbC.registerPointProperty("codimDegJerryAt",codimDegJerryAt);
-tryProperty(e,bbC,"codimDegJerryAt")
+e.tryProperty("codimDegJerryAt")
 -- none of unexpected dimension
 
 eCodim = new Experiment from bbC;
 -- so far nothing is observed:
-eCodim.recordedProperties()
+eCodim.watchedProperties()
 -- {}
 
 
-eCodim.recordProperty("codimDegJerryAt")
+eCodim.watchProperty("codimDegJerryAt")
 -- now we watch for the codim of ideal
 eCodim.watchedProperties()
 
@@ -209,7 +207,7 @@ dI#2
 
 -- save experiment data
 f = openOut("tomExperiment1char5.m2")
-f << "watchedProperties = "|toString(e.recordedProperties()) << endl
+f << "watchedProperties = "|toString(e.watchedProperties()) << endl
 L = e.pointLists();
 f << "pointList = new MutableHashTable" << endl
 apply(keys L, k->(

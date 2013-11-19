@@ -98,17 +98,17 @@ bbC.knownPointProperties()
 
 e = new Experiment from bbC;
 -- so far nothing is observed:
-e.recordedProperties()
+e.watchedProperties()
 -- {}
 
 -- NICE TO HAVE: e.wachedProperties()
 --e.watchProperty("degreeSingularLocusAt")
-e.recordProperty("codimDegSingularLocusAt")
+e.watchProperty("codimDegSingularLocusAt")
 -- now we watch for the degree of the singular locus
 e.watchedProperties()
 
 -- lets look at 100 curves
-time e.run(10)
+time e.run(100)
 -- {(4,  1)} => 10   
 -- {(4,  2)} => 4
 -- {(5,  1)} => 493
@@ -121,13 +121,7 @@ time e.run(10)
 degComponents = (point) -> sort apply(decompose tomIdealAt(point),degree)
 bbC = bbC.registerPointProperty("degComponents",degComponents);
 
--- black-box can not be extracted from experiment
-tryProperty = (ex,bb,tProp) -> (
-     L = ex.pointLists();
-     tally flatten apply(keys L, k->apply(L#k,point->(k,(bb.pointProperty(tProp))(point))))
-     )
-
-tryProperty(e,bbC,"degComponents")
+e.tryProperty("degComponents")
 point = (e.pointsByKey({(5,2)}))#0
 
 -- find example with non expected codimension
@@ -141,20 +135,20 @@ codimDegTomAt(testPoint)
 
 -- look at singular examples found
 bbC = bbC.registerPointProperty("codimDegTomAt",codimDegTomAt);
-tryProperty(e,bbC,"codimDegTomAt")
+e.tryProperty("codimDegTomAt")
 -- none of unexpected dimension
 
 eCodim = new Experiment from bbC;
 -- so far nothing is observed:
-eCodim.recordedProperties()
+eCodim.watchedProperties()
 -- {}
 
 
-eCodim.recordProperty("codimDegTomAt")
+eCodim.watchProperty("codimDegTomAt")
 -- now we watch for the codim of ideal
 eCodim.watchedProperties()
 
-
+time eCodim.run(100)
 time eCodim.run(1000)
 -- used 62.7552 seconds
 -- {(3, 1)} => 129
@@ -193,8 +187,9 @@ dI#0
 dI#2
 
 -- save experiment data
+
 f = openOut("tomExperiment1char5.m2")
-f << "watchedProperties = "|toString(e.recordedProperties()) << endl
+f << "watchedProperties = "|toString(e.watchedProperties()) << endl
 L = e.pointLists();
 f << "pointList = new MutableHashTable" << endl
 apply(keys L, k->(
