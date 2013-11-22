@@ -5,23 +5,23 @@
 restart
 
 uninstallPackage"M2Logging"
-installPackage"M2Logging"
-check M2Logging
+installPackage("M2Logging",UserMode =>true)
+check (M2Logging,UserMode =>true)
 
 uninstallPackage"IntervalPkg"
-installPackage"IntervalPkg"
-check IntervalPkg
+installPackage("IntervalPkg",UserMode =>true)
+check (IntervalPkg,UserMode =>true)
 
 uninstallPackage"BlackBoxIdeals"
-installPackage"BlackBoxIdeals"
-check BlackBoxIdeals
+installPackage("BlackBoxIdeals",UserMode =>true)
+check (BlackBoxIdeals,UserMode =>true)
 
 uninstallPackage"FiniteFieldExperiments"
-installPackage"FiniteFieldExperiments"
-check FiniteFieldExperiments
+installPackage("FiniteFieldExperiments",UserMode =>true)
+check (FiniteFieldExperiments,UserMode =>true)
 
-viewHelp BlackBoxIdeals
-viewHelp FiniteFieldExperiments
+--viewHelp BlackBoxIdeals
+--viewHelp FiniteFieldExperiments
 
 
 -- here the test case start

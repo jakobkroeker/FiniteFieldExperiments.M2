@@ -5,7 +5,7 @@
         uninstallBlackBoxIdeals uninstallFiniteFieldExperiments installM2Logging uninstallM2Logging \
         install uninstall
  
-install: installPadicLift installBlackBoxIdeals installFiniteFieldExperiments installM2Logging
+manualinstall: installPadicLift installBlackBoxIdeals installFiniteFieldExperiments installM2Logging
    
 
 installPadicLift:  
@@ -47,4 +47,19 @@ uninstallFiniteFieldExperiments:
 	bash ~/.Macaulay2/local/share/Macaulay2/FiniteFieldExperimentsUninstall.sh
 
 
-uninstall: uninstallPadicLift uninstallBlackBoxIdeals uninstallFiniteFieldExperiments uninstallM2Logging
+manualuninstall: uninstallPadicLift uninstallBlackBoxIdeals uninstallFiniteFieldExperiments uninstallM2Logging
+
+check:
+	M2 --script testFFexperiments.m2
+
+#	M2 --script testPadicLift.m2
+
+test: check
+
+# will not work on mac 
+install:
+	M2 --script installPackage.m2
+
+uninstall:
+	M2 --script uninstallPackage.m2
+
