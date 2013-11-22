@@ -1,5 +1,5 @@
 FiniteFieldExperiments.M2
-===========
+-------------------------
 Framework for finite field experiments for explicit and implicitly given ideals and parameter spaces
 ( FiniteFieldExperiments.m2)
 
@@ -10,7 +10,8 @@ The package provides also lifting of (polynomial) system solutions over a prime 
 To load the package,
 install them first:
 
-------------------------------
+ 
+`
 uninstallPackage"M2Logging"
 restart
 installPackage"M2Logging"
@@ -30,13 +31,11 @@ uninstallPackage"FiniteFieldExperiments"
 restart
 installPackage"FiniteFieldExperiments"
 check FiniteFieldExperiments
-------------------------------
+`
 
-Then look at the examples
--------------------------
 
--------------------------
+Then look at the examples in the *experiments*-folder
 or for help . e.g. by 
-viewHelp FiniteFieldExperiments
+`viewHelp FiniteFieldExperiments`
 
 
