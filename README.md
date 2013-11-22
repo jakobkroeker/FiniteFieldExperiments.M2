@@ -1,15 +1,19 @@
 ### FiniteFieldExperiments.M2
 
-Framework for finite field experiments for explicit and implicitly given ideals and parameter spaces
+A Macaulay2-Framework for finite field experiments for explicit and implicitly given ideals and parameter spaces
 ( FiniteFieldExperiments.m2)
 
 
 The package provides also lifting of (polynomial) system solutions over a prime field to an extension field of rationals
 ( padicLift.m2 )
 
-To load the packages,
+
+To use the packages,
 install them first:
 
+
+- start M2 (available at http://www.math.uiuc.edu/Macaulay2/Downloads/)
+- run
  
 ```
 uninstallPackage"M2Logging"
