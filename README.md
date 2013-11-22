@@ -1,7 +1,7 @@
 ### FiniteFieldExperiments.M2
 
 A Macaulay2-Framework for finite field experiments for explicit and implicitly given ideals and parameter spaces
-( FiniteFieldExperiments.m2)
+( FiniteFieldExperiments.m2), in preliminary alpha version.
 
 
 The package provides also lifting of (polynomial) system solutions over a prime field to an extension field of rationals
