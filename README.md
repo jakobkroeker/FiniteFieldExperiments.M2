@@ -7,30 +7,31 @@ Framework for finite field experiments for explicit and implicitly given ideals 
 The package provides also lifting of (polynomial) system solutions over a prime field to an extension field of rationals
 ( padicLift.m2 )
 
-To load the package,
+To load the packages,
 install them first:
 
  
 ```
 uninstallPackage"M2Logging"
-restart
 installPackage"M2Logging"
 check M2Logging
 
 uninstallPackage"IntervalPkg"
-restart
 installPackage"IntervalPkg"
 check IntervalPkg
 
 uninstallPackage"BlackBoxIdeals"
-restart
 installPackage"BlackBoxIdeals"
 check BlackBoxIdeals
 
 uninstallPackage"FiniteFieldExperiments"
-restart
 installPackage"FiniteFieldExperiments"
 check FiniteFieldExperiments
+
+uninstallPackage"padicLift"
+installPackage"padicLift"
+check padicLift
+
 ```
 
 
