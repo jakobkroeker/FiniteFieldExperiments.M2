@@ -1,5 +1,5 @@
-FiniteFieldExperiments.M2
--------------------------
+### FiniteFieldExperiments.M2
+
 Framework for finite field experiments for explicit and implicitly given ideals and parameter spaces
 ( FiniteFieldExperiments.m2)
 
