@@ -11,7 +11,7 @@ To load the package,
 install them first:
 
  
-`
+```
 uninstallPackage"M2Logging"
 restart
 installPackage"M2Logging"
@@ -31,7 +31,7 @@ uninstallPackage"FiniteFieldExperiments"
 restart
 installPackage"FiniteFieldExperiments"
 check FiniteFieldExperiments
-`
+```
 
 
 Then look at the examples in the *experiments*-folder
