@@ -14,20 +14,19 @@ newPackage(
       },
      Configuration => {},
      PackageExports => {"BlackBoxIdeals", "IntervalPkg" },
-     Headline => "black boxes for explicit and implicitly given ideals",
-     DebuggingMode => true
+     Headline => "finite field experiments for explicit and implicitly given ideals and parameter spaces",
+     DebuggingMode => false
 )
 
 
-needsPackage "IntervalPkg";
-needsPackage "BlackBoxIdeals";
+
 
 
 export {
   "estimateDecomposition", 
   "estimateStratification",
   "estimateCodim", 
-  "estimateNumberOfComponents",    	    	 
+  "estimateNumberOfComponents",                 
   "poissonEstimate",
   "Experiment",
   "RandomExperiment",
@@ -90,14 +89,13 @@ FiniteFieldExperimentsProtect = ()->
   protect minPointsPerComponent;
   protect setMinPointsPerComponent;
   protect stratificationIntervalView;
-  protect countsByCount;  protect countsByCount;
+  protect countsByCount;  --protect countsByCount;
 
  
   protect  estimateStratification2;
   protect experimentData; 
   protect isRandom;
   protect compatible;
-  protect createExperimentData;
 )
 
  
@@ -170,7 +168,11 @@ FiniteFieldExperimentsExport  = ()->
  exportMutable (  compatible );
  
  exportMutable (  createExperimentData );
-)
+) 
+
+needsPackage "SimpleDoc";
+needsPackage "Text";
+
 
 exportMutable(savedExperimentData412398472398473923847 );
 
@@ -205,6 +207,7 @@ poissonEstimate(ZZ) := HashTable => opts -> (numPoints) ->
      )
 
 TEST ///
+  loadPackage ("FiniteFieldExperiments",Reload=>true)
   debug FiniteFieldExperiments
   FiniteFieldExperimentsProtect()
   assert ( (poissonEstimate(16,"confidence" => 2)).min == 8  );
@@ -216,6 +219,7 @@ TEST ///
  
 
 TEST ///
+  loadPackage ("FiniteFieldExperiments",Reload=>true)
   debug FiniteFieldExperiments
   FiniteFieldExperimentsProtect()
   assert (poissonEstimate(16,"confidence"=>2) == new Interval from (8,24))
@@ -250,10 +254,10 @@ estimateCodim = method( Options => (options poissonEstimate) );
 estimateCodim( ZZ, ZZ, ZZ ) := Interval => opts->
     ( trials, numPoints, fieldCardinality ) -> 
 (
-    	 est := (1/trials)*poissonEstimate(numPoints,opts);
-    	 logEst := new Interval from (-log est.max,-log est.min);
-    	 codimEst := (1/log fieldCardinality)*logEst;
-	 new Interval from (round(1,codimEst.min),round(1,codimEst.max))
+         est := (1/trials)*poissonEstimate(numPoints,opts);
+         logEst := new Interval from (-log est.max,-log est.min);
+         codimEst := (1/log fieldCardinality)*logEst;
+     new Interval from (round(1,codimEst.min),round(1,codimEst.max))
 );
 
 TEST ///
@@ -292,10 +296,10 @@ estimateNumberOfComponents(Experiment,List) := HashTable => opts->    (experimen
     
      cardinality := experiment.coefficientRingCardinality();
      estimateNumberOfComponents(
-	  experiment.trials(),
-	  key#posRankJacobianAt,
-	  count#key,
-	  cardinality,opts)
+      experiment.trials(),
+      key#posRankJacobianAt,
+      count#key,
+      cardinality,opts)
 )
 
 createExperimentData = (coeffRing,points,count,trials,propertyList,isRandom) -> (
@@ -476,14 +480,14 @@ estimateDecompositionOld := (experiment) -> (
        print "(estimated codim, estimated number of components [confidence interval] <= {watched Properties})";
        print "";
        apply(sort apply(keys count,key->
-		 (net(
-		      key#posRankJacobianAt,
-		      estimateNumberOfComponents(
-			   experiment.trials(),
-			   key#posRankJacobianAt,
-			   count#key,
-			   cardinality ) )
-		 ) |" <= " |net key ),
+         (net(
+              key#posRankJacobianAt,
+              estimateNumberOfComponents(
+               experiment.trials(),
+               key#posRankJacobianAt,
+               count#key,
+               cardinality ) )
+         ) |" <= " |net key ),
        print);
    );
  
@@ -494,8 +498,8 @@ estimateDecomposition =  (experiment) -> (
        print "(estimated codim, estimated number of components [confidence interval] <= {watched Properties})";
        print "";
        apply(sort apply(keys experiment.countData(),key->
-		      net( key#posRankJacobianAt, estimateNumberOfComponents(experiment,key) )
-		 |" <= " | net key),
+              net( key#posRankJacobianAt, estimateNumberOfComponents(experiment,key) )
+         |" <= " | net key),
        print);
 )
 
@@ -514,10 +518,10 @@ estimateStratification =  (experiment) -> (
      -- sort keys by number of occurence
      sortKeysCount := apply(reverse sort apply(keys count,k->(count#k,k)),i->i#1);
      apply(sortKeysCount,k->(
-	       --print (net((log(trials)-log(i#0))/log(charK))|" <= "|net(i#1)));
-	       print (net(round(1,(log(trials)-log(count#k))/log(orderK)))|" <= "|net(k)))
-	       )
-	  ;
+           --print (net((log(trials)-log(i#0))/log(charK))|" <= "|net(i#1)));
+           print (net(round(1,(log(trials)-log(count#k))/log(orderK)))|" <= "|net(k)))
+           )
+      ;
      print "--";
 )
 
@@ -827,10 +831,10 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
                 upperEstimate := (estimateNumberOfComponents(experiment,countKey)).max;
                 ffelog.debug ("upper estimate number of components:  " | toString upperEstimate );
                 --upperEstimate := ((estimateDecompositionOld( experimentData ))#countKey).max;
-		        --upperEstimate := 1; -- test
+                --upperEstimate := 1; -- test
 
                 wantedPoints = max(1,upperEstimate)*wantedPoints;
-            ); 	       
+            );            
 
           -- remember some points
             if experimentData.points#?(countKey) then 
@@ -1118,9 +1122,9 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
 -- tryProperty = (experiment, property) ->(
 --     pointLists := experiment.pointLists();
 --     apply(
---     	  apply((keys pointLists),key -> (key,tally apply(pointLists#key,property))),
---     	  i->print (net i#0|" => "|net i#1)
---     	  )
+--           apply((keys pointLists),key -> (key,tally apply(pointLists#key,property))),
+--           i->print (net i#0|" => "|net i#1)
+--           )
 --     )
 
 doc ///
@@ -1130,97 +1134,104 @@ doc ///
         type to collect data from a finite field experiment
    Usage   
         e = new Experiment from bb
-	e.run(trials)
-	e.countData()
-	e.pointLists()
-	e.estimateStratification()
-	e.estimateDecomposition()
+        e.run(trials)
+        e.countData()
+        e.pointLists()
+        e.estimateStratification()
+        e.estimateDecomposition()
    Inputs  
         bb:HashTable 
-	   a blackBoxIdeal
+            a blackBoxIdeal
    Description
         Text
-            Creates an experiment from a black box. The experiment object will keep
-	    track of all information created when the ideal is evaluated at random points.
-	    Here is a typical extremely simple minded application:
-	    	    
-	    First we create an ideal we want to analyse and put it into a blackbox:
+            Creates an experiment from a black box, see @TO BlackBoxIdeals@ . The experiment object will keep
+            track of all information created when the ideal is evaluated at random points.
+            Here is a typical extremely simple minded application:
+                
+            First we create an ideal we want to analyse and put it into a blackbox:
         Example      
-	    K = ZZ/5
-	    R = K[x,y,z]
-	    I = ideal (x*z,y*z)
-	    bb = blackBoxIdeal I; 	  
+           K = ZZ/5
+           R = K[x,y,z]
+           I = ideal (x*z,y*z)
+           bb = blackBoxIdeal I;       
         Text
            \break The ideal describes a line and a plane intersecting at the origin.
-	   
-	   The experiment will evaluate the ideal at random points. If
-	   the point is in the vanishing set of the ideal (i.e. either on the point
-	   or on the line) it will calculate the rank of the jacobi matrix at that point.
-      	   (2 on the line, 1 on the plane, 0 in the origin). 
-	Example
-	   bb.isZeroAt(matrix{{0_K,0,1}})
-	   bb.rankJacobianAt(matrix{{0_K,0,1}})
-	   bb.rankJacobianAt(matrix{{1_K,2,0}})
-	   bb.rankJacobianAt(matrix{{0_K,0,0}}) 
-	Text
-	   \break Now we create the experiment:
-	Example
-	   e = new Experiment from bb;
-	Text
-	   \break If a black box has a property "rankJacobianAt" it is
-	   automatically watched:
-	Example
-	   e.watchedProperties() 
-	Text
-	   \break Now we run the experiment by evaluating at 1250 random points:  
-	Example
-	   time e.run(1250)      
-	Text
-	   There are 125 points in (F_5)^3 of which 25 are on the
-	   plane, 5 are on the line and 1 (the origin) is on the line and the plane.
-	   We therefore expect about 10 points with rankJacobian = 0, 240 with rankJacobian = 1
-	   and 40 with rankJacobian = 2.
-	   
-	   Often it is useful to have explicit points on all components of a variety. Therefore
-	   the experiment has stored some of the points:
-	Example
-	   e.pointLists()
-	Text
-	   Since one always finds many points found on components of low
-	   codimension it is not useful to remember all of them. The experiment
-	   remembers only about 10 points per component:
-	Example
-	   e.collectedCount() 
-	Text
-	   Here we have not collected exactly 10 points per component since
-	   the experiment uses the upper end of the confidence interval for the
-	   number of components as guide for the number of points to keep. 
-	   
-	   Lets now estimate the number and codimension of reduced components
-	   of the vanishing set:
-	Example
-	   e.estimateDecomposition()	   
-	Text
-	   Indeed we see that there is probably no component of codimension 0 and about
-	   1 component of codimension 1 and 2. The count for the component of 
-	   codimension 2 is slightly lower since we see only 4 of the 5 points
-	   on the line - one is the origin that has a tangent space smaller 
-	   codimension. So we expect the heuristic count to be 4/5 = 0.8. The
-	   same problem occurs for the plane but there it is not so relevant. We
-	   expect 24/25 = 0.96 in this case. For higher characteristics this
-	   systematic error gets smaller.
-	   
-	   If one finds the confidence intervals to large one can continue
-	   to run the experiment:
-	Example
-	   time e.run(1250)
-	   e.estimateDecomposition()	 
-	Text
-	   A doubeling of the number of experiments is expected to devide the
-	   width of a confidence interval by the square root of 2.  	   
+       
+           The experiment will evaluate the ideal at random points. If
+           the point is in the vanishing set of the ideal (i.e. either on the point
+           or on the line) it will calculate the rank of the jacobi matrix at that point.
+           (2 on the line, 1 on the plane, 0 in the origin). 
+        Example
+           bb.isZeroAt(matrix{{0_K,0,1}})
+           bb.rankJacobianAt(matrix{{0_K,0,1}})
+           bb.rankJacobianAt(matrix{{1_K,2,0}})
+           bb.rankJacobianAt(matrix{{0_K,0,0}}) 
+        Text
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+        Text
+           \break If a black box has a property "rankJacobianAt" it is
+           automatically watched:
+        Example
+           e.watchedProperties() 
+        Text
+           \break Now we run the experiment by evaluating at 1250 random points:  
+        Example
+           time e.run(1250)      
+        Text
+           There are 125 points in (F_5)^3 of which 25 are on the
+           plane, 5 are on the line and 1 (the origin) is on the line and the plane.
+           We therefore expect about 10 points with rankJacobian = 0, 240 with rankJacobian = 1
+           and 40 with rankJacobian = 2.
+           
+           Often it is useful to have explicit points on all components of a variety. Therefore
+           the experiment has stored some of the points:
+        Example
+           e.pointLists()
+        Text
+           Since one always finds many points found on components of low
+           codimension it is not useful to remember all of them. The experiment
+           remembers only about 10 points per component:
+        Example
+           e.collectedCount() 
+        Text
+           The amount of stored points can be adjusted by
+        Example
+           e.setMinPointsPerComponent(20)
+           -- collect about 20 points per component now:
+           time e.run(1250) 
+           e.pointLists()
+        Text
+           Here we have not collected exactly 10 points per component since
+           the experiment uses the upper end of the confidence interval for the
+           number of components as guide for the number of points to keep. 
+           
+           Lets now estimate the number and codimension of reduced components
+           of the vanishing set:
+        Example
+           e.estimateDecomposition()       
+        Text
+           Indeed we see that there is probably no component of codimension 0 and about
+           1 component of codimension 1 and 2. The count for the component of 
+           codimension 2 is slightly lower since we see only 4 of the 5 points
+           on the line - one is the origin that has a tangent space smaller 
+           codimension. So we expect the heuristic count to be 4/5 = 0.8. The
+           same problem occurs for the plane but there it is not so relevant. We
+           expect 24/25 = 0.96 in this case. For higher characteristics this
+           systematic error gets smaller.
+           
+           If one finds the confidence intervals to large one can continue
+           to run the experiment:
+        Example
+           time e.run(1250)
+           e.estimateDecomposition()     
+        Text
+           A doubeling of the number of experiments is expected to devide the
+           width of a confidence interval by the square root of 2.         
    Caveat
         does not check if the ideal ring is a quotient ring (not supported)
-	   
+       
 ///
 
 
