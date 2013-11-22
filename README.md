@@ -9,33 +9,13 @@ The package provides also lifting of (polynomial) system solutions over a prime 
 
 
 To use the packages,
-install them first:
+an installed M2 (available at http://www.math.uiuc.edu/Macaulay2/Downloads/), =>v1.5 ) is mandatory
+and they need to be installed first:
 
-
-- start M2 (available at http://www.math.uiuc.edu/Macaulay2/Downloads/)
 - run
  
 ```
-uninstallPackage"M2Logging"
-installPackage"M2Logging"
-check M2Logging
-
-uninstallPackage"IntervalPkg"
-installPackage"IntervalPkg"
-check IntervalPkg
-
-uninstallPackage"BlackBoxIdeals"
-installPackage"BlackBoxIdeals"
-check BlackBoxIdeals
-
-uninstallPackage"FiniteFieldExperiments"
-installPackage"FiniteFieldExperiments"
-check FiniteFieldExperiments
-
-uninstallPackage"padicLift"
-installPackage"padicLift"
-check padicLift
-
+make install
 ```
 
 
