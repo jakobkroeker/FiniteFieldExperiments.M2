@@ -2004,7 +2004,7 @@ doc ///
         Text    
            Creates a blackbox describing an parameter space    \break            
            \break  Example:  create an {\tt BlackBoxParameterSpace } object :
-        Example          
+        Example     
             coeffRing := ZZ/3;
             numVariables := 5;
             bbParamSpace = blackBoxParameterSpace( numVariables , coeffRing );
