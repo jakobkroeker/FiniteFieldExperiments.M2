@@ -1192,18 +1192,18 @@ doc ///
         Text
            Since one always finds many points found on components of low
            codimension it is not useful to remember all of them. The experiment
-           remembers only about 10 points per component:
+           remembers by default only about 10 points per component:
         Example
            e.collectedCount() 
         Text
-           The amount of stored points can be adjusted by
+           The amount of stored points can be adjusted:
         Example
            e.setMinPointsPerComponent(20)
            -- collect about 20 points per component now:
-           time e.run(1250) 
-           e.pointLists()
+           time e.run(1250);
+           e.collectedCount() 
         Text
-           Here we have not collected exactly 10 points per component since
+           Here we have not collected exactly 20 points per component since
            the experiment uses the upper end of the confidence interval for the
            number of components as guide for the number of points to keep. 
            
