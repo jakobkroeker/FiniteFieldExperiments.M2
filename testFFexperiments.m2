@@ -42,21 +42,50 @@ bbI = new BlackBoxIdeal from I;  -- same as above
 
 bbI.knownPointProperties()
 bbI.knownPointPropertiesAsSymbols()
---  {rankJacobianAt, rankJacobianAtDup, valuesAt, bareJacobianAt, isZeroAt, jacobianAt}
+-- {jacobianAt, rankJacobianAt, isZeroAt, valuesAt, bareJacobianAt}
 
 
-bbI.knownMethods()
--- { knownMethods, knownPointProperties, knownPointPropertiesAsSymbols,  hasPointProperty, pointProperty,
---   registerPointProperty,  updatePointProperty   }
+print bbI.knownMethods()
+-- { knownMethods, knownAttributes, knownPointProperties, 
+--   knownPointPropertiesAsSymbols, hasPointProperty, pointProperty, 
+--   registerPointProperty, updatePointProperty, getUpdatedBlackBox (?), 
+--   unknownIsValid (?)}
 
-bbI.knownAttributes()
+print bbI.knownAttributes()
+-- { , type, unknowns, equations, ideal, ring, coefficientRing, 
+--     numVariables, numGenerators}
+-- ?why first empty?
 --  {ideal, numVariables, jacobian, numGenerators, ring, type, unknowns, coefficientRing, equations}
+bbI.type       	    -- BlackBoxIdeal
+bbI.unknowns 	    -- {x, y, z}
+bbI.equations	    -- | xz yz |
+bbI.ideal           -- ideal (x*z, y*z)
+bbI.ring            -- R
+bbI.coefficientRing -- K
+bbI.numVariables    -- 3
+bbI.numGenerators() -- 2 -- ?why brackets?
+bbI.jacobian
+-- | z 0 |
+-- | 0 z |
+-- | x y |
+-- ?why not an known Attibute?
+apply(bbI.knownAttributes(),attribute->print (bbI#attribute()))
+
+bbI#((bbI.knownAttributes())#0)(matrix{{1,2,0_K}})
+-- ?seems that empty first entry calculates rankJacobianAt?
+
 
 assert (2== bbI.rankJacobianAt(matrix{{0,0,1_K}}))
 assert (1== bbI.rankJacobianAt(matrix{{1,2,0_K}}))
 assert (0== bbI.rankJacobianAt(matrix{{0,0,0_K}}))
 -- this is a point where the ideal does not vanish.
 assert (2==bbI.rankJacobianAt(matrix{{1,1,1_K}}))
+
+assert (bbI.isZeroAt(matrix{{0,0,1_K}}))
+assert (bbI.isZeroAt(matrix{{1,2,0_K}}))
+assert (bbI.isZeroAt(matrix{{0,0,0_K}}))
+-- this is a point where the ideal does not vanish.
+assert (not bbI.isZeroAt(matrix{{1,1,1_K}}))
 
 
 
@@ -66,19 +95,15 @@ e = new Experiment from bbI
 e.watchedProperties()
 -- niceToHave: make a test like this for a blackbox not from an ideal
 
-rankJacobianAtDup2 := 7 --define a local symbol, to check, if the package has problems with symbols
-rankJacobianAtDup2 = 8
-
 -- register new property
-
-
-bbI =  bbI.registerPointProperty("rankJacobianAtDup",(bb,point)->(rank bb.jacobianAt(point)))
-bbI =  bbI.updatePointProperty("rankJacobianAt",(bb,point)->(rank bb.jacobianAt(point)))
+bbI.registerPointProperty("rankJacobianAtDup",(bb,point)->(rank bb.jacobianAt(point)))
 bbI.knownPointProperties()
-
+-- rankJacobianAtDup is registered
 bbI.rankJacobianAtDup(matrix{{0,0,1_K}})
--- not yet accessible
+-- stdio:73:4:(3): error: key not found in hash table
+-- but not accessible
 
+-- the blackbox must be updated
 bbI = rebuildBlackBox bbI   
 
 bbI.rankJacobianAtDup(matrix{{0,0,1_K}})
@@ -87,7 +112,18 @@ bbI.rankJacobianAtDup(matrix{{0,0,1_K}})
 -- faster:
 bbI = bbI.registerPointProperty("rankJacobianAtTrip",(bb,point)->(rank bb.jacobianAt(point)));
 bbI.rankJacobianAtTrip(matrix{{0,0,1_K}})
--- accessible
+-- immediately accessible
+
+-- shorter
+bbI = bbI.rpp("rankJacobianAtQuad",(bb,point)->(4000+rank bb.jacobianAt(point)));
+
+
+-- if an property is already registerd it can be updated
+bbI.updatePointProperty("rankJacobianAtDup",(bb,point)->(1000+rank bb.jacobianAt(point)))
+-- no rebuild is necessary
+bbI.rankJacobianAtDup(matrix{{0,0,1_K}})
+-- 1002
+
 
 -- nice to have
 -- bbI = bbI.rpp("rankJacobianAtTrip",(bb,point)->(rank bb.jacobianAt(point)));
