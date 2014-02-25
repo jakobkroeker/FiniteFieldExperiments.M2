@@ -3,6 +3,8 @@
 
 restart
 
+path = append(path,"/Users/bothmer/Desktop/projekte/strudel/Jakob2010/GitHub/padicLiftM2/")
+
 uninstallPackage"M2Logging"
 installPackage"M2Logging"
 check M2Logging
