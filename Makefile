@@ -56,7 +56,7 @@ check:
 
 test: check
 
-# will not work on mac 
+# will not work on mac (or at all? should consider auxiliary files!)
 install:
 	M2 --script installPackage.m2
 
