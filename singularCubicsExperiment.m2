@@ -88,16 +88,16 @@ bbC = bbC.registerPointProperty("degreeSingularLocusAt",degreeSingularLocusAt);
 
 e = new Experiment from bbC;
 -- so far nothing is observed:
-e.recordedProperties()
+e.watchedProperties()
 -- {}
 
 -- NICE TO HAVE: e.wachedProperties()
 --e.watchProperty("degreeSingularLocusAt")
-e.recordProperty("degreeSingularLocusAt")
+e.watchProperty("degreeSingularLocusAt")
 -- now we watch for the degree of the singular locus
 e.watchedProperties()
 -- {degreeSingularLocusAt}
--- NICE TO HAVE: e.watchProperty("degreeSingularLocusAt")
+
 
 -- lets look at 100 cubic
 e.run(100)
@@ -159,12 +159,7 @@ multiplicitiesSingularLocusAt(bbC,coeffCubicCone)
 multiplicitiesSingularLocusAt(bbC,coeffCubicFermat)
 bbC = bbC.registerPointProperty("multiplicitiesSingularLocusAt",multiplicitiesSingularLocusAt);
 
--- black-box can not be extracted from experiment
-tryProperty = (ex,bb,tProp) -> (
-     L = ex.pointLists();
-     tally flatten apply(keys L, k->apply(L#k,point->(k,(bb.pointProperty(tProp))(point))))
-     )
-tryProperty(e,bbC,"multiplicitiesSingularLocusAt")
+e.tryProperty("multiplicitiesSingularLocusAt")
 -- ({0}, {}) => 10      }
 -- ({1}, {1}) => 10
 -- ({2}, {1, 1}) => 4
@@ -175,9 +170,9 @@ tryProperty(e,bbC,"multiplicitiesSingularLocusAt")
 -- is seems that this property divides the degree 2 locus in two of similar size
 -- lets run the experiment again and watch this property
 e.clear()
-e.recordProperty("degreeSingularLocusAt")
-e.recordProperty("multiplicitiesSingularLocusAt")
-e.recordedProperties()
+e.watchProperty("degreeSingularLocusAt")
+e.watchProperty("multiplicitiesSingularLocusAt")
+e.watchedProperties()
 
 time e.run(1000)
 -- {0, {}} => 817        
@@ -209,4 +204,5 @@ e.estimateStratification()
 -- lets do more points
 time e.run(10000)    
 e.estimateStratification()     
+e.pointsByKey({3, {1, 1, 1}})
 e.pointsByKey({4, {1, 1, 1, 1}})
