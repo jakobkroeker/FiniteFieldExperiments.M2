@@ -1159,7 +1159,6 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
    --  
    setValuesAt := (pValuesAt) ->
    (      
-       print "setValuesAt";
        bblog.info( "setValuesAt: updates (isZeroAt, numGenerators, jacobianAt, bareJacobianAt, rankJacobianAt)" );      
 
        localValuesAt := (point)->return valuesAtWrapper(pValuesAt, point ) ;
@@ -1172,7 +1171,6 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
 
        blackBox.numGenerators = ()->(return localNumGenerators);
 
-   print "blackBox.numGenerators";print (blackBox.numGenerators());
 
        bblog.info( "updated blackBox.numGenerators to " | toString blackBox.numGenerators() );   
      
@@ -1374,10 +1372,6 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
        for  property in blackBox.knownPointProperties() do
        (
           propkeys := getPropertySymbols( property ) | {toString property};
-          print "propkeys";
-          print propkeys;
-          --print ("blackBox." | property);
-          --print bb#property;
 
           for key in propkeys  do
           (
