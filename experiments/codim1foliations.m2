@@ -68,7 +68,7 @@ installPackage"FiniteFieldExperiments"
 ---
 
 restart
-load"experiments/codim1foliations.m2"
+load"codim1foliations.m2"
 
 bbRankM = blackBoxParameterSpace(#(gens B),K)
 --bbRankM.registerPointProperty("rankMat",rankMat)
@@ -184,6 +184,8 @@ closedOmegaBat = (point) -> omegaBat(closedPointBat(point))
 closedBettiAt = (point) -> betti res ideal coeffBat(closedPointBat(point))
 closedMat = (point) -> Mat(closedPointBat(point))
 closedRankMat = (point) -> rank closedMat(point)
+bbClosed = bbClosed.rpp("closedRankMat",closedRankMat);
+
 
 bbClosed = blackBoxParameterSpace(rank target basisClosed,K)
 bbClosed.numVariables
@@ -210,26 +212,22 @@ estimateStratification(eClosedBetti)
 --                  1: . 3 1 .
 --                  2: . . 2 1
 --closedOmegaAat = (point) -> omegaAat(closedPointBat(point))
-closedIsAclosedAt = (point) -> isAclosedAt(closedPointBat(point))
-bbBetti = bbBetti.rpp("closedIsAclosedAt",closedIsAclosedAt)
-rebuildBlackBox(bbBetti)
-keys bbBetti
-bbBetti.knownPointProperties()
+testPoint = (eClosedBetti.pointsByKey((keys eClosedBetti.pointLists())#0))#0
 
-eClosedBetti 
-keys eClosedBetti
-eClosedBetti.pointKeys()
+closedIsAclosedAt = (point) -> isAclosedAt(closedPointBat(point))
+bbClosed = bbClosed.rpp("closedIsAclosedAt",closedIsAclosedAt)
+
 eClosedBetti.watchedProperties()
 time eClosedBetti.run(10000) 
 -- used 424.527 seconds
 eClosedBetti.estimateStratification()
 
 eClosedBetti.tryProperty("closedIsAclosedAt")
+eClosedBetti.tryProperty("closedRankMat")
 
-
-
-tryProperty(eClosedBetti,closedRankMat)
-tryProperty(eClosedBetti,point->(closedRankMat(point),closedIsAclosedAt(point)))
+-------------------------
+-- reworked up to here --
+-------------------------
 
 time betti (J = jacobian I)
 
