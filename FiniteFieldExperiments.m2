@@ -15,7 +15,8 @@ newPackage(
      Configuration => {},
      PackageExports => {"BlackBoxIdeals", "IntervalPkg" },
      Headline => "finite field experiments for explicit and implicitly given ideals and parameter spaces",
-     DebuggingMode => false
+     DebuggingMode => false,
+     AuxiliaryFiles=>true
 )
 
 
@@ -26,7 +27,11 @@ export {
   "estimateDecomposition", 
   "estimateStratification",
   "estimateCodim", 
-  "estimateNumberOfComponents",                 
+  "estimateNumberOfComponents",              
+  "createInterpolatedIdeal",
+  "interpolateBB",
+  "interpolate",
+  "isOnComponent",   
   "poissonEstimate",
   "Experiment",
   "RandomExperiment",
@@ -46,6 +51,7 @@ FiniteFieldExperimentsProtect = ()->
   protect pointKeys; 
   protect points;
   protect trials;
+  protect createAllInterpolationIdeals;
 
   protect coefficientRingCardinality;
   protect pointLists;
@@ -53,6 +59,8 @@ FiniteFieldExperimentsProtect = ()->
   protect countData;
   protect setIsInteresting;
   protect isInteresting;
+  protect interpolatedIdeals;
+  protect maxDegree;
 
   protect getExperimentData;
   protect setRecordedProperties;
@@ -113,10 +121,13 @@ FiniteFieldExperimentsExport  = ()->
   exportMutable( pointKeys);
   exportMutable( points);
   exportMutable( trials );
+  exportMutable( interpolatedIdeals );
+  exportMutable( createAllInterpolationIdeals );
  
   exportMutable(coefficientRingCardinality);
   exportMutable( pointLists );
   exportMutable( pointsByKey );
+  exportMutable( maxDegree ) ;
 
   exportMutable( countData );
 
@@ -266,6 +277,32 @@ TEST ///
   assert (estimateCodim(11^2*10,10,11) == new Interval from (1.8,2.4))
 ///
 
+
+ 
+
+InterpolatedIdeal = new Type of MutableHashTable;
+
+new InterpolatedIdeal from MutableHashTable :=  (InterpolatedIdealAncestor,l)->
+(  
+     --type check?
+     return l;
+);
+
+
+createInterpolatedIdeal = method();
+createInterpolatedIdeal( Ideal,ZZ,String ) := InterpolatedIdeal => (I,maxDegree,name)->
+(
+     interpolatedIdeal := new MutableHashTable;
+     interpolatedIdeal.ideal = I;
+     interpolatedIdeal.maxDegree = maxDegree;
+     interpolatedIdeal.name = name;
+     
+     return new InterpolatedIdeal from interpolatedIdeal;
+)
+
+
+load "./FiniteFieldExperiments/Interpolation.m2";
+
 Experiment = new Type of HashTable;
 
 ExperimentData = new Type of MutableHashTable;
@@ -276,6 +313,8 @@ new ExperimentData from Ring := (E,coeffRing) -> (
      e := new MutableHashTable;
      e.coefficientRing = coeffRing;
      e.points = new MutableHashTable;
+    -- format: key=>{ideal, maxDegree, name} --later: data type for interpolated ideal
+     e.interpolatedIdeals = new MutableHashTable; 
      e.count = new Tally;
      e.trials = 0;
      e.propertyList = {};
@@ -306,6 +345,7 @@ createExperimentData = (coeffRing,points,count,trials,propertyList,isRandom) -> 
      e := new ExperimentData;
      e.coefficientRing = coeffRing;
      e.points = new MutableHashTable from points;
+     e.interpolatedIdeals = new MutableHashTable; 
      e.count = count;
      e.trials = trials;
      e.propertyList = propertyList;
@@ -318,6 +358,7 @@ new ExperimentData from ExperimentData := (E,ed) -> (
      e := new MutableHashTable;
      e.coefficientRing = ed.coefficientRing;
      e.points = copy ed.points;
+     e.interpolatedIdeals =  copy ed.interpolatedIdeals;
      e.count = copy ed.count;
      e.trials = ed.trials;
      e.propertyList = copy ed.propertyList;
@@ -807,7 +848,6 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
        return jacobianAtKey;
    );
  
-   
 
     runExperimentOnce(ExperimentData, Matrix,ZZ ) := Tally => (experimentData, point, wantedPoints) -> 
     (  
@@ -1107,6 +1147,24 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
                                                                          )
                                     )
                );
+    );
+    
+    experiment.createAllInterpolationIdeals  = (maxDegree, prec) -> 
+    ( 
+        interpolatedIdeals := {};
+        for point in experiment.points() do
+        (
+             -- check if point is already on one of the known components
+             print ("point" | toString point );
+             if 0 != # (select ( interpolatedIdeals , interpol -> isOnComponent ( blackBoxIdeal, interpol.ideal, point, prec ) ) ) then continue;
+             --(ZZ,BlackBoxIdeal,Matrix)
+
+             interpolatedIdeals = interpolatedIdeals | { createInterpolatedIdeal (maxDegree, blackBoxIdeal, point)  };             
+        );
+        print ("interpolatedIdeals" | toString interpolatedIdeals );
+        experimentData.interpolatedIdeals = new MutableHashTable from 
+           apply ( #interpolatedIdeals, idx-> (idx => interpolatedIdeals#idx ) ) ;
+       
     );
 
 
