@@ -27,10 +27,10 @@ assert (0== bbI.rankJacobianAt(point0))
 assert (2==bbI.rankJacobianAt(pointNothing))
 
 
-jet2 = JetAt(bbI,point2,20,2)
-jet1a = JetAt(bbI,point1,20,2)
-jet1b = JetAt(bbI,point1,20,2)
-jet0 = JetAt(bbI,point0,20,2)
+jet2 = jetAt(bbI,point2,20,2)
+jet1a = jetAt(bbI,point1,20,2)
+jet1b = jetAt(bbI,point1,20,2)
+jet0 = jetAt(bbI,point0,20,2)
 -- HashTable{lift => null      }
 --           succeeded => false
 --
@@ -47,7 +47,7 @@ jet0 = new HashTable from {
      }
 
 -- test: are the rings of different jets of the same precision the same?
-assert ((ring jet1#"jet") === (ring jet2#"jet"))
+assert ((ring jet1a#"jet") === (ring jet2#"jet"))
 
 
 
@@ -55,7 +55,7 @@ assert ((ring jet1#"jet") === (ring jet2#"jet"))
 --         succeeded => false
 class jet1
 
-jetNothing = JetAt(bbI,pointNothing,20,2)
+jetNothing = jetAt(bbI,pointNothing,20,2)
 -- error:  function is not zero at the point
 
 -- richtig waere:
@@ -66,7 +66,7 @@ jetNothing = JetAt(bbI,pointNothing,20,2)
 
 -- es fehlt ein testbeispiel fuer failedJetLength => 1
 
-viewHelp JetAt
+viewHelp jetAt
 
 
 
@@ -82,7 +82,7 @@ interpolate = (mons,jetP) -> if jetP#"succeeded" then (
 mons1 = basis(1,R)
 
 interpolate(mons1,jet2)
-interpolate(mons1,jet1)
+interpolate(mons1,jet1a)
 interpolate(mons1,jet0)
 -- ueberpruefen was hier passiert / passieren soll
 -- es gibt kein sinnvolles ergebnis. Fehlermeldung.
@@ -118,7 +118,7 @@ interpolateBB = (maxDegree,BB,point) -> (
      R := BB.ring;
      mons := matrix {flatten apply(maxDegree+1,i->flatten entries basis(i,R))};
      -- find one jet with precision 10 more then number of monomials
-     jetP := JetAt(BB,point,rank source mons+10,2);
+     jetP := jetAt(BB,point,rank source mons+10,2);
      -- !!!this heuristic must be tested!!!
      -- Test: see if interpolated polynomials are in at least one
      -- irreducible component of the BlackBoxIdeal.
@@ -158,7 +158,7 @@ component2 = interpolateBB(2,bb2,point2)
 --
 
 isOnComponent = (BB,interpolationIdeal,point,prec) -> (
-     jetP = JetAt(BB,point,prec,1);
+     jetP = jetAt(BB,point,prec,1);
      if jetP#"succeeded" then (
      	  0==sub(interpolationIdeal,jetP#"jet")
 	  ) else error "point not smooth"

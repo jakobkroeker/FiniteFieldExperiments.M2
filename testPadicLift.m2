@@ -2,15 +2,15 @@
 
 uninstallPackage"padicLift"
 restart
-loadPackage"padicLift"
-installPackage"padicLift"
-check padicLift
+installPackage("padicLift",UserMode =>true)
+check (padicLift,UserMode =>true)
+loadPackage("padicLift",Reload =>true)
 
-viewHelp padicLift
+--viewHelp padicLift
 
 ----------
 uninstallPackage"BlackBoxIdeals"
 restart
 loadPackage"BlackBoxIdeals"
 installPackage"BlackBoxIdeals"
-JetAt
+jetAt

@@ -30,6 +30,6 @@ installPackage "BlackBoxIdeals"
 IFPBlackBox.jetAt(point);
 IFPBlackBox.jetAt(point, "liftDepth"=>10);
 
-JetAt(IFPBlackBox,point,4,4);
+jetAt(IFPBlackBox,point,4,4);
 
 

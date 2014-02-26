@@ -68,7 +68,7 @@ installPackage"FiniteFieldExperiments"
 ---
 
 restart
-load"codim1foliations.m2"
+load"experiments/codim1foliations.m2"
 
 bbRankM = blackBoxParameterSpace(#(gens B),K)
 --bbRankM.registerPointProperty("rankMat",rankMat)

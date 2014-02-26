@@ -286,7 +286,7 @@ doc ///
         given a solution over a prime field for a system of equations, compute the corresponding complex solutions
     Inputs
          blackBoxIdeal: HashTable 
-            an ideal blackbox (see @TO createBlackBoxIdeal@ ) or the equations ideal ( only integer coefficient ring is supported ) 
+            an ideal blackbox (see @TO BlackBoxIdeals@ ) or the equations ideal ( only integer coefficient ring is supported ) 
         solutionModPrime: Matrix
             an element of the ideal vanishing set over a prime field
         "options"=> LiftOptions
