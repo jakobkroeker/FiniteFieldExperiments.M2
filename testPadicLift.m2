@@ -13,4 +13,4 @@ uninstallPackage"BlackBoxIdeals"
 restart
 loadPackage"BlackBoxIdeals"
 installPackage"BlackBoxIdeals"
-JetAt
+jetAt

@@ -40,7 +40,7 @@ bbI = blackBoxIdeal I;
 bbI = new BlackBoxIdeal from I;  -- same as above
 
 
-bbI.knownPointProperties()
+print bbI.knownPointProperties()
 bbI.knownPointPropertiesAsSymbols()
 -- {jacobianAt, rankJacobianAt, isZeroAt, valuesAt, bareJacobianAt}
 
@@ -48,14 +48,11 @@ bbI.knownPointPropertiesAsSymbols()
 print bbI.knownMethods()
 -- { knownMethods, knownAttributes, knownPointProperties, 
 --   knownPointPropertiesAsSymbols, hasPointProperty, pointProperty, 
---   registerPointProperty, updatePointProperty, getUpdatedBlackBox (?), 
---   unknownIsValid (?)}
+--   registerPointProperty, updatePointProperty }
 
 print bbI.knownAttributes()
--- { , type, unknowns, equations, ideal, ring, coefficientRing, 
---     numVariables, numGenerators}
--- ?why first empty?
---  {ideal, numVariables, jacobian, numGenerators, ring, type, unknowns, coefficientRing, equations}
+-- {ideal, jacobian, numVariables, type, unknowns, 
+--  ring, equations, coefficientRing}
 bbI.type       	    -- BlackBoxIdeal
 bbI.unknowns 	    -- {x, y, z}
 bbI.equations	    -- | xz yz |
@@ -68,11 +65,10 @@ bbI.jacobian
 -- | z 0 |
 -- | 0 z |
 -- | x y |
--- ?why not an known Attibute?
-apply(bbI.knownAttributes(),attribute->print (bbI#attribute()))
 
-bbI#((bbI.knownAttributes())#0)(matrix{{1,2,0_K}})
--- ?seems that empty first entry calculates rankJacobianAt?
+apply(bbI.knownAttributes(),attribute->print (bbI#attribute))
+
+apply(bbI.knownProperties(),property->print (bbI#property()))
 
 
 assert (2== bbI.rankJacobianAt(matrix{{0,0,1_K}}))
@@ -99,7 +95,7 @@ e.watchedProperties()
 bbI.registerPointProperty("rankJacobianAtDup",(bb,point)->(rank bb.jacobianAt(point)))
 bbI.knownPointProperties()
 -- rankJacobianAtDup is registered
-bbI.rankJacobianAtDup(matrix{{0,0,1_K}})
+-- bbI.rankJacobianAtDup(matrix{{0,0,1_K}})
 -- stdio:73:4:(3): error: key not found in hash table
 -- but not accessible
 
@@ -200,7 +196,7 @@ decomposeResult := apply(keys e.pointLists(),k->(
 	  L = e.pointsByKey(k);
      	  unique flatten apply(unique L,P->(
 	  	    rank bbI.jacobianAt(P);
-	  	    time jetP = JetAt(bbI,P,20,1);
+	  	    time jetP = jetAt(bbI,P,20,1);
 	  	    {interpolate(mons,jetP)}
 	  	    ))
      	  ))

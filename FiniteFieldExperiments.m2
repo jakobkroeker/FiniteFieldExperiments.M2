@@ -1248,7 +1248,7 @@ TEST ///
     point = sub( point, coeffRing);
 
  
-    bbRankM = bbRankM.getUpdatedBlackBox()
+    bbRankM = bbRankM.getUpdatedBlackBox(bbRankM)
  
 
     e = new Experiment from bbRankM

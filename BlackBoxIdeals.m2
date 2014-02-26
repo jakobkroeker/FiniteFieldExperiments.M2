@@ -39,7 +39,7 @@ export {
     blackBoxIdealFromEvaluation,
     BlackBoxLogger,
     getEpsRing,
-    JetAt,
+    jetAt,
     "keys1",
     "rebuildBlackBox",
     "acceptedParameterNumber"
@@ -87,7 +87,7 @@ protect setJacobianAt;
 protect equations;
 
 protect hasPointProperty;
-
+protect knownProperties;
 protect knownPointProperties;
 protect knownPointPropertiesAsSymbols;
 protect knownMethods;
@@ -129,6 +129,7 @@ idealBlackBoxesExport = ()->
 
  exportMutable( hasPointProperty );
   exportMutable( knownPointProperties );
+  exportMutable (knownProperties);
   exportMutable( knownPointPropertiesAsSymbols );
 
   exportMutable(knownMethods);
@@ -152,6 +153,7 @@ undocumented {
     jacobianAt,   
     knownAttributes,
     knownMethods,
+    knownProperties,
     knownPointProperties,
     numGenerators,
     numVariables,
@@ -662,7 +664,7 @@ BlackBoxParameterSpace = new Type of  HashTable;
 
 
 
--- JetAtSingleTrial: 
+-- jetAtSingleTrial: 
 --   tries once to compute a jet , ( see http://en.wikipedia.org/wiki/Jet_%28mathematics%29 for jet definition;) 
 --   for the used computation algorithm see the bacherlor thesis at 'http://www.centerfocus.de/theses/js.pdf' .
 --
@@ -682,21 +684,26 @@ BlackBoxParameterSpace = new Type of  HashTable;
 --             and k is the number of the generators/equation of the (implicitly or explicitly) given ideal. 
 
 --
-JetAtSingleTrial = method();
+jetAtSingleTrial = method();
 
 -- here we improve precision by 1 in each step
 -- using newtons-Algorithm one could double precision in each step, but
 -- for this we also need high precision jacobi-Matrices
 -- For black-Box-Jacobi-Matrices we might not have high precision Jacobi-Matrices
 
-JetAtSingleTrial( BlackBoxParameterSpace, Matrix, ZZ ) := MutableHashTable => ( blackBox,  point, jetLength )  ->
+jetAtSingleTrial( BlackBoxParameterSpace, Matrix, ZZ ) := MutableHashTable => ( blackBox,  point, jetLength )  ->
 (
 
-    if not (blackBox.isZeroAt(point)) then error(" function is not zero at the point ");
-
+    -- if not (blackBox.isZeroAt(point)) then error(" function is not zero at the point ");
+    if not (blackBox.isZeroAt(point))  then
+    (
+       retVal := new HashTable from { "succeeded" => false, "jet" => null, "failedJetLength" =>0 };
+       return retVal;
+    );
 
     liftingFailed := false;
     failedJetLength := null;
+    jet := point;
 
     jacobianM2Transposed := transpose blackBox.jacobianAt(point) ;
     
@@ -722,7 +729,7 @@ JetAtSingleTrial( BlackBoxParameterSpace, Matrix, ZZ ) := MutableHashTable => ( 
     
     lengthOneLift := sub(point,epsRng) + transpose(sub( jacobianKernel*rnd, epsRng) *eps);
 
-    jet := lengthOneLift;
+    jet = lengthOneLift;
 
     epsPrecision := 1;     -- first lift should succeed for a smooth point! 
     lastJetNr    := epsPrecision ; 
@@ -767,34 +774,43 @@ JetAtSingleTrial( BlackBoxParameterSpace, Matrix, ZZ ) := MutableHashTable => ( 
 
 
 
--- 'JetAt'
+-- 'jetAt'
 --   tries to compute a jet at a given point (which belongs to the zero set of the black box ) several times (= numTrials). 
 -- 
---   for the returned result and input restrictions see 'JetAtSingleTrial'
+--   for the returned result and input restrictions see 'jetAtSingleTrial'
 
-JetAt = method();
+jetAt = method();
 
-JetAt( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials )  ->
+jetAt( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials )  ->
 (
-    
-    for i in 1..numTrials do
+    assert( numTrials>=1 );
+    bestJet := jetAtSingleTrial ( blackBox,  point, jetLength);
+    for i in 2..numTrials do
     (
-        jetTrialResult := JetAtSingleTrial ( blackBox,  point, jetLength);
-
-        if (jetTrialResult#"succeeded") then 
-            return jetTrialResult;
+        if (bestJet#"succeeded") then 
+        (
+            return bestJet;
+        )
+        else
+        (
+            jetTrialResult := jetAtSingleTrial ( blackBox,  point, jetLength);
+            if ( bestJet#"failedJetLength"< jetTrialResult#"failedJetLength" ) then
+            ( 
+                bestJet = jetTrialResult;
+            );
+        );
     );
-    return  new HashTable from { "succeeded" =>false, "lift" => null };
-    
+    --return  new HashTable from { "succeeded" =>false, "lift" => null };
+    return bestJet;
 )
 
--- JetAtWrapper currently deprecated !
+-- jetAtWrapper currently deprecated !
 -- options makes more sense for trials (=1)
-JetAtWrapper = method( Options=>{"jetLength" =>4, "trials"=>5} );
+jetAtWrapper = method( Options=>{"jetLength" =>4, "trials"=>5} );
 
-JetAtWrapper( BlackBoxParameterSpace, Matrix )  := MutableHashTable => opts -> ( blackBox,  point )  ->
+jetAtWrapper( BlackBoxParameterSpace, Matrix )  := MutableHashTable => opts -> ( blackBox,  point )  ->
 (
-    return JetAt( blackBox,  point, opts#"jetLenth", opts#"trials");
+    return jetAt( blackBox,  point, opts#"jetLenth", opts#"trials");
 );
 
 
@@ -848,6 +864,23 @@ new BlackBoxIdeal from Thing := ( E, thing) -> (
    error "creating blackbox from  type " | toString E | " not implemented ";
 
 );
+
+
+getPropertySymbols := method ();
+   getPropertySymbols(String) := List => (propertyName)->
+   (
+      --
+      propertySymbols := {} ;
+      --
+      try  (  propertySymbols = propertySymbols | { getGlobalSymbol(BlackBoxIdeals.Dictionary, propertyName)} );
+      
+      -- todo question: should the symbol in the users private dictionary always be created?
+      try  (  propertySymbols = propertySymbols | { getGlobalSymbol propertyName} ) else 
+       ( 
+              propertySymbols =  propertySymbols | { getGlobalSymbol( User#"private dictionary" propertyName); }
+        );
+      return propertySymbols;
+   );
 
 
 
@@ -979,21 +1012,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
    );
 
 
-   getPropertySymbols := method ();
-   getPropertySymbols(String) := List => (propertyName)->
-   (
-     
-      propertySymbols := {} ;
-
-      try  (  propertySymbols = propertySymbols | { getGlobalSymbol(BlackBoxIdeals.Dictionary, propertyName);} );
-      
-      -- todo question: should the symbol in the users private dictionary always be created?
-      try  (  propertySymbols = propertySymbols | { getGlobalSymbol propertyName;} ) else 
-       ( 
-              propertySymbols =  propertySymbols | { getGlobalSymbol( User#"private dictionary" propertyName); }
-        );
-      return propertySymbols;
-   );
+   
 
 
 
@@ -1063,6 +1082,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
 
          for symb in getPropertySymbols(propertyName) do 
          (
+             assert(symb=!=null);
              blackBox#symb  = (point)->( (blackBox.pointProperty(propertyName))(point) );
          )
      );
@@ -1139,6 +1159,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
    --  
    setValuesAt := (pValuesAt) ->
    (      
+       print "setValuesAt";
        bblog.info( "setValuesAt: updates (isZeroAt, numGenerators, jacobianAt, bareJacobianAt, rankJacobianAt)" );      
 
        localValuesAt := (point)->return valuesAtWrapper(pValuesAt, point ) ;
@@ -1150,6 +1171,8 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
         localNumGenerators =  deduceNumGenerators(blackBox)  ; --depends on valuesAt.
 
        blackBox.numGenerators = ()->(return localNumGenerators);
+
+   print "blackBox.numGenerators";print (blackBox.numGenerators());
 
        bblog.info( "updated blackBox.numGenerators to " | toString blackBox.numGenerators() );   
      
@@ -1234,7 +1257,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
            outerSetPointProperty( propertySymbol, propertyMethod );
       ) 
       else ( error "property"| toString propertyName | "does not exist.");
-      return blackBox.getUpdatedBlackBox();
+      return blackBox.getUpdatedBlackBox(blackBox);
    );
 
 
@@ -1258,7 +1281,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
            outerSetPointProperty( propertySymbol, propertyMethod );
       )
       else error(" method "| propertyName |" seems already registered, please use 'updatePointProperty' for updating.");
-      return blackBox.getUpdatedBlackBox();
+      return blackBox.getUpdatedBlackBox(blackBox);
    );
 
 
@@ -1266,7 +1289,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
    (
       propertySymbol :=  getPropertySymbol(propertyName);
       return blackBox.registerPointProperty(  propertyName, propertySymbol, propertyMethod )
-      --return blackBox.getUpdatedBlackBox();
+      --return blackBox.getUpdatedBlackBox(blackBox);
    );
 
    blackBox.rpp =  blackBox.registerPointProperty;
@@ -1281,9 +1304,10 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
                   getGlobalSymbol( BlackBoxIdeals.Dictionary, "hasPointProperty" ),
                   getGlobalSymbol( BlackBoxIdeals.Dictionary, "pointProperty" ),
                   getGlobalSymbol( BlackBoxIdeals.Dictionary, "registerPointProperty" ), 
+                  getGlobalSymbol( BlackBoxIdeals.Dictionary, "rpp" ), 
                   getGlobalSymbol( BlackBoxIdeals.Dictionary, "updatePointProperty" ),
-                  getGlobalSymbol( BlackBoxIdeals.Dictionary, "getUpdatedBlackBox" ),
-                  getGlobalSymbol( BlackBoxIdeals.Dictionary, "unknownIsValid" )
+                  ----getGlobalSymbol( BlackBoxIdeals.Dictionary, "getUpdatedBlackBox" ),
+                  --getGlobalSymbol( BlackBoxIdeals.Dictionary, "unknownIsValid" )
             };
     --  methods:= {   knownMethods,
     --                knownAttributes,
@@ -1298,16 +1322,32 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
     --              };
       return methods;
    );
+  
+  
+  -- that is not correct. 1. sometmes the numGenerator-property does not exist and 2. it depends on valuesAt(?)
+
+  blackBox.knownProperties = ()->
+   (  
+      properties := {};
+      if ( blackBox#?"valuesAt" ) then
+      (
+          properties = properties | { getGlobalSymbol( BlackBoxIdeals.Dictionary, "numGenerators" ) };
+      );
+      return properties;
+  );
 
    -- 'knownAttributes' returns a list of known Attributes. 
    -- (computed as 'keys blackBox' \ { knownMethods(), knownPointProperties(), knownPointPropertiesAsSymbols() }
    blackBox.knownAttributes = ()->
    (
          all :=  keys1 blackBox;
-         kM :=  blackBox.knownMethods();
-         kP :=  blackBox.knownPointProperties();
-         kPS :=  blackBox.knownPointPropertiesAsSymbols();
-         toRemove := kM |  kP |kPS;
+         all = select (all, (foo)->(not instance(blackBox#foo,Function)));   
+         kM := kP := kPP := kPS := {};
+         -- kM =  blackBox.knownMethods();
+         -- kP =  blackBox.knownProperties();
+         -- kPP =  blackBox.knownPointProperties();
+         kPS  =  blackBox.knownPointPropertiesAsSymbols();
+         toRemove := kM |  kP | kPP |kPS;
          for symb in toRemove do
            all = delete(symb,all);
 
@@ -1318,24 +1358,37 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
    blackBox.type = BlackBoxParameterSpace;
 
    -- a user should not call this method...
-   blackBox.getUpdatedBlackBox  = ()->
+   blackBox.getUpdatedBlackBox  = (bb1)->
    (
        
-       bb := new MutableHashTable from  blackBox;
+       bb := new MutableHashTable from  bb1;
+       for key in keys blackBox do
+       (
+          if not bb#?key then
+          (
+              bb#key = blackBox#key;
+          )
+       );
        blackBox = bb;
 
        for  property in blackBox.knownPointProperties() do
        (
           propkeys := getPropertySymbols( property ) | {toString property};
+          print "propkeys";
+          print propkeys;
+          --print ("blackBox." | property);
+          --print bb#property;
+
           for key in propkeys  do
           (
-              if not bb#?property then 
+              --if not bb#?property then 
+              if not blackBox#?key then 
               (
-                  --bb#property = pointProperties#property;
-                  bb#property = (point)->( blackBox.pointProperty(property)(point) );
+                  blackBox.pointProperty(property);
+                  blackBox#key = (point)->( (blackBox.pointProperty(toString property))(point) );
               )
               else 
-              (       
+              (      
               );     
          );    
 
@@ -1358,7 +1411,7 @@ rebuildBlackBox = method() ;
 
 rebuildBlackBox(HashTable) := HashTable => ( bb )->
 (
-       return  bb.getUpdatedBlackBox();
+       return  bb.getUpdatedBlackBox(bb);
 );
 
 
@@ -1385,6 +1438,7 @@ blackBoxParameterSpaceInternal(Ring) := HashTable => ( pRing ) ->
         return true;
    );
 
+
    return blackBox;
 )
 
@@ -1402,6 +1456,7 @@ new BlackBoxParameterSpace from Ring := (E, pRing )->
     blackBox := blackBoxParameterSpaceInternal( pRing);
    
     blackBox.type = BlackBoxParameterSpace;
+    blackBox = blackBox.getUpdatedBlackBox(blackBox);
     return new HashTable from blackBox;
 )
 
@@ -1432,7 +1487,7 @@ blackBoxParameterSpace(ZZ, Ring) := BlackBoxParameterSpace => ( numVariables, co
 (
     blackBox := blackBoxParameterSpaceInternal( numVariables, coeffRing );
     blackBox.type = BlackBoxParameterSpace;
-   
+    blackBox = blackBox.getUpdatedBlackBox(blackBox);
     bb := newClass( BlackBoxParameterSpace, blackBox );
     return bb;
 )
@@ -1478,7 +1533,7 @@ blackBoxIdealInternal := ( equationsIdeal)->
           return jacobianM2MatrixAt;
        )
     );   
-
+    
 
     return new HashTable from blackBox; 
 )
@@ -1487,13 +1542,13 @@ blackBoxIdealInternal := ( equationsIdeal)->
 new BlackBoxIdeal from Ideal := (E, equationsIdeal)->
 (
    blackBox := blackBoxIdealInternal(equationsIdeal);
+    blackBox = blackBox.getUpdatedBlackBox(blackBox);
     return new HashTable from blackBox;
 )
 
 -- this function is final, that means nobody should use this method for creating a derived object
 blackBoxIdeal (Ideal) := BlackBoxIdeal =>(equationsIdeal)->
 (
-   print "new stuff";
    return new BlackBoxIdeal from equationsIdeal;
 )
 
@@ -1580,7 +1635,7 @@ blackBoxIdealFromEvaluation(ZZ, Ring, Function) := HashTable => ( numVariables, 
  
     blackBox := blackBoxIdealFromEvaluationInternal( numVariables, coeffRing, valuesAt ) ;
     blackBox.type = BlackBoxIdeal;
-
+    blackBox = blackBox.getUpdatedBlackBox(blackBox);
     blackBox = newClass( BlackBoxIdeal, blackBox ); 
     return blackBox ;
 )
@@ -1602,7 +1657,8 @@ blackBoxIdealFromEvaluation( Ring, Function ) := HashTable => ( pRing, pValuesAt
          blackBox.isZeroAt( point );
     );
 
-    check(); 
+   check(); 
+   blackBox = blackBox.getUpdatedBlackBox(blackBox);
    blackBox = newClass( BlackBoxIdeal, blackBox ); 
    return blackBox;
 )
@@ -1918,6 +1974,7 @@ TEST ///
 
 
     bbRankMNew = rebuildBlackBox bbRankM;
+
     assert bbRankMNew#?(global rankMat);
     assert bbRankMNew#?("rankMat");
 
@@ -2141,6 +2198,6 @@ TEST  ///
 
 end
 -- need test for randomIterator (for fixed error : to less trials  )
---@TO2{JetAt,"jet"}@ computations at a point independently of the ideal representation. \break \break 
+--@TO2{jetAt,"jet"}@ computations at a point independently of the ideal representation. \break \break 
 
 
