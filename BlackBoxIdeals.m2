@@ -59,7 +59,6 @@ idealBlackBoxesProtect = ()->
 protect eps;
 protect jacobianAt;
 protect rankJacobianAt;
-protect jetAt;
 protect transposedJacobianAt;
 protect transposedJacobian;
 protect valuesAt;
@@ -101,7 +100,6 @@ idealBlackBoxesExport = ()->
     exportMutable( eps );
     exportMutable( jacobianAt);
     exportMutable( rankJacobianAt);
-    exportMutable( jetAt);
     exportMutable( transposedJacobian);
     exportMutable( transposedJacobianAt);
     exportMutable( valuesAt);
