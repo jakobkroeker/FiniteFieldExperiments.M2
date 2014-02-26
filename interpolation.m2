@@ -105,7 +105,7 @@ interpolate(mons1,{jet2})
 
 interpolateMaxDeg = (maxDegree,R,jetList) -> (
      -- monomials in R of degree at most maxDegree
-     mons := matrix {flatten apply(maxDegree,i->flatten entries basis(i+1,R))};
+     mons := matrix {flatten apply(maxDegree+1,i->flatten entries basis(i,R))};
      interpolate(mons,jetList)
      )
 
@@ -116,7 +116,7 @@ interpolateMaxDeg(2,R,{jet1a,jet1b})
 
 interpolateBB = (maxDegree,BB,point) -> (
      R := BB.ring;
-     mons := matrix {flatten apply(maxDegree,i->flatten entries basis(i+1,R))};
+     mons := matrix {flatten apply(maxDegree+1,i->flatten entries basis(i,R))};
      -- find one jet with precision 10 more then number of monomials
      jetP := JetAt(BB,point,rank source mons+10,2);
      -- !!!this heuristic must be tested!!!
@@ -172,3 +172,55 @@ isOnComponent(bb2,component2,point2,10)
 
 -- make a more complicated example where we do not have all 
 -- generators in the interpolation ideal
+
+
+-------------------
+-- third example --
+-------------------
+
+bb3 = blackBoxIdeal (intersect(ideal(x,y^2+z^3+1),ideal(x^2+y^2+z^2)));
+
+e = new Experiment from bb3;
+e.run(100)
+
+point1 = (e.pointsByKey({1}))#0
+point2 = (e.pointsByKey({2}))#0
+
+interpolateBB(1,bb3,point1)
+-- ideal()
+component1 = interpolateBB(2,bb3,point1)
+-- Ideal(x^2+y^2+z^2)
+component2 = interpolateBB(2,bb3,point2)
+-- ideal(x)
+-- this is not the complete ideal defining the component containing point2
+interpolateBB(3,bb3,point2)
+-- ideal(x,z^3+y^2+1)
+-- this would be the complete ideal defining the component
+
+-- for demonstration purposes we work with the incomplete ideal
+component2
+-- ideal(x)
+
+-- there are four types of points:
+--  a) those on the curve defined by ideal(x,z^3+y^2+1)
+--  b) those on the surface defined by ideal(x^2+y^2+z^2)
+--  c) those on the interesection of curve and surface
+--  d) those on the surface which are not on the curve
+--     but nevertheless satisfying x=0
+--
+-- the points of type d) should be classified to lie on the surface
+-- even though they also lie in the partial ideal that contains the curve
+
+point3 = (select(e.pointsByKey({1}),P->0==sub(component2,P)))#0
+
+-- point3 lies on both partial ideals
+assert (0==sub(component1,point3))
+assert (0==sub(component2,point3))
+
+-- but jets starting at point3 usually only lie on component1
+assert isOnComponent(bb3,component1,point3,10)
+assert not isOnComponent(bb3,component2,point3,10)
+-- so using the Blackbox to generate jets we can check
+-- if a point is on a component even if we have not interpolated
+-- the full ideal. Generically this works as soon as we have a
+-- single Hypersurface that contains only one component.
