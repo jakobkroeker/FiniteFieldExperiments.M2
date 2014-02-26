@@ -28,64 +28,21 @@ assert (2==bbI.rankJacobianAt(pointNothing))
 
 
 jet2 = jetAt(bbI,point2,20,2)
+
 jet1a = jetAt(bbI,point1,20,2)
 jet1b = jetAt(bbI,point1,20,2)
-jet0 = jetAt(bbI,point0,20,2)
--- HashTable{lift => null      }
---           succeeded => false
---
--- richtig waere:
---
--- { failedJetLength => 2}
---               jet => | 0 eps -2eps |
---         succeeded => false
-
-jet0 = new HashTable from {
-     "failedJetLength" => 2,
-     --"jet" => matrix{{0,eps,-2eps}},
-     "succeeded" => false     
-     }
-
 -- test: are the rings of different jets of the same precision the same?
 assert ((ring jet1a#"jet") === (ring jet2#"jet"))
 
-
-
-                  jet => | 0 eps -2eps |
---         succeeded => false
-class jet1
-
+jet0 = jetAt(bbI,point0,20,2)
 jetNothing = jetAt(bbI,pointNothing,20,2)
--- error:  function is not zero at the point
-
--- richtig waere:
---
--- { failedJetLength => 0}
---               jet => null
---         succeeded => false
 
 -- es fehlt ein testbeispiel fuer failedJetLength => 1
-
-viewHelp jetAt
-
+-- (glatte nulldimensionale Punkte)
 
 
 ---------------------
 
--- interpolation using jets
-interpolate = (mons,jetP) -> if jetP#"succeeded" then (
-	       s = syz sub(last coefficients sub(mons,jetP#"jet"),K);
-	       I = ideal mingens ideal(mons*s);
-	       I
-	       )
-
-mons1 = basis(1,R)
-
-interpolate(mons1,jet2)
-interpolate(mons1,jet1a)
-interpolate(mons1,jet0)
--- ueberpruefen was hier passiert / passieren soll
--- es gibt kein sinnvolles ergebnis. Fehlermeldung.
 
 interpolate = (mons,jetList) -> (
      jetsSucceeded = select(jetList,jetP->jetP#"succeeded");
@@ -100,19 +57,12 @@ interpolate = (mons,jetList) -> (
      I
      )
 
-interpolate(mons1,{jet1a,jet1b})
+mons1 = basis(1,R)
+
 interpolate(mons1,{jet2})
-
-interpolateMaxDeg = (maxDegree,R,jetList) -> (
-     -- monomials in R of degree at most maxDegree
-     mons := matrix {flatten apply(maxDegree+1,i->flatten entries basis(i,R))};
-     interpolate(mons,jetList)
-     )
-
-interpolateMaxDeg(1,R,{jet1a,jet1b})
--- ideal(z)
-interpolateMaxDeg(2,R,{jet1a,jet1b})
--- ideal(z)
+interpolate(mons1,{jet1a,jet1b})
+interpolate(mons1,{jet0})
+interpolate(mons1,{jetNothing})
 
 interpolateBB = (maxDegree,BB,point) -> (
      R := BB.ring;
@@ -139,7 +89,7 @@ component2 + bbI.ideal == component2
 -- second example --
 --------------------
 
-bb2 = blackBoxIdeal (intersect(ideal(x,y),ideal(x^2+y^2+z^2)))
+bb2 = blackBoxIdeal (intersect(ideal(x,y),ideal(x^2+y^2+z^2)));
 
 e = new Experiment from bb2;
 e.run(100)
@@ -150,8 +100,9 @@ point2 = (e.pointsByKey({2}))#0
 interpolateBB(1,bb2,point1)
 -- ideal()
 component1 = interpolateBB(2,bb2,point1)
--- Ideal(x^2+y^2+z^2)
+-- ideal(x^2+y^2+z^2)
 component2 = interpolateBB(2,bb2,point2)
+-- ideal (y, x)
 
 --
 -- test if a point lies on a component defined by an iterpolation ideal
@@ -166,13 +117,15 @@ isOnComponent = (BB,interpolationIdeal,point,prec) -> (
 -- !! Possibly there is a usefull answer even if the point is not smooth !!
 
 
-isOnComponent(bb2,component1,point1,10)
-isOnComponent(bb2,component1,point2,10)
-isOnComponent(bb2,component2,point2,10)
+assert isOnComponent(bb2,component1,point1,10)
+assert not isOnComponent(bb2,component1,point2,10)
+assert isOnComponent(bb2,component2,point2,10)
 
--- make a more complicated example where we do not have all 
--- generators in the interpolation ideal
-
+-- are we finished?
+component1 + bb2.ideal == component1
+-- yes
+component2 + bb2.ideal == component2
+-- yes     
 
 -------------------
 -- third example --
@@ -189,7 +142,7 @@ point2 = (e.pointsByKey({2}))#0
 interpolateBB(1,bb3,point1)
 -- ideal()
 component1 = interpolateBB(2,bb3,point1)
--- Ideal(x^2+y^2+z^2)
+-- ideal(x^2+y^2+z^2)
 component2 = interpolateBB(2,bb3,point2)
 -- ideal(x)
 -- this is not the complete ideal defining the component containing point2
@@ -202,10 +155,10 @@ component2
 -- ideal(x)
 
 -- there are four types of points:
---  a) those on the curve defined by ideal(x,z^3+y^2+1)
---  b) those on the surface defined by ideal(x^2+y^2+z^2)
---  c) those on the interesection of curve and surface
---  d) those on the surface which are not on the curve
+--  a) those on the curve defined by ideal(x,z^3+y^2+1)   -- {2}
+--  b) those on the surface defined by ideal(x^2+y^2+z^2) -- {1}
+--  c) those on the interesection of curve and surface    -- {0}
+--  d) those on the surface which are not on the curve    -- {1}
 --     but nevertheless satisfying x=0
 --
 -- the points of type d) should be classified to lie on the surface
@@ -222,5 +175,11 @@ assert isOnComponent(bb3,component1,point3,10)
 assert not isOnComponent(bb3,component2,point3,10)
 -- so using the Blackbox to generate jets we can check
 -- if a point is on a component even if we have not interpolated
--- the full ideal. Generically this works as soon as we have a
+-- the full ideal. Generically this works as soon as we have found a
 -- single Hypersurface that contains only one component.
+
+-- are we finished?
+component1 + bb2.ideal == component1
+-- yes
+component2 + bb2.ideal == component2
+-- no
