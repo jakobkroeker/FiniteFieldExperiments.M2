@@ -1153,7 +1153,8 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
     ( 
         interpolatedIdeals := {};
         for point in experiment.points() do
-        (
+        ( 
+            if blackBoxIdeal.isSingular(point) then continue;
              -- check if point is already on one of the known components
              print ("point" | toString point );
              if 0 != # (select ( interpolatedIdeals , interpol -> isOnComponent ( blackBoxIdeal, interpol.ideal, point, prec ) ) ) then continue;
@@ -1161,7 +1162,6 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
 
              interpolatedIdeals = interpolatedIdeals | { createInterpolatedIdeal (maxDegree, blackBoxIdeal, point)  };             
         );
-        print ("interpolatedIdeals" | toString interpolatedIdeals );
         experimentData.interpolatedIdeals = new MutableHashTable from 
            apply ( #interpolatedIdeals, idx-> (idx => interpolatedIdeals#idx ) ) ;
        
