@@ -40,6 +40,7 @@ export {
     BlackBoxLogger,
     getEpsRing,
     jetAt,
+    isSingular,
     "keys1",
     "rebuildBlackBox",
     "acceptedParameterNumber"
@@ -69,6 +70,8 @@ protect isZeroAt;
 protect pointProperties;
 protect registerPointProperty;
 protect rpp;
+protect numTrials;
+protect setSingularityTestOptions;
  
 protect setPointProperty;
 protect setValuesAt;
@@ -132,6 +135,8 @@ idealBlackBoxesExport = ()->
 
   exportMutable(knownMethods);
  exportMutable(knownAttributes);
+  exportMutable(numTrials);
+ exportMutable(setSingularityTestOptions);
 
 )
 
@@ -689,13 +694,15 @@ jetAtSingleTrial = method();
 -- for this we also need high precision jacobi-Matrices
 -- For black-Box-Jacobi-Matrices we might not have high precision Jacobi-Matrices
 
-jetAtSingleTrial( BlackBoxParameterSpace, Matrix, ZZ ) := MutableHashTable => ( blackBox,  point, jetLength )  ->
+--jetAtSingleTrial( BlackBoxParameterSpace, Matrix, ZZ ) := MutableHashTable => ( blackBox,  point, jetLength )  ->
+jetAtSingleTrial( HashTable, Matrix, ZZ ) := MutableHashTable => ( blackBox,  point, jetLength )  ->
 (
 
     -- if not (blackBox.isZeroAt(point)) then error(" function is not zero at the point ");
+    retVal := null;
     if not (blackBox.isZeroAt(point))  then
     (
-       retVal := new HashTable from { "succeeded" => false, "jet" => null, "failedJetLength" =>0 };
+       retVal = new HashTable from { "succeeded" => false, "jet" => null, "failedJetLength" =>0 };
        return retVal;
     );
 
@@ -766,7 +773,7 @@ jetAtSingleTrial( BlackBoxParameterSpace, Matrix, ZZ ) := MutableHashTable => ( 
     );
     -- todo: create a datatype or a hashTable for the return value.
 
-    retVal := new HashTable from { "succeeded" => not liftingFailed, "jet" => jet, "failedJetLength" =>failedJetLength };
+    retVal = new HashTable from { "succeeded" => not liftingFailed, "jet" => jet, "failedJetLength" =>failedJetLength };
     return retVal;
 )
 
@@ -812,6 +819,23 @@ jetAtWrapper( BlackBoxParameterSpace, Matrix )  := MutableHashTable => opts -> (
 );
 
 
+isSingular = method();
+--isSingular( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials ) ->
+isSingular( HashTable, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials ) ->
+(
+    assert( numTrials>=1 );
+
+    for i in 1..numTrials do
+    (
+        worstJet := jetAtSingleTrial ( blackBox,  point, jetLength);
+        if (not worstJet#"succeeded") then 
+        (
+            return true;
+        );
+    );
+    --return  new HashTable from { "succeeded" =>false, "lift" => null };
+    return false; -- should return unknown or something similar!
+);
 
 -- 'keys1': returns hashtable keys without symbol keys.
 --
@@ -918,8 +942,12 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
                                            -- the value cannot be stored in the blackBox directly as a key-value pair, 
                                            -- because, otherwise different black box references referring to the same object
                                            -- could get out of sync. The variable is accessed by a getter(numVariables())
-     
 
+    singularTestOptions := new MutableHashTable;
+    singularTestOptions.precision = 10;
+    singularTestOptions.numTrials = 2;
+
+   
      -- checks the consistency of the point with the black box 
      -- 2. the point should be given as a column matrix having same number of columns as blackBox.numVariables
      -- 1. if blackBox.coefficientRing is ZZ, then every ring for point entries is allowed (a) why, , (b) is this always correct?
@@ -1144,6 +1172,14 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
          return  rank blackBox.jacobianAt(point) ;
       );
 
+       localIsSingularWrapper  := ( point )  ->
+        (
+               return isSingular( blackBox,  point, singularTestOptions.precision,  singularTestOptions.numTrials );
+        );
+
+     setPointProperty("isSingular" , localIsSingularWrapper );
+
+
       setPointProperty( "rankJacobianAt" , localRankJacobianAt );
    );
 
@@ -1299,7 +1335,8 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
                   getGlobalSymbol( BlackBoxIdeals.Dictionary, "knownPointPropertiesAsSymbols" ),
                   getGlobalSymbol( BlackBoxIdeals.Dictionary, "hasPointProperty" ),
                   getGlobalSymbol( BlackBoxIdeals.Dictionary, "pointProperty" ),
-                  getGlobalSymbol( BlackBoxIdeals.Dictionary, "registerPointProperty" ), 
+                  getGlobalSymbol( BlackBoxIdeals.Dictionary, "registerPointProperty" ),
+                  getGlobalSymbol( BlackBoxIdeals.Dictionary, "setSingularityTestOptions" ),
                   getGlobalSymbol( BlackBoxIdeals.Dictionary, "rpp" ), 
                   getGlobalSymbol( BlackBoxIdeals.Dictionary, "updatePointProperty" ),
                   ----getGlobalSymbol( BlackBoxIdeals.Dictionary, "getUpdatedBlackBox" ),
@@ -1349,6 +1386,36 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
 
          return all;  
      );
+
+
+    
+    
+    
+    blackBox.setSingularityTestOptions = (prec, numTrials)->
+    (
+       assert( prec >= 0 and numTrials>0 );
+       singularTestOptions.precision = prec;
+       singularTestOptions.numTrials = numTrials;
+       if blackBox.hasPointProperty("valuesAt") then
+       (
+           localIsSingularWrapper  := (  point )  ->
+           (
+               return isSingular( blackBox,  point, singularTestOptions.precision,  singularTestOptions.numTrials );
+           );
+
+           if blackBox.hasPointProperty("isSingular") then 
+           (
+               blackBox.updatePointProperty("isSingular", localIsSingularWrapper)
+           )
+           else
+           (
+               blackBox.registerPointProperty("isSingular", localIsSingularWrapper);
+           );
+      );
+
+    );
+
+
    
 
    blackBox.type = BlackBoxParameterSpace;

@@ -41,6 +41,7 @@ export {
 
 FiniteFieldExperimentsProtect = ()->
 (
+  protect printInterpolatedIdeals;
   protect clearRecordList;
   protect testDebug;
   protect next;
@@ -52,6 +53,7 @@ FiniteFieldExperimentsProtect = ()->
   protect points;
   protect trials;
   protect createAllInterpolationIdeals;
+  protect interpolatedIdealKeys;
 
   protect coefficientRingCardinality;
   protect pointLists;
@@ -104,13 +106,18 @@ FiniteFieldExperimentsProtect = ()->
   protect experimentData; 
   protect isRandom;
   protect compatible;
+  protect membershipPrecision;
+  protect setMembershipPrecision;
 )
 
  
 
 FiniteFieldExperimentsExport  = ()->
 (
-  
+  exportMutable (printInterpolatedIdeals);
+  exportMutable (membershipPrecision);
+  exportMutable (setMembershipPrecision);
+
   exportMutable( clearRecordList);
   exportMutable( testDebug);
   exportMutable( next);
@@ -123,6 +130,7 @@ FiniteFieldExperimentsExport  = ()->
   exportMutable( trials );
   exportMutable( interpolatedIdeals );
   exportMutable( createAllInterpolationIdeals );
+  exportMutable(interpolatedIdealKeys);
  
   exportMutable(coefficientRingCardinality);
   exportMutable( pointLists );
@@ -306,6 +314,28 @@ load "./FiniteFieldExperiments/Interpolation.m2";
 Experiment = new Type of HashTable;
 
 ExperimentData = new Type of MutableHashTable;
+
+PointData = new Type of MutableHashTable;
+
+new PointData from HashTable := (ancestorType, pointData)->( 
+    return pointData;
+);
+
+
+createPointData =(pBlackBox, point)->
+(
+    blackBox := pBlackBox;
+    p := new MutableHashTable;
+    p.point = point;
+    
+    localIsSingular := null;
+    p.isSingular = ()->
+    (
+        if (localIsSingular=!=null) then return localIsSingular;
+        localIsSingular = blackBox.isSingular(point);
+        return localIsSingular;
+    );
+);
 
 --new ExperimentData from HashTable := (E,coeffRing) -> (
 new ExperimentData from Ring := (E,coeffRing) -> (
@@ -1153,19 +1183,80 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
     ( 
         interpolatedIdeals := {};
         for point in experiment.points() do
-        (
+        ( 
+            if blackBoxIdeal.isSingular(point) then continue;
              -- check if point is already on one of the known components
-             print ("point" | toString point );
-             if 0 != # (select ( interpolatedIdeals , interpol -> isOnComponent ( blackBoxIdeal, interpol.ideal, point, prec ) ) ) then continue;
-             --(ZZ,BlackBoxIdeal,Matrix)
+             bIsOnComponent := false;
+             for interpolData in interpolatedIdeals do
+             (
+                 if  isOnComponent ( blackBoxIdeal, interpolData.ideal, point, 0 ) then
+                 (
+                     if  isOnComponent ( blackBoxIdeal, interpolData.ideal, point, prec ) then
+                     (
+                          bIsOnComponent = true; 
+                          break;
+                     );
+                 );
+             );
+             if bIsOnComponent then continue;
 
              interpolatedIdeals = interpolatedIdeals | { createInterpolatedIdeal (maxDegree, blackBoxIdeal, point)  };             
         );
-        print ("interpolatedIdeals" | toString interpolatedIdeals );
         experimentData.interpolatedIdeals = new MutableHashTable from 
-           apply ( #interpolatedIdeals, idx-> (idx => interpolatedIdeals#idx ) ) ;
+           apply ( #interpolatedIdeals, idx-> (("ideal_" |toString idx ) => interpolatedIdeals#idx ) ) ;
        
     );
+    
+    experiment.interpolatedIdealKeys = method();
+    experiment.interpolatedIdealKeys (Matrix,ZZ) := Thing => (point,prec)->
+    (
+       numbers := {};
+ 
+        if blackBoxIdeal.isSingular(point) then return "is not smooth";    
+
+        for key in keys experimentData.interpolatedIdeals do
+        (
+          if  isOnComponent ( blackBoxIdeal, (experimentData.interpolatedIdeals#key).ideal, point, 0 ) then
+          (
+              if  isOnComponent ( blackBoxIdeal, (experimentData.interpolatedIdeals#key).ideal, point, prec ) then
+              (
+                 numbers = numbers | {key};
+              );
+           );
+        );
+        return numbers;
+ 
+    );
+
+    localMembershipPrecision := 10; -- does this belong to experimentData?
+
+
+    experiment.setMembershipPrecision = (prec)->
+    (
+         localMembershipPrecision = prec;
+    );
+
+    experiment.membershipPrecision = (prec)->
+    (
+         localMembershipPrecision 
+    );
+
+
+    experiment.interpolatedIdealKeys (Matrix) := Thing => (point)->
+   (
+        return  experiment.interpolatedIdealKeys(point, localMembershipPrecision );
+   );
+
+   iik := (point)-> (return  experiment.interpolatedIdealKeys(point) ;);
+
+   blackBoxIdeal.rpp("interpolatedIdealKeys", iik);
+
+
+
+    experiment.printInterpolatedIdeals = ()->
+   (
+         apply (keys experimentData.interpolatedIdeals, key-> ( print (key=>new HashTable from experimentData.interpolatedIdeals#key ) ) );
+   );
 
 
    experiment = newClass( Experiment, experiment );

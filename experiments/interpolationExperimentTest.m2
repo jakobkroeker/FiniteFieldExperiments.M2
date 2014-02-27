@@ -15,28 +15,27 @@ I = ideal (x*z,y*z)
 -- make a black box from the ideal
 bbI = blackBoxIdeal I;
 
-point2 = matrix{{0,0,1_K}}
-point1 = matrix{{1,2,0_K}}
-point0 = matrix{{0,0,0_K}}
-pointNothing = matrix{{1,1,1_K}}
 
-assert (2== bbI.rankJacobianAt(point2))
-assert (1== bbI.rankJacobianAt(point1))
-assert (0== bbI.rankJacobianAt(point0))
--- this is a point where the ideal does not vanish.
-assert (2==bbI.rankJacobianAt(pointNothing))
+e = new Experiment from bbI;
+e.run(200)
+time e.createAllInterpolationIdeals(1,2)
+ed = e.experimentData()
+ht = new HashTable from ed.interpolatedIdeals
+(ht#0).ideal
+(ht#1).ideal
 
+points = e.points();
+point0 = points#0;
 
+e.interpolatedIdealKeys(point0,10)
+e.interpolatedIdealKeys(point0)
 
-component1 = interpolateBB(2,bbI,point1)     
-component2 = interpolateBB(2,bbI,point2)     
-
--- are we finished?
-component1 + bbI.ideal == component1
--- yes
-component2 + bbI.ideal == component2
--- yes     
-
+e.printInterpolatedIdeals()
+e.countData()
+bbI.isSingular(point0)
+bbI.knownPointProperties()
+e.setMembershipPrecision(2)
+e.tryProperty("interpolatedIdealKeys")
 
 --------------------
 -- second example --

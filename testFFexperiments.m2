@@ -181,12 +181,6 @@ e.estimateDecomposition()
 -- functions of this type of usage can be implemented without changing "FiniteFieldExperiments"
 estimateDecomposition(e)
 
--- interpolation using jets
-interpolate = (mons,jet) -> if jetP#"succeeded" then (
-	       s = syz sub(last coefficients sub(mons,jetP#"jet"),K);
-	       I = ideal mingens ideal(mons*s);
-	       I
-	       )
 
 
 maxDeg = 2
@@ -197,10 +191,11 @@ decomposeResult := apply(keys e.pointLists(),k->(
      	  unique flatten apply(unique L,P->(
 	  	    rank bbI.jacobianAt(P);
 	  	    time jetP = jetAt(bbI,P,20,1);
-	  	    {interpolate(mons,jetP)}
+		    if not isSingular(bbI,P,20,1) then
+	  	    {interpolate(mons,{jetP})}
 	  	    ))
      	  ))
-
+decomposeResult
 assert(decomposeResult==={{null}, {ideal(z)}, {ideal (y, x)}});
 
 -- better: 
