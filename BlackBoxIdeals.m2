@@ -113,6 +113,7 @@ idealBlackBoxesExport = ()->
     exportMutable( pointProperties);  
     exportMutable( registerPointProperty); 
     exportMutable(rpp);
+   exportMutable(upp);
     exportMutable( setPointProperty);
     exportMutable( setValuesAt);    
     exportMutable(  checkInputPoint);
@@ -168,7 +169,8 @@ undocumented {
     valuesAt,
     setPointProperty,
     equations,
-    rpp
+    rpp,
+    upp
 } 
 
 
@@ -1326,6 +1328,8 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
 
    blackBox.rpp =  blackBox.registerPointProperty;
 
+  blackBox.upp =  blackBox.updatePointProperty;
+
    -- return a list of known methods. Manually updated.
    blackBox.knownMethods = ()->
    (   
@@ -1338,6 +1342,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
                   getGlobalSymbol( BlackBoxIdeals.Dictionary, "registerPointProperty" ),
                   getGlobalSymbol( BlackBoxIdeals.Dictionary, "setSingularityTestOptions" ),
                   getGlobalSymbol( BlackBoxIdeals.Dictionary, "rpp" ), 
+                  getGlobalSymbol( BlackBoxIdeals.Dictionary, "upp" ), 
                   getGlobalSymbol( BlackBoxIdeals.Dictionary, "updatePointProperty" ),
                   ----getGlobalSymbol( BlackBoxIdeals.Dictionary, "getUpdatedBlackBox" ),
                   --getGlobalSymbol( BlackBoxIdeals.Dictionary, "unknownIsValid" )
