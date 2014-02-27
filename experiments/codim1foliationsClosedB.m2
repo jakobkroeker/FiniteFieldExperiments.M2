@@ -1,6 +1,8 @@
 -- analyse the modulispace of
 -- degree d foliations in AA^3
 -- using finite field experiments
+--
+-- try only closed differential forms as domega
 
 restart
 
@@ -53,6 +55,11 @@ betti (M = matrix entries sub(contract(sub(transpose vars A,AB),mingens I),B))
 -- 0: 18 46
 assert isHomogeneous M
 
+coefficients 
+
+coeffDomegaA = contract(sub(super basis({d-1,2},RD),ABRD),matrix{{differentialD(omegaA)}})
+MclosedA = contract(transpose vars A,sub(coeffDomegaA,A))
+
 Mat = (point) -> sub(M,point)
 rankMat = (point) -> rank Mat(point)
 rankMatEx = (bb,point)-> rank Mat(point)
@@ -68,48 +75,7 @@ installPackage"FiniteFieldExperiments"
 ---
 
 restart
-load"experiments/codim1foliations.m2"
-
-bbRankM = blackBoxParameterSpace(#(gens B),K)
---bbRankM.registerPointProperty("rankMat",rankMat)
-bbRankM = bbRankM.registerPointProperty("rankJacobianAt",rankMat)
-keys bbRankM
-bbRankM.knownPointProperties()
--- {rankJacobianAt}
-
-bbRankM.rankJacobianAt --ok
-
-e = new Experiment from bbRankM
-keys e
-e.setMinPointsPerComponent(20);
-e.minPointsPerComponent() --20
-e.watchProperties {"rankJacobianAt"};
-e.watchedProperties()  -- {rankJAcobianAt}
-
-time e.run(400)
--- 1.63 seconds for 400
-points = e.pointsByKey({54}) 
-point = points#0
--- howto apply properties:
-bbRankM.rankJacobianAt(point)
-
-
-e.countsByCount()
--- ?
-e.estimateStratification()
-e.estimateDecomposition()
--- e.stratificationIntervalView() -- (jk) does not work any more, because stratification() method was modified... 
-e.collectedCount()
-e.jacobianAtKey() --null
--- ??
-keys e
-
---tally apply( e.pointKeys(), key ->( #((e.pointLists())#key)=>key))
--- lieber e.points().
-   
-estimateStratification(e)
-
-
+load"experiments/codim1foliationsClosedB.m2"
 
 omegaBat = (point) -> sub(sub(omegaB,sub(vars A,ABRD)|point|sub(vars RD,ABRD)),RD)
 randomPointAat = (point) -> ( 
@@ -127,75 +93,62 @@ omegaAat = (point) -> (
      sub(sub(omegaA,randomPointAat(point)|sub(vars B,ABRD)|sub(vars RD,ABRD)),RD)
      )
 
-
-wA = omegaAat(point)
-wB = omegaBat(point)
-assert (wA*wB==0);
-assert (1==rank source mingens ideal(differentialD(wA),wB));
-assert (0==differentialD(wB));
--- no
-assert (0==differentialD(wA))
--- yes
-
--- sometimes A is closed
-
--- matrix drops rank generically only by one
-
--- stratification by betti tableau
-betti (coeffB = matrix entries contract(
-	  super basis({0,0,0,2},ABRD)
-	  ,omegaB))
-isHomogeneous coeffB
-coeffBat = (point) -> sub(sub(coeffB,sub(vars A,ABRD)|point|sub(vars RD,ABRD)),R)
-bettiAt = (point) -> betti res ideal coeffBat(point)
---bettiAtEx = (bb,point)->bettiAt(point)
---bbBetti = blackBoxIdealFromProperties(#(gens B),K,i->(rankMat i, bettiAt i))
-bbBetti = blackBoxParameterSpace(#(gens B),K)
-bbBetti.registerPointProperty("bettiAt",bettiAt)
-bettiInteresting = (point) -> (rankMat(point) < #(gens A))
-
-eBetti = new Experiment from bbBetti
-eBetti.setIsInteresting(bettiInteresting)
-eBetti.watchProperties {"bettiAt"}
-time eBetti.run(10000)
--- used 19.2529 seconds (3 variables)
--- used 40.5503 seconds (4 variables)
-estimateStratification2(eBetti)
--- sollte nach intervallen sortiert sein
--- eventuell nur keys mit mindestens 10 punkten?
--- eventuell nur keys mit codim < vorgabe?
--- uebersichtlicher: ohne intervalle
-
--- try Property
 isAclosedAt = (point) -> (
      wA := omegaAat(point);
      if wA===null then null else 0==differentialD wA
      )
 
-bbBetti = bbBetti.rpp("isAclosedAt",isAclosedAt)
+isAclosedAt2 = (point) -> (
+     rank(Mat(point)|MclosedA) == rank Mat(point)
+     )
+-- more precise but slower
 
-eBetti.tryProperty("isAclosedAt")
+-- stratification by betti tableau
+betti (coeffB = matrix entries contract(super basis({0,0,0,2},ABRD),omegaB))
+coeffBat = (point) -> sub(sub(coeffB,sub(vars A,ABRD)|point|sub(vars RD,ABRD)),R)
+bettiAt = (point) -> betti res ideal coeffBat(point)
 
--- consider only closed 2-forms
+
+
+-- consider only closed 2-forms for B
+-- condition for closedness
 Iclosed = ideal sub(contract(super basis({0,0,d-2,3},ABRD),differentialD(omegaB)),B)
+-- basis for closed subspace
 basisClosed = sub(transpose syz transpose jacobian Iclosed,K)
+
+-- translate short vectors into long ones
 closedPointBat = (point) -> point*basisClosed
 closedOmegaBat = (point) -> omegaBat(closedPointBat(point))
 closedBettiAt = (point) -> betti res ideal coeffBat(closedPointBat(point))
 closedMat = (point) -> Mat(closedPointBat(point))
 closedRankMat = (point) -> rank closedMat(point)
-bbClosed = bbClosed.rpp("closedRankMat",closedRankMat);
 
 
-bbClosed = blackBoxParameterSpace(rank target basisClosed,K)
-bbClosed.numVariables
-bbClosed.registerPointProperty("closedBettiAt",closedBettiAt)
-eClosedBetti = new Experiment from bbClosed
-eClosedBetti.setIsInteresting ( (point) -> (closedRankMat(point) < #(gens A)))
-eClosedBetti.watchProperties {"closedBettiAt"}
-time eClosedBetti.run(10000)
+
+-- make a blackbox parameterspace of closed B's that have
+-- a non closed A with A*B==0 and dA==B
+bb = blackBoxParameterSpace(rank target basisClosed,K)
+
+-- number of parameters
+bb.numVariables
+bb.registerPointProperty("closedBettiAt",closedBettiAt);
+e  = new Experiment from bb;
+-- only look at B's that have a nontrivial A
+closedIsAclosedAt = (point) -> isAclosedAt(closedPointBat(point))
+closedIsAclosedAt2 = (point) -> isAclosedAt2(closedPointBat(point))
+
+e.setIsInteresting ( (point) -> (
+	  (closedRankMat(point) < #(gens A))
+	  and
+	  not closedIsAclosedAt(point) )
+     )
+e.clear()
+
+-- look at betti tables
+e.watchProperties {"closedBettiAt"}
+time e.run(10000)
 -- used 42.6086 seconds
-estimateStratification(eClosedBetti)
+e.estimateStratification()
 --             {total: 1 2 1} => 1  }
 --                  0: 1 . .
 --                  1: . 2 .
@@ -212,18 +165,21 @@ estimateStratification(eClosedBetti)
 --                  1: . 3 1 .
 --                  2: . . 2 1
 --closedOmegaAat = (point) -> omegaAat(closedPointBat(point))
-testPoint = (eClosedBetti.pointsByKey((keys eClosedBetti.pointLists())#0))#0
+testPoint = (e.pointsByKey((keys e.pointLists())#0))#0
 
-closedIsAclosedAt = (point) -> isAclosedAt(closedPointBat(point))
-bbClosed = bbClosed.rpp("closedIsAclosedAt",closedIsAclosedAt)
 
-eClosedBetti.watchedProperties()
-time eClosedBetti.run(10000) 
--- used 424.527 seconds
-eClosedBetti.estimateStratification()
+bb = bb.rpp("closedIsAclosedAt",closedIsAclosedAt);
+bb = bb.rpp("closedIsAclosedAt2",closedIsAclosedAt2);
+both = (point) ->(closedIsAclosedAt(point),closedIsAclosedAt2(point))
+bb = bb.rpp("both",both);
 
-eClosedBetti.tryProperty("closedIsAclosedAt")
-eClosedBetti.tryProperty("closedRankMat")
+e.tryProperty("both")
+e.tryProperty("closedIsAclosedAt2")
+e.tryProperty("closedRankMat")
+testPoint = (e.points())#1
+rank closedMat(testPoint)
+rank (closedMat(testPoint)|MclosedA)
+closedIsAclosedAt(testPoint)
 
 -------------------------
 -- reworked up to here --
