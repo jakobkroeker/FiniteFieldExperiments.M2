@@ -50,19 +50,22 @@ betti (Idiff = sub(ideal mingens minors(2,contract( matrix{apply(indB,i->sub(i,A
 betti (I = ideal mingens (Iint+Idiff))
 assert isHomogeneous I
 
+bb = blackBoxIdeal(I);
+
+-- smart point search
+-- choose coefficients B first, then A if possible
+
 -- eliminate A
 betti (M = matrix entries sub(contract(sub(transpose vars A,AB),mingens I),B))
 -- 0: 18 46
 assert isHomogeneous M
 
-coefficients 
-
 coeffDomegaA = contract(sub(super basis({d-1,2},RD),ABRD),matrix{{differentialD(omegaA)}})
 MclosedA = contract(transpose vars A,sub(coeffDomegaA,A))
 
-Mat = (point) -> sub(M,point)
-rankMat = (point) -> rank Mat(point)
-rankMatEx = (bb,point)-> rank Mat(point)
+Mat = (pointB) -> sub(M,pointB)
+rankMat = (pointB) -> rank Mat(pointB)
+
 end
 ---
 
@@ -75,40 +78,75 @@ installPackage"FiniteFieldExperiments"
 ---
 
 restart
-load"experiments/codim1foliationsClosedB.m2"
+load"experiments/codim1foliationsSmartSearch.m2"
 
-omegaBat = (point) -> sub(sub(omegaB,sub(vars A,ABRD)|point|sub(vars RD,ABRD)),RD)
-randomPointAat = (point) -> ( 
-     allPointsA = transpose syz transpose Mat(point);
+-- split point in A part and B part
+pointAat = (point) -> point_{0..(#gens A-1)}
+pointBat = (point) -> point_{#gens A..#gens A + #gens B -1}
+assert (pointAat(matrix{bb.unknowns})|pointBat(matrix{bb.unknowns}) == matrix{bb.unknowns})
+
+
+omegaAat = (point) -> sub(omegaA,testPoint|sub(vars RD,ABRD))
+omegaBat = (point) -> sub(omegaB,testPoint|sub(vars RD,ABRD))
+
+
+randomPoint = () -> (
+     pointA := null;
+     pointB := random(K^1,K^(#gens B)); 
+     allPointsA := transpose syz transpose Mat(pointB);
      if rank target allPointsA == 0 then return null;
      if rank target allPointsA == 1 then (
-     	  randomPointA = allPointsA
+     	  pointA = allPointsA
      	  ) else (
-	  randomPointA = (random(K^1,K^(rank target allPointsA))*allPointsA);
+	  pointA = (random(K^1,K^(rank target allPointsA))*allPointsA);
 	  );
-     randomPointA
+     pointA|pointB
      )
 
-omegaAat = (point) -> (     
-     sub(sub(omegaA,randomPointAat(point)|sub(vars B,ABRD)|sub(vars RD,ABRD)),RD)
-     )
+-- stratification by betti tableau
+betti (coeffB = matrix entries contract(super basis({0,0,0,2},ABRD),omegaB))
+coeffBat = (point) -> sub(sub(coeffB,point|sub(vars RD,ABRD)),R)
+bettiAt = (point) -> betti res ideal coeffBat(point)
+bb.rpp("bettiAt",bettiAt);
 
+-- check wether forms are closed
 isAclosedAt = (point) -> (
      wA := omegaAat(point);
      if wA===null then null else 0==differentialD wA
      )
+bb.rpp("isAclosedAt",isAclosedAt);
+
+isBclosedAt = (point) -> (
+     wB := omegaBat(point);
+     if wB===null then null else 0==differentialD wB
+     )
+bb.rpp("isBclosedAt",isBclosedAt);
 
 isAclosedAt2 = (point) -> (
      rank(Mat(point)|MclosedA) == rank Mat(point)
      )
 -- more precise but slower
 
--- stratification by betti tableau
-betti (coeffB = matrix entries contract(super basis({0,0,0,2},ABRD),omegaB))
-coeffBat = (point) -> sub(sub(coeffB,sub(vars A,ABRD)|point|sub(vars RD,ABRD)),R)
-bettiAt = (point) -> betti res ideal coeffBat(point)
 
+--- the experiment
+e = new Experiment from bb;
+--c = createRandomPointIterator(randomPoint)
+--e.setPointIterator(c)
+e.setPointGenerator(randomPoint)
 
+time e.run(4)
+e.trials()
+e.countData()
+e.watchedProperties()
+e.tryProperty("isAclosedAt")
+-- all are closed A's
+-- possibly becanse the B's are not closed
+e.tryProperty("isBclosedAt")
+-- so we should look only at closed B's
+
+-------------------------
+-- reworked up to here --
+-------------------------
 
 -- consider only closed 2-forms for B
 -- condition for closedness
