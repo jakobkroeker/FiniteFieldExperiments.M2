@@ -41,6 +41,8 @@ export {
 
 FiniteFieldExperimentsProtect = ()->
 (
+  protect reset;
+  protect setPointIterator;
   protect printInterpolatedIdeals;
   protect clearRecordList;
   protect testDebug;
@@ -114,6 +116,8 @@ FiniteFieldExperimentsProtect = ()->
 
 FiniteFieldExperimentsExport  = ()->
 (
+  exportMutable(reset);
+  exportMutable (setPointIterator);
   exportMutable (printInterpolatedIdeals);
   exportMutable (membershipPrecision);
   exportMutable (setMembershipPrecision);
@@ -464,30 +468,77 @@ ExperimentData + ExperimentData := ExperimentData=>(ed1,ed2)->
 );
 
 
+createRandomPointIterator = method();
 
+createRandomPointIterator (Function) := HashTable =>( weakRandomPointGenerator )->
+(
+        rpi := new MutableHashTable;
+        randomPoint := null;
+  
+        currTrial := 0;
 
+        rpi.next=()->
+        (
+            while(true) do 
+            (
+                 randomPoint = weakRandomPointGenerator();
+                 currTrial = currTrial + 1;
+                 if randomPoint =!= null then break;
+            );
+         
+            return true;
+        );
+        rpi.position = ()->
+        (
+            return currTrial;
+        );
+        rpi.reset = () ->
+        (
+             randomPoint = null;
+             currTrial = 0;
+        );
 
-createRandomPointIterator = (numVariables, coeffRing, trials )->
+        rpi.begin=()->
+        (
+            ri := createRandomPointIterator(weakRandomPointGenerator);
+            ri.next();
+            return ri;
+        );
+
+        rpi.point=()-> randomPoint;
+
+       return new HashTable from rpi;
+)
+
+createRandomPointIterator (ZZ,Ring) := HashTable =>(numVariables, coeffRing )->
     (
         rpi := new MutableHashTable;
         randomPoint := null;
   
         currTrial := 0;
 
-        assert( trials >= 0 );
-
         rpi.next=()->
         (
-            if (currTrial+1 > trials) then return false;
             randomPoint = random( coeffRing^1, coeffRing^numVariables );         
             currTrial = currTrial + 1;
  
             return true;
         );
 
+        rpi.reset = () ->
+        (
+             randomPoint = null;
+             currTrial = 0;
+        );
+
+        rpi.position = ()->
+        (
+            return currTrial;
+        );
+
         rpi.begin=()->
         (
-            ri := createRandomPointIterator(numVariables, trials);
+            ri := createRandomPointIterator(numVariables, coeffRing);
             ri.next();
             return ri;
         );
@@ -500,7 +551,7 @@ createRandomPointIterator = (numVariables, coeffRing, trials )->
 TEST ///
   debug FiniteFieldExperiments
   FiniteFieldExperimentsProtect()
-  pointIterator = createRandomPointIterator(5,ZZ/7,100)
+  pointIterator = createRandomPointIterator(5,ZZ/7)
   pointIterator.next()
   pointIterator.point()
   apply(99, i-> pointIterator.next() )
@@ -517,6 +568,17 @@ createPointIterator = ( pPoints )->
         pointCount := #points;
   
         currPosition := 0;
+
+        pIterator.position = ()->
+        (
+            return currPosition;
+        );
+
+        pIterator.reset = () ->
+        (
+             point = null;
+             currPosition = 0;
+        );
 
         pIterator.next=()->
         (
@@ -713,6 +775,8 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
    propertiesAt := (point)->{};
    isInteresting := (point)->true;
 
+   pointIterator := createRandomPointIterator ( blackBoxIdeal.numVariables, experimentData.coefficientRing );
+
    experiment.experimentData=()->
    (
       return new ExperimentData  from experimentData;
@@ -838,7 +902,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
    
    experiment.useJacobianAt = (jacobianAtName)->
    ( 
-       if experimentData.trials=!=0 then error ("cannot change jacobianAt  - experiment was already run! You could clear() the statistics and retry. ");
+       if experiment.trials()=!=0 then error ("cannot change jacobianAt  - experiment was already run! You could clear() the statistics and retry. ");
 
        if jacobianAtName===null then
        (
@@ -860,8 +924,13 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
      return position( experiment.watchedProperties(), watchedProperty->watchedProperty == property );
    );
 
+
+
+
    experiment.clear = ()->
    ( 
+        pointIterator.reset();
+        --  later  call experimentDataClear() instead.
         experimentData.trials = 0;
         experimentData.points = new MutableHashTable;
         experimentData.count = new Tally;
@@ -922,47 +991,35 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
                 experimentData.points#countKey = {point};
             );
         );
-    -- count this trial even if no solution is found
+        -- this trial is counted in runExperiments and not here to allow update() without changing trial num.
     );
 
    
+    experiment.setPointIterator  = (pRpi)->
+    (
+       if experiment.trials()=!=0 then error ("cannot change random iterator - experiment was already run! You could call clear() and retry.");
+        pointIterator = pRpi;
+    );
 
- 
-     runRandomExperiment := method();
-     runRandomExperiment(ExperimentData, ZZ) := Tally => (experimentData, trials) -> 
-     ( 
-      
-       K := experimentData.coefficientRing;
-       --prime = char K
-       numVariables := blackBoxIdeal.numVariables;
-
-       apply(trials, trial-> (  randomPoint := random( K^1,  K^numVariables );     
-           experimentData.trials = experimentData.trials + 1;    --at first increase trial num, otherwise statistic computations fail ( because trials==0 or reduced by 1) !
-           runExperimentOnce( experimentData, randomPoint, minPointsPerComponent );
-           
-           )
-       );
-     );
+     experiment.trials = ()-> pointIterator.position();
 
      runExperiment := method();
-     --rpi := createRandomPointIterator ( blackBoxIdeal.numVariables, experimentData.coefficientRing, trials );
-     -- too slow:
-     runExperiment(ExperimentData, Thing) := Tally => (experimentData, pointIterator) -> 
+     runExperiment(ExperimentData, Thing, ZZ) := Tally => (experimentData, pPointIterator, newTrials) -> 
      ( 
-       while pointIterator.next() do
+       for i in 1..newTrials do
        (
-           experimentData.trials = experimentData.trials + 1; --at first increase trial num, otherwise statistic computations fail ( because trials==0 or reduced by 1)!
-           runExperimentOnce( experimentData, pointIterator.point(), minPointsPerComponent );
-
+           assert( pPointIterator.next() );
+           runExperimentOnce( experimentData, pPointIterator.point(), minPointsPerComponent );
+           experimentData.trials =  experiment.trials();
        );
      );
 
+ 
 
      update := method();
      update(ExperimentData) := Tally => opts -> (experimentData) -> 
      ( 
         pointIterator := createPointIterator (  experiment.points() );
-        --experimentData.trials = 0;
         experimentData.points = new MutableHashTable;
         experimentData.count = new Tally;
 
@@ -997,7 +1054,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
 
    experiment.setRecordedProperties = ( propertyStringList )->
    (  
-      if experimentData.trials=!=0 then error ("cannot change watched properties - experiment was already run! You could clear() the statistics and retry.");
+      if experiment.trials()=!=0 then error ("cannot change watched properties - experiment was already run! You could clear() the statistics and retry.");
 
       setRecordedPropertiesInternal(propertyStringList);
       update(experimentData);
@@ -1010,7 +1067,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
 
    experiment.watchProperty=(propertyName)->
    (
-       if experimentData.trials=!=0 then error (UpdateRecordedPropertiesError);
+       if experiment.trials()=!=0 then error (UpdateRecordedPropertiesError);
 
           if not blackBoxIdeal.hasPointProperty(propertyName) then 
               error ("blackBoxIdeal seems not to have property" | propertyName );
@@ -1024,7 +1081,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
 
    experiment.ignoreProperty=(propertyName)->
    (
-       if experimentData.trials=!=0 then error (UpdateRecordedPropertiesError);
+       if experiment.trials()=!=0 then error (UpdateRecordedPropertiesError);
 
       experimentData.propertyList = delete(propertyName, experimentData.propertyList ) ;
       setRecordedPropertiesInternal( experimentData.propertyList );   
@@ -1035,7 +1092,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
 
    experiment.ignoreProperties = (ignorePropertyStringList)->
    (
-       if experimentData.trials=!=0 then error (UpdateRecordedPropertiesError);
+       if experiment.trials()=!=0 then error (UpdateRecordedPropertiesError);
 
       apply( ignorePropertyStringList, propToIgnore-> ( experimentData.propertyList = delete(propToIgnore, experimentData.propertyList ); ));
       setRecordedPropertiesInternal( experimentData.propertyList );    
@@ -1068,13 +1125,12 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
    --);
 
   
+  
 
    experiment.run = method();
-   experiment.run(ZZ) := Thing=> (trials)->
+   experiment.run(ZZ) := Thing=> (newTrials)->
    (
-      rpi := createRandomPointIterator ( blackBoxIdeal.numVariables, experimentData.coefficientRing, trials );
-       runExperiment( experimentData, rpi );
-       --runRandomExperiment( experimentData, trials );
+       runExperiment( experimentData, pointIterator, newTrials );
        return experiment.countData();
    );
   
@@ -1097,10 +1153,6 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
       return new Tally from experimentData.count;
    );
 
-   experiment.trials = ()->
-   (
-      return experimentData.trials;
-   );
 
    experiment.pointKeys = ()->
    (
