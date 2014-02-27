@@ -44,6 +44,7 @@ FiniteFieldExperimentsProtect = ()->
 (
   protect reset;
   protect setPointIterator;
+  protect setPointGenerator;
   protect printInterpolatedIdeals;
   protect clearRecordList;
   protect testDebug;
@@ -119,6 +120,7 @@ FiniteFieldExperimentsExport  = ()->
 (
   exportMutable(reset);
   exportMutable (setPointIterator);
+  exportMutable (setPointGenerator);
   exportMutable (printInterpolatedIdeals);
   exportMutable (membershipPrecision);
   exportMutable (setMembershipPrecision);
@@ -1029,6 +1031,12 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
     (
        if experiment.trials()=!=0 then error ("cannot change random iterator - experiment was already run! You could call clear() and retry.");
         pointIterator = pRpi;
+    );
+
+    experiment.setPointGenerator  = (pGen) ->
+    (
+        wrip := createRandomPointIterator(pGen);
+        experiment.setPointIterator(wrip);
     );
 
      experiment.trials = ()-> pointIterator.position();
