@@ -80,10 +80,6 @@ installPackage"FiniteFieldExperiments"
 restart
 load"experiments/codim1foliationsSmartSearch.m2"
 
-keys bb
-bb.unknowns
-testPoint = random(K^1,K^(#bb.unknowns))
-
 -- split point in A part and B part
 pointAat = (point) -> point_{0..(#gens A-1)}
 pointBat = (point) -> point_{#gens A..#gens A + #gens B -1}
@@ -107,28 +103,49 @@ randomPoint = () -> (
      pointA|pointB
      )
 
-time tally apply(10000,i->randomPoint())
+-- stratification by betti tableau
+betti (coeffB = matrix entries contract(super basis({0,0,0,2},ABRD),omegaB))
+coeffBat = (point) -> sub(sub(coeffB,point|sub(vars RD,ABRD)),R)
+bettiAt = (point) -> betti res ideal coeffBat(point)
+bb.rpp("bettiAt",bettiAt);
 
--------------------------
--- reworked up to here --
--------------------------
-
+-- check wether forms are closed
 isAclosedAt = (point) -> (
      wA := omegaAat(point);
      if wA===null then null else 0==differentialD wA
      )
+bb.rpp("isAclosedAt",isAclosedAt);
+
+isBclosedAt = (point) -> (
+     wB := omegaBat(point);
+     if wB===null then null else 0==differentialD wB
+     )
+bb.rpp("isBclosedAt",isBclosedAt);
 
 isAclosedAt2 = (point) -> (
      rank(Mat(point)|MclosedA) == rank Mat(point)
      )
 -- more precise but slower
 
--- stratification by betti tableau
-betti (coeffB = matrix entries contract(super basis({0,0,0,2},ABRD),omegaB))
-coeffBat = (point) -> sub(sub(coeffB,sub(vars A,ABRD)|point|sub(vars RD,ABRD)),R)
-bettiAt = (point) -> betti res ideal coeffBat(point)
 
+--- the experiment
+e = new Experiment from bb;
+c = createRandomPointIterator(randomPoint)
+e.setPointIterator(c)
 
+time e.run(4)
+e.trials()
+e.countData()
+e.watchedProperties()
+e.tryProperty("isAclosedAt")
+-- all are closed A's
+-- possibly becanse the B's are not closed
+e.tryProperty("isBclosedAt")
+-- so we should look only at closed B's
+
+-------------------------
+-- reworked up to here --
+-------------------------
 
 -- consider only closed 2-forms for B
 -- condition for closedness
