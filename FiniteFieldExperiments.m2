@@ -29,6 +29,7 @@ export {
   "estimateCodim", 
   "estimateNumberOfComponents",              
   "createInterpolatedIdeal",
+  "createRandomPointIterator",
   "interpolateBB",
   "interpolate",
   "isOnComponent",   
@@ -510,6 +511,31 @@ createRandomPointIterator (Function) := HashTable =>( weakRandomPointGenerator )
        return new HashTable from rpi;
 )
 
+TEST ///
+
+ rng = QQ[x];
+ bbI = new BlackBoxIdeal from ideal(x)
+ e = new Experiment from bbI
+ 
+  weakPoint =()->
+  (
+     num := random(ZZ);
+     if odd num then 
+     return random(QQ^1,QQ^1)
+     else
+     return null;
+  );
+  wrpi = createRandomPointIterator(weakPoint);
+  e.setPointIterator(wrpi);
+  e.run(100)
+  e.trials();
+  assert(e.trials()>100);
+  wrpi.reset();
+  assert(wrpi.position()==0);
+  assert(wrpi.point()===null);
+  
+///
+
 createRandomPointIterator (ZZ,Ring) := HashTable =>(numVariables, coeffRing )->
     (
         rpi := new MutableHashTable;
@@ -555,6 +581,10 @@ TEST ///
   pointIterator.next()
   pointIterator.point()
   apply(99, i-> pointIterator.next() )
+  assert(pointIterator.position()==100);
+  pointIterator.reset();
+  assert(pointIterator.position()==0);
+  assert(pointIterator.point()===null);
 ///
 
 createPointIterator = ( pPoints )->
