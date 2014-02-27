@@ -17,12 +17,25 @@ bbI = blackBoxIdeal I;
 
 
 e = new Experiment from bbI;
-e.run(100)
-time e.createAllInterpolationIdeals(1,10)
+e.run(200)
+time e.createAllInterpolationIdeals(1,2)
 ed = e.experimentData()
 ht = new HashTable from ed.interpolatedIdeals
 (ht#0).ideal
 (ht#1).ideal
+
+points = e.points();
+point0 = points#0;
+
+e.interpolatedIdealKeys(point0,10)
+e.interpolatedIdealKeys(point0)
+
+e.printInterpolatedIdeals()
+e.countData()
+bbI.isSingular(point0)
+bbI.knownPointProperties()
+e.setMembershipPrecision(2)
+e.tryProperty("interpolatedIdealKeys")
 
 --------------------
 -- second example --
