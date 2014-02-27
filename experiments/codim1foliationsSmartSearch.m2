@@ -130,8 +130,9 @@ isAclosedAt2 = (point) -> (
 
 --- the experiment
 e = new Experiment from bb;
-c = createRandomPointIterator(randomPoint)
-e.setPointIterator(c)
+--c = createRandomPointIterator(randomPoint)
+--e.setPointIterator(c)
+e.setPointGenerator(randomPoint)
 
 time e.run(4)
 e.trials()
