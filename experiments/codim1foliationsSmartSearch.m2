@@ -50,19 +50,22 @@ betti (Idiff = sub(ideal mingens minors(2,contract( matrix{apply(indB,i->sub(i,A
 betti (I = ideal mingens (Iint+Idiff))
 assert isHomogeneous I
 
+bb = blackBoxIdeal(I);
+
+-- smart point search
+-- choose coefficients B first, then A if possible
+
 -- eliminate A
 betti (M = matrix entries sub(contract(sub(transpose vars A,AB),mingens I),B))
 -- 0: 18 46
 assert isHomogeneous M
 
-coefficients 
-
 coeffDomegaA = contract(sub(super basis({d-1,2},RD),ABRD),matrix{{differentialD(omegaA)}})
 MclosedA = contract(transpose vars A,sub(coeffDomegaA,A))
 
-Mat = (point) -> sub(M,point)
-rankMat = (point) -> rank Mat(point)
-rankMatEx = (bb,point)-> rank Mat(point)
+Mat = (pointB) -> sub(M,pointB)
+rankMat = (pointB) -> rank Mat(pointB)
+
 end
 ---
 
@@ -75,23 +78,40 @@ installPackage"FiniteFieldExperiments"
 ---
 
 restart
-load"experiments/codim1foliationsClosedB.m2"
+load"experiments/codim1foliationsSmartSearch.m2"
 
-omegaBat = (point) -> sub(sub(omegaB,sub(vars A,ABRD)|point|sub(vars RD,ABRD)),RD)
-randomPointAat = (point) -> ( 
-     allPointsA = transpose syz transpose Mat(point);
+keys bb
+bb.unknowns
+testPoint = random(K^1,K^(#bb.unknowns))
+
+-- split point in A part and B part
+pointAat = (point) -> point_{0..(#gens A-1)}
+pointBat = (point) -> point_{#gens A..#gens A + #gens B -1}
+assert (pointAat(matrix{bb.unknowns})|pointBat(matrix{bb.unknowns}) == matrix{bb.unknowns})
+
+
+omegaAat = (point) -> sub(omegaA,testPoint|sub(vars RD,ABRD))
+omegaBat = (point) -> sub(omegaB,testPoint|sub(vars RD,ABRD))
+
+
+randomPoint = () -> (
+     pointA := null;
+     pointB := random(K^1,K^(#gens B)); 
+     allPointsA := transpose syz transpose Mat(pointB);
      if rank target allPointsA == 0 then return null;
      if rank target allPointsA == 1 then (
-     	  randomPointA = allPointsA
+     	  pointA = allPointsA
      	  ) else (
-	  randomPointA = (random(K^1,K^(rank target allPointsA))*allPointsA);
+	  pointA = (random(K^1,K^(rank target allPointsA))*allPointsA);
 	  );
-     randomPointA
+     pointA|pointB
      )
 
-omegaAat = (point) -> (     
-     sub(sub(omegaA,randomPointAat(point)|sub(vars B,ABRD)|sub(vars RD,ABRD)),RD)
-     )
+time tally apply(10000,i->randomPoint())
+
+-------------------------
+-- reworked up to here --
+-------------------------
 
 isAclosedAt = (point) -> (
      wA := omegaAat(point);
