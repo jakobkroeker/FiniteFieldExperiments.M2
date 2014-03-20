@@ -57,7 +57,7 @@ FiniteFieldExperimentsProtect = ()->
   protect pointKeys; 
   protect points;
   protect trials;
-  protect createAllInterpolationIdeals;
+  protect createAllInterpolatedIdeals;
   protect interpolatedIdealKeys;
 
   protect coefficientRingCardinality;
@@ -137,7 +137,7 @@ FiniteFieldExperimentsExport  = ()->
   exportMutable( points);
   exportMutable( trials );
   exportMutable( interpolatedIdeals );
-  exportMutable( createAllInterpolationIdeals );
+  exportMutable( createAllInterpolatedIdeals );
   exportMutable(interpolatedIdealKeys);
  
   exportMutable(coefficientRingCardinality);
@@ -1354,7 +1354,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
                );
     );
     
-    experiment.createAllInterpolationIdeals  = (maxDegree, prec) -> 
+    experiment.createAllInterpolatedIdeals  = (maxDegree, prec) -> 
     ( 
         interpolatedIdeals := {};
         for point in experiment.points() do
