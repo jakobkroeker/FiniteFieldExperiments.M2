@@ -9,7 +9,7 @@ restart
 needsPackage"BlackBoxIdeals"
 needsPackage"FiniteFieldExperiments"
 
-K = ZZ/3
+K = ZZ/101
 R = K[x,y,z,w]
 --R = K[x,y,z]
 D = K[dx,dy,dz,SkewCommutative=>true]
@@ -85,19 +85,31 @@ pointAat = (point) -> point_{0..(#gens A-1)}
 pointBat = (point) -> point_{#gens A..#gens A + #gens B -1}
 assert (pointAat(matrix{bb.unknowns})|pointBat(matrix{bb.unknowns}) == matrix{bb.unknowns})
 
+-- differential Forms
+omegaAat = (point) -> sub(omegaA,point|vars RD)
+omegaBat = (point) -> sub(omegaB,point|vars RD)
 
-omegaAat = (point) -> sub(omegaA,testPoint|sub(vars RD,ABRD))
-omegaBat = (point) -> sub(omegaB,testPoint|sub(vars RD,ABRD))
+
+-- consider only closed 2-forms for B
+-- condition for closedness
+Iclosed = ideal sub(contract(super basis({0,0,d-2,3},ABRD),differentialD(omegaB)),B)
+-- basis for closed subspace
+basisClosed = sub(transpose syz transpose jacobian Iclosed,K)
 
 
 randomPoint = () -> (
      pointA := null;
-     pointB := random(K^1,K^(#gens B)); 
+     -- random closed 2 form for pointB
+     pointB := random(K^1,K^(rank target basisClosed))*basisClosed;
+     -- points A that satisfy omegaA * omegaB = 0 and D(omegaA) = l * omegaB
      allPointsA := transpose syz transpose Mat(pointB);
+     -- if there are no such points A return null
      if rank target allPointsA == 0 then return null;
+     -- if there is a one dimensional space of such points return a basis vector
      if rank target allPointsA == 1 then (
      	  pointA = allPointsA
      	  ) else (
+	  -- otherwise a random linear combination of basis vectors
 	  pointA = (random(K^1,K^(rank target allPointsA))*allPointsA);
 	  );
      pointA|pointB
@@ -130,119 +142,27 @@ isAclosedAt2 = (point) -> (
 
 --- the experiment
 e = new Experiment from bb;
---c = createRandomPointIterator(randomPoint)
---e.setPointIterator(c)
+-- on second trial error:
+-- method interpolatedIdealKeys seems already registered, please use 'updatePointProperty' for updating.
+
+-- find points by the method defined above
 e.setPointGenerator(randomPoint)
 
-time e.run(4)
+-- ignore points for which A is closed
+e.setIsInteresting ( (point) -> not isAclosedAt(point) )
+
+e.watchProperty("bettiAt")
+time e.run(10)
+-- used 25. seconds (for 4)
 e.trials()
 e.countData()
 e.watchedProperties()
 e.tryProperty("isAclosedAt")
--- all are closed A's
--- possibly becanse the B's are not closed
+-- no A is closed (because of isInteresting)
 e.tryProperty("isBclosedAt")
--- so we should look only at closed B's
-
--------------------------
--- reworked up to here --
--------------------------
-
--- consider only closed 2-forms for B
--- condition for closedness
-Iclosed = ideal sub(contract(super basis({0,0,d-2,3},ABRD),differentialD(omegaB)),B)
--- basis for closed subspace
-basisClosed = sub(transpose syz transpose jacobian Iclosed,K)
-
--- translate short vectors into long ones
-closedPointBat = (point) -> point*basisClosed
-closedOmegaBat = (point) -> omegaBat(closedPointBat(point))
-closedBettiAt = (point) -> betti res ideal coeffBat(closedPointBat(point))
-closedMat = (point) -> Mat(closedPointBat(point))
-closedRankMat = (point) -> rank closedMat(point)
-bb.rpp("closedRankMat",closedRankMat);
-
-
-
--- make a blackbox parameterspace of closed B's that have
--- a non closed A with A*B==0 and dA==B
-bb = blackBoxParameterSpace(rank target basisClosed,K)
-
--- number of parameters
-bb.numVariables
-bb.registerPointProperty("closedBettiAt",closedBettiAt);
-e  = new Experiment from bb;
--- only look at B's that have a nontrivial A
-closedIsAclosedAt = (point) -> isAclosedAt(closedPointBat(point))
-closedIsAclosedAt2 = (point) -> isAclosedAt2(closedPointBat(point))
-
-e.setIsInteresting ( (point) -> (
-	  (closedRankMat(point) < #(gens A))
-	  and
-	  not closedIsAclosedAt(point) )
-     )
-e.clear()
-
--- look at betti tables
-e.watchProperties {"closedBettiAt"}
-time e.run(10000)
--- used 42.6086 seconds
-e.estimateStratification()
---             {total: 1 2 1} => 1  }
---                  0: 1 . .
---                  1: . 2 .
---                  2: . . 1
---                     0 1 2 3
---             {total: 1 3 3 1} => 1
---                  0: 1 . . .
---                  1: . 3 . .
---                  2: . . 3 .
---                  3: . . . 1
---                     0 1 2 3
---             {total: 1 3 3 1} => 1
---                  0: 1 . . .
---                  1: . 3 1 .
---                  2: . . 2 1
---closedOmegaAat = (point) -> omegaAat(closedPointBat(point))
-testPoint = (e.pointsByKey((keys e.pointLists())#0))#0
-
-
-bb = bb.rpp("closedIsAclosedAt",closedIsAclosedAt);
-bb = bb.rpp("closedIsAclosedAt2",closedIsAclosedAt2);
-both = (point) ->(closedIsAclosedAt(point),closedIsAclosedAt2(point))
-bb = bb.rpp("both",both);
-
-e.tryProperty("both")
-e.tryProperty("closedIsAclosedAt2")
-e.tryProperty("closedRankMat")
--- tryPropertie(s) (a list of properties)
-testPoint = (e.points())#1
-rank closedMat(testPoint)
-rank (closedMat(testPoint)|MclosedA)
-closedIsAclosedAt(testPoint)
-
--------------------------
--- reworked up to here --
--------------------------
-
-time betti (J = jacobian I)
-
-closedRankJacobiAt = (point) -> (
-     pointB := closedPointBat(point);
-     pointA := randomPointAat(pointB);
-     tangentB := syz (transpose syz transpose sub(J,pointA|pointB))_{rank source pointA..rank source pointA+rank source pointB-1};
-     rank tangentB + rank(basisClosed) - rank (tangentB | transpose basisClosed) 
-     )
-bb.rpp("jacobiAt",closedRankJacobiAt);
-bb.knownPointProperties()
-
-e.tryProperty("jacobiAt")
-time eClosedBetti.run(100000) 
--- used 556.586 seconds
-estimateStratification2(eClosedBetti)
-tryProperty(eClosedBetti,i->(closedIsAclosedAt i,closedRankJacobiAt i))
-
--- jets in AB-space
+-- all B are closed
+e.tryProperty("bettiAt")
+e.tryProperty("isSingular")
 
 -- sysygies of three cubics
 restart
@@ -294,3 +214,36 @@ time eBetti.run(10000)
 time eBetti.run(100000)
 --eBetti.estimateStratification()
 estimateStratification2(eBetti)
+
+-- Darboux examples
+restart
+load"experiments/codim1foliationsSmartSearch.m2"
+
+lambdaPartition = {2,1,1,1}
+idealFromPartition = (lambdaPartition) -> (
+     lambdaPolynomials = apply(lambdaPartition,i->random({i,0},RD));
+     w = sum apply(#lambdaPartition,i->
+     	  random(K)*product apply(#lambdaPartition,j->(
+	       	    if i==j then 
+	       	    differentialD(lambdaPolynomials#j)
+	       	    else
+	       	    lambdaPolynomials#j
+	       	    ))
+     	  );
+     dw = differentialD(w);
+     assert (0==w*differentialD(w));
+     (I = sub(ideal contract(super basis({0,2},RD),dw),R))
+     )
+
+tally apply(partitions 5,i->(
+	  P = toList i;
+	  I = idealFromPartition(P);
+	  if 0==I then dI = {} else time dI = primaryDecomposition I;
+	  curveComponents = select(dI,i->codim i==2);
+	  if 0==#curveComponents then curve = ideal{1_R} else curve = intersect curveComponents;
+	  pointComponents = select(dI,i->codim i==3);
+	  if 0==#pointComponents then points = ideal{1_R} else points = intersect pointComponents;
+	  irrelevant = select(dI,i->codim i==4);
+	  assert (irrelevant=={});
+	  print (P,degree I,betti res curve, #curveComponents,degree points,betti res I)
+	  ))
