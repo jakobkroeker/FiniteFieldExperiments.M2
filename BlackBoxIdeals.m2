@@ -170,7 +170,9 @@ undocumented {
     setPointProperty,
     equations,
     rpp,
-    upp
+    upp,
+    keys1,
+    eps
 } 
 
 

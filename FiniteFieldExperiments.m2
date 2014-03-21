@@ -29,6 +29,8 @@ export {
   "estimateCodim", 
   "estimateNumberOfComponents",              
   "createInterpolatedIdeal",
+  "createFFEInterpolation",
+  "createIterator",
   "createRandomPointIterator",
   "interpolateBB",
   "interpolate",
@@ -36,12 +38,15 @@ export {
   "poissonEstimate",
   "Experiment",
   "RandomExperiment",
+  "FFEInterpolation",
+  "FFEInterpolationData",
   "FFELogger",
   "ringCardinality"
 }
 
 FiniteFieldExperimentsProtect = ()->
 (
+  protect experiment;
   protect reset;
   protect setPointIterator;
   protect setPointGenerator;
@@ -118,6 +123,7 @@ FiniteFieldExperimentsProtect = ()->
 
 FiniteFieldExperimentsExport  = ()->
 (
+  exportMutable(experiment);
   exportMutable(reset);
   exportMutable (setPointIterator);
   exportMutable (setPointGenerator);
@@ -316,9 +322,11 @@ createInterpolatedIdeal( Ideal,ZZ,String ) := InterpolatedIdeal => (I,maxDegree,
 )
 
 
-load "./FiniteFieldExperiments/Interpolation.m2";
+
 
 Experiment = new Type of HashTable;
+
+load "./FiniteFieldExperiments/Interpolation.m2";
 
 ExperimentData = new Type of MutableHashTable;
 
@@ -351,7 +359,6 @@ new ExperimentData from Ring := (E,coeffRing) -> (
      e.coefficientRing = coeffRing;
      e.points = new MutableHashTable;
     -- format: key=>{ideal, maxDegree, name} --later: data type for interpolated ideal
-     e.interpolatedIdeals = new MutableHashTable; 
      e.count = new Tally;
      e.trials = 0;
      e.propertyList = {};
@@ -382,7 +389,6 @@ createExperimentData = (coeffRing,points,count,trials,propertyList,isRandom) -> 
      e := new ExperimentData;
      e.coefficientRing = coeffRing;
      e.points = new MutableHashTable from points;
-     e.interpolatedIdeals = new MutableHashTable; 
      e.count = count;
      e.trials = trials;
      e.propertyList = propertyList;
@@ -395,7 +401,6 @@ new ExperimentData from ExperimentData := (E,ed) -> (
      e := new MutableHashTable;
      e.coefficientRing = ed.coefficientRing;
      e.points = copy ed.points;
-     e.interpolatedIdeals =  copy ed.interpolatedIdeals;
      e.count = copy ed.count;
      e.trials = ed.trials;
      e.propertyList = copy ed.propertyList;
@@ -538,7 +543,7 @@ TEST ///
   
 ///
 
-createRandomPointIterator (ZZ,Ring) := HashTable =>(numVariables, coeffRing )->
+createRandomPointIterator (Ring,ZZ) := HashTable =>( coeffRing,numVariables )->
     (
         rpi := new MutableHashTable;
         randomPoint := null;
@@ -566,7 +571,7 @@ createRandomPointIterator (ZZ,Ring) := HashTable =>(numVariables, coeffRing )->
 
         rpi.begin=()->
         (
-            ri := createRandomPointIterator(numVariables, coeffRing);
+            ri := createRandomPointIterator(coeffRing, numVariables );
             ri.next();
             return ri;
         );
@@ -579,7 +584,7 @@ createRandomPointIterator (ZZ,Ring) := HashTable =>(numVariables, coeffRing )->
 TEST ///
   debug FiniteFieldExperiments
   FiniteFieldExperimentsProtect()
-  pointIterator = createRandomPointIterator(5,ZZ/7)
+  pointIterator = createRandomPointIterator(ZZ/7, 5)
   pointIterator.next()
   pointIterator.point()
   apply(99, i-> pointIterator.next() )
@@ -589,7 +594,68 @@ TEST ///
   assert(pointIterator.point()===null);
 ///
 
-createPointIterator = ( pPoints )->
+
+doc ///
+   Key
+        (createRandomPointIterator, Ring, ZZ)
+   Headline
+        create  iterator over random points given by ground ring and number of coordinates.
+   Usage   
+        pointIterator = createRandomPointIterator(R, dim)
+   Inputs  
+         rng: Ring
+            the coefficient ring 
+         n:ZZ
+            dimension of the vector space over rng 
+   Description
+        Text
+           Create an iterator over random points \in R^{n}, given as matrices \break
+           See also PointIterator.
+        Example
+           rng = QQ
+           numCoordinates := 4_ZZ
+           pointIterator = createRandomPointIterator(rng, numCoordinates);
+        Text
+           now we are able to generate random points by calling next():
+        Example
+           pointIterator.next()
+           pointIterator.point()
+           pointIterator.position()
+           pointIterator.next()
+           pointIterator.point()
+           pointIterator.position()       
+///
+
+doc ///
+   Key
+        (createRandomPointIterator, Function)
+   Headline
+        create iterator over points given by a point generator.
+   Usage   
+        pointIterator = createRandomPointIterator(weakPointGenerator)
+   Inputs  
+        weakPointGenerator: Function
+            a function which generates a random point of type Matrix or returns null
+   Description
+        Text
+           Create an iterator over random points using a given random point generator \break
+           See also PointIterator.
+        Example
+           weakPointGenerator := ()-> (if odd random(ZZ) then  random(QQ^1,QQ^3) );
+           pointIterator = createRandomPointIterator(weakPointGenerator);
+        Text
+           now we are able to generate random points by calling next():
+        Example
+           pointIterator.next()
+           pointIterator.point()
+           pointIterator.position()
+           pointIterator.next()
+           pointIterator.point()
+           pointIterator.position()        
+///
+
+createIterator = method();
+createIterator (List) := HashTable =>( pPoints )->
     (
         pIterator := new MutableHashTable; 
 
@@ -622,7 +688,7 @@ createPointIterator = ( pPoints )->
 
         pIterator.begin=()->
         (
-            localPointIterator := createPointIterator( pPoints);
+            localPointIterator := createIterator( pPoints);
             localPointIterator.next();
             return localPointIterator;
         );
@@ -632,6 +698,29 @@ createPointIterator = ( pPoints )->
        return new HashTable from pIterator;
     );
 
+doc ///
+   Key
+        (createIterator)
+   Headline
+        create iterator over elements given by a list
+   Usage   
+        pointIterator = createIterator(list)
+   Inputs  
+        list: List
+            a list of ite
+   Description
+        Text
+           Create an iterator over random points using a given random point generator \break
+           See also PointIterator.
+        Example
+           pointList = apply (4, i -> random( ZZ^1, ZZ^3 ) )
+           pointIterator = createIterator(pointList);
+        Text
+           now we are able to iterate over all points:
+        Example
+           while  pointIterator.next() do pointIterator.point()
+           pointIterator.next()
+///
 
 
 
@@ -807,7 +896,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
    propertiesAt := (point)->{};
    isInteresting := (point)->true;
 
-   pointIterator := createRandomPointIterator ( blackBoxIdeal.numVariables, experimentData.coefficientRing );
+   pointIterator := createRandomPointIterator ( experimentData.coefficientRing, blackBoxIdeal.numVariables );
 
    experiment.experimentData=()->
    (
@@ -1057,7 +1146,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
      update := method();
      update(ExperimentData) := Tally => opts -> (experimentData) -> 
      ( 
-        pointIterator := createPointIterator (  experiment.points() );
+        pointIterator := createIterator (  experiment.points() );
         experimentData.points = new MutableHashTable;
         experimentData.count = new Tally;
 
@@ -1269,91 +1358,35 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
                );
     );
     
-    experiment.createAllInterpolatedIdeals  = (maxDegree, prec) -> 
-    ( 
-        interpolatedIdeals := {};
-        for point in experiment.points() do
-        ( 
-            if blackBoxIdeal.isSingular(point) then continue;
-             -- check if point is already on one of the known components
-             bIsOnComponent := false;
-             for interpolData in interpolatedIdeals do
-             (
-                 if  isOnComponent ( blackBoxIdeal, interpolData.ideal, point, 0 ) then
-                 (
-                     if  isOnComponent ( blackBoxIdeal, interpolData.ideal, point, prec ) then
-                     (
-                          bIsOnComponent = true; 
-                          break;
-                     );
-                 );
-             );
-             if bIsOnComponent then continue;
-
-             interpolatedIdeals = interpolatedIdeals | { createInterpolatedIdeal (maxDegree, blackBoxIdeal, point)  };             
-        );
-        experimentData.interpolatedIdeals = new MutableHashTable from 
-           apply ( #interpolatedIdeals, idx-> (("ideal_" |toString idx ) => interpolatedIdeals#idx ) ) ;
-       
-    );
-    
-    experiment.interpolatedIdealKeys = method();
-    experiment.interpolatedIdealKeys (Matrix,ZZ) := Thing => (point,prec)->
-    (
-       numbers := {};
  
-        if blackBoxIdeal.isSingular(point) then return "is not smooth";    
-
-        for key in keys experimentData.interpolatedIdeals do
-        (
-          if  isOnComponent ( blackBoxIdeal, (experimentData.interpolatedIdeals#key).ideal, point, 0 ) then
-          (
-              if  isOnComponent ( blackBoxIdeal, (experimentData.interpolatedIdeals#key).ideal, point, prec ) then
-              (
-                 numbers = numbers | {key};
-              );
-           );
-        );
-        return numbers;
  
-    );
-
-    localMembershipPrecision := 10; -- does this belong to experimentData?
-
-
-    experiment.setMembershipPrecision = (prec)->
-    (
-         localMembershipPrecision = prec;
-    );
-
-    experiment.membershipPrecision = (prec)->
-    (
-         localMembershipPrecision 
-    );
-
-
-    experiment.interpolatedIdealKeys (Matrix) := Thing => (point)->
-   (
-        return  experiment.interpolatedIdealKeys(point, localMembershipPrecision );
-   );
-
-   iik := (point)-> (return  experiment.interpolatedIdealKeys(point) ;);
-
-   blackBoxIdeal.rpp("interpolatedIdealKeys", iik);
-
-
-
-    experiment.printInterpolatedIdeals = ()->
-   (
-         apply (keys experimentData.interpolatedIdeals, key-> ( print (key=>new HashTable from experimentData.interpolatedIdeals#key ) ) );
-   );
-
 
    experiment = newClass( Experiment, experiment );
    ffelog.debug ("type of internal experiment variable is : " | toString class experiment );
    return experiment; 
    -- return new HashTable from experiment; 
 );
+
+TEST ///
+
+ rng = QQ[x];
+ bbI = new BlackBoxIdeal from ideal(x)
+ e = new Experiment from bbI
+ 
+  weakPoint =()->
+  (
+     num := random(ZZ);
+     if odd num then 
+     return random(QQ^1,QQ^1)
+     else
+     return null;
+  );
+  wrpi = createRandomPointIterator(weakPoint);
+  e.setPointGenerator(weakPoint);
+
+  
+  
+///
 
  
 
