@@ -29,7 +29,7 @@ export {
   "estimateCodim", 
   "estimateNumberOfComponents",              
   "createInterpolatedIdeal",
-  "createFFEInterpolation",
+  "createInterpolationImage",
   "createIterator",
   "createRandomPointIterator",
   "interpolateBB",
@@ -38,10 +38,10 @@ export {
   "poissonEstimate",
   "Experiment",
   "RandomExperiment",
-  "FFEInterpolation",
-  "FFEInterpolationData",
+  "InterpolationImage",
   "FFELogger",
-  "ringCardinality"
+  "ringCardinality",
+  "Map"  -- eigentlich Morphism
 }
 
 FiniteFieldExperimentsProtect = ()->
@@ -300,26 +300,6 @@ TEST ///
 
 
  
-
-InterpolatedIdeal = new Type of MutableHashTable;
-
-new InterpolatedIdeal from MutableHashTable :=  (InterpolatedIdealAncestor,l)->
-(  
-     --type check?
-     return l;
-);
-
-
-createInterpolatedIdeal = method();
-createInterpolatedIdeal( Ideal,ZZ,String ) := InterpolatedIdeal => (I,maxDegree,name)->
-(
-     interpolatedIdeal := new MutableHashTable;
-     interpolatedIdeal.ideal = I;
-     interpolatedIdeal.maxDegree = maxDegree;
-     interpolatedIdeal.name = name;
-     
-     return new InterpolatedIdeal from interpolatedIdeal;
-)
 
 
 
@@ -1571,6 +1551,7 @@ restart
 
 loadPackage"BlackBoxIdeals"
 load "FiniteFieldExperiments.m2"
+needsPackage"FiniteFieldExperiments"
 
 R = (ZZ/7)[x_0..x_3]
 M = matrix{

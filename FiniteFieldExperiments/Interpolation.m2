@@ -1,5 +1,51 @@
 
+restart
+needsPackage"BlackBoxIdeals"
 
+-- Type Map contains a matrix and a function
+-- to evaluate this matrix on a point
+-- This is for example used when projecting onto a
+-- subspace (i.e elimination of variables)
+Map = new Type of HashTable;
+
+createMap = (mapMatrix, imageRing) -> (
+    mapData := new MutableHashTable;
+    
+    mapData#"imageRing" = imageRing;
+    mapData#"matrix" = mapMatrix;
+    
+    mapData#"valueAt" =  method();    
+    mapData#"valueAt" (Matrix) := Matrix => (point)->
+    (
+        return sub(mapMatrix,point);
+    );
+   
+    mapData#"valueAtJet" = method();
+    mapData#"valueAtJet" (HashTable) := HashTable => (jet) -> (
+        return new HashTable from {
+     	  "failedJetLength" => jet#"failedJetLength",
+     	  "jet" => (mapData#"valueAt")(jet#"jet"),
+     	  "succeeded" => jet#"succeeded"
+     	  };
+     );
+   
+    return new Map from mapData
+    )
+
+--new Map from Matrix := (XXX, mapMatrix) -> (
+--     sourceRing := ring mapMatrix;
+--     K := coefficientRing sourceRing;
+--     m := rank source mapMatrix;
+--     imageRing := K[xxx_1..xxx_m]
+
+
+TEST ///
+assert (
+     R = QQ[x,y,z];
+     mm = createMap(matrix{{x^2,y^3}},QQ[a,b]);
+     (mm#"valueAt")(matrix{{1,2,3}}) == matrix{{1,8}}
+     )
+///
 
 
 -- find polynomials containing a component
@@ -88,23 +134,56 @@ TEST ///
   assert (ideal(x,y) == interpolate(matrix{{x,y,z}},{j}))
 ///
 
+
+
 -- find all polynomials of degree smallerEqual than maxDegree containing the component of BB containing the point
 -- 
 -- this is the most basic simple minded implementation where only one very long jet is considered.
-interpolateBB = (maxDegree,BB,point) -> (
-     R := BB.ring;
+interpolateBB = method();
+interpolateBB(ZZ,BlackBoxParameterSpace,Matrix,Map) := Ideal => 
+             (maxDegree,BB,point,mmap) -> 
+     (
+     R := mmap#"imageRing";
      mons := matrix {flatten apply(maxDegree+1,i->flatten entries basis(i,R))};
      -- find one jet with precision 10 more then number of monomials
      jetP := jetAt(BB,point,rank source mons+10,2);
      -- !!!this heuristic must be tested!!!
      -- Test: see if interpolated polynomials are in at least one
      -- irreducible component of the BlackBoxIdeal.
-     interpolate(mons,{jetP})
+     jetPimage :=  (mmap#"valueAtJet")(jetP);
+     --new HashTable from {
+     --	  "failedJetLength" => jetP#"failedJetLength",
+     --	  "jet" => (mmap#"valueAt")(jetP#"jet"),
+     --	  "succeeded" => jetP#"succeeded"
+     --	  };
+     interpolate(mons,{jetPimage})
      )
+
+--interpolateBB(ZZ,BlackBoxParameterSpace,Matrix,Matrix) := Ideal => 
+--             (maxDegree,BB,point,mmap) -> 
+--(
+--     interpolateBB(maxDegree,BB,point,new Map from mmap)
+--)
+
+interpolateBB(ZZ,BlackBoxParameterSpace,Matrix) := Ideal => 
+             (maxDegree,BB,point) -> 
+(
+     interpolateBB(maxDegree,BB,point,createMap(vars BB.ring,BB.ring))
+)
+
+TEST ///
+  K = ZZ/5
+  R = K[x,y,z]
+  I = ideal (x*z,y*z)
+  bb = blackBoxIdeal I;     
+  -- a point on the line  
+  point = matrix{{0,0,1_K}}
+  assert (ideal(x,y) == interpolateBB(1,bb,point))
+///
 
 doc ///
    Key
-        interpolateBB
+        interpolateBB(ZZ,BlackBoxParameterSpace,Matrix)
    Headline
         find polynomials containing a list of jets
    Usage   
@@ -163,6 +242,8 @@ doc ///
       interpolatedIdealKeys      
 ///
 
+
+
 TEST ///
   K = ZZ/5
   R = K[x,y,z]
@@ -187,42 +268,51 @@ TEST ///
 ///
 
 
-isOnComponent = method();
--- checks if a point lies on the component of BB defined by an interpolation ideal which might contain only some 
--- of the polynomials defining the component.
-isOnComponent(HashTable,HashTable,Matrix,ZZ) := Boolean => (BB,interpolationIdeal,point,prec) -> (
-     jetP := jetAt(BB,point,prec,1);
-     if jetP#"succeeded" then (
-     	  0==sub(interpolationIdeal,jetP#"jet")
-	  ) else error "point not smooth"
-     )
--- !! Possibly there is a usefull answer even if the point is not smooth !!
+
+
+InterpolatedIdeal = new Type of MutableHashTable;
+
+new InterpolatedIdeal from MutableHashTable :=  (InterpolatedIdealAncestor,l)->
+(  
+     --type check?
+     return l;
+);
+
+new InterpolatedIdeal from List :=  (InterpolatedIdealAncestor,l)->
+(  
+     return new InterpolatedIdeal from l;
+);
 
 
 
-FFEInterpolationData = new Type of MutableHashTable;
-
-createFFEInterpolationData = ( mapfkt) -> (
-     iData := new FFEInterpolationData;
-     iData.interpolatedIdeals = new MutableHashTable; 
-     return iData;
-)
-
-
-createInterpolatedIdeal (ZZ,BlackBoxIdeal,Matrix) := InterpolatedIdeal => (maxDegree, BB, point)->
+createInterpolatedIdeal = method();
+createInterpolatedIdeal( Ideal,ZZ,String ) := InterpolatedIdeal => 
+                       (I,maxDegree,name)->
 (
-   createInterpolatedIdeal ( interpolateBB(maxDegree,BB,point), maxDegree, "" )
+     return new InterpolatedIdeal from {
+	  "ideal" => I,
+	  "maxDegree" => maxDegree,
+	  "name" => name
+     };
 )
 
+--createInterpolatedIdeal (ZZ,BlackBoxIdeal,Matrix) := InterpolatedIdeal => (maxDegree, BB, point)->
+--(
+--   createInterpolatedIdeal ( interpolateBB(maxDegree,BB,point), maxDegree, "" )
+--)
 
-FFEInterpolation = new Type of HashTable;
 
-createFFEInterpolation = method();
+
+InterpolatedImage = new Type of HashTable;
+
+createInterpolatedImage = method();
+
+
 
 
 -- observer observable längst fällig!
 
-createFFEInterpolation(Experiment,Ring, HashTable) := HashTable => (experiment,imageRing, mapdata)->
+createInterpolatedImage(Experiment,Map) := HashTable => (experiment,imageRing, mapdata)->
 (
     interpolation := new MutableHashTable;
 
@@ -230,21 +320,21 @@ createFFEInterpolation(Experiment,Ring, HashTable) := HashTable => (experiment,i
 
     interpolation.blackBoxIdeal = () -> (interpolation.experiment()).blackBoxIdeal();
     
-    interpolationData := createFFEInterpolationData(mapdata#"matrix");
 
      -- duplicate code..(otherwise too many parameters...)
      interpolation.isOnComponent = method();
-     interpolation.isOnComponent (HashTable,Matrix,ZZ) := Boolean =>  (interpolationIdeal,point,prec) -> (
-         jetP := jetAt(interpolation.blackBoxIdeal() ,point,prec,1);
+     interpolation.isOnComponent (HashTable,Matrix,ZZ) := Boolean =>  
+                         (interpolationIdeal,point,precisionOfSmoothnessTest) -> (
+         jetP := jetAt(interpolation.blackBoxIdeal() ,point,precisionOfSmoothnessTest,1);
          if jetP#"succeeded" then (
-         	  0 == sub( interpolationIdeal, mapdata#"mapfkt"(jetP#"jet") )
+         	  0 == sub( interpolationIdeal, ((mapdata#"valueAtJet")(jetP))#"jet" )
 	      ) else error "point not smooth"
      );
-
-    interpolation.createAllInterpolatedIdeals  = (maxDegree, prec) -> 
+    interpolatedIdeals := {};
+    interpolation.createAllInterpolatedIdeals  = (maxDegree, precisionOfSmoothnessTest) -> 
     ( 
-        interpolatedIdeals := {};
-        for point in interpolation.experiment.points() do
+        localInterpolatedIdeals := {};
+        for point in (interpolation.experiment()).points() do
         ( 
             if (interpolation.blackBoxIdeal()).isSingular(point) then continue;
              -- check if point is already on one of the known components
@@ -253,7 +343,7 @@ createFFEInterpolation(Experiment,Ring, HashTable) := HashTable => (experiment,i
              (
                  if  interpolation.isOnComponent (  interpolData.ideal, point, 0 ) then
                  (
-                     if  interpolation.isOnComponent (  interpolData.ideal, point, prec ) then
+                     if  interpolation.isOnComponent (  interpolData.ideal, point, precisionOfSmoothnessTest ) then
                      (
                           bIsOnComponent = true; 
                           break;
@@ -262,10 +352,10 @@ createFFEInterpolation(Experiment,Ring, HashTable) := HashTable => (experiment,i
              );
              if bIsOnComponent then continue;
 
-             interpolatedIdeals = interpolatedIdeals | { createInterpolatedIdeal (maxDegree, interpolation.blackBoxIdeal(), point)  };             
+             localInterpolatedIdeals = localInterpolatedIdeals | { createInterpolatedIdeal (maxDegree, interpolation.blackBoxIdeal(), point)  };             
         );
-        interpolationData.interpolatedIdeals = new MutableHashTable from 
-           apply ( #interpolatedIdeals, idx-> (("ideal_" |toString idx ) => interpolatedIdeals#idx ) ) ;
+        interpolatedIdeals = new MutableHashTable from 
+           apply ( #localInterpolatedIdeals, idx-> (("ideal_" |toString idx ) => interpolatedIdeals#idx ) ) ;
        
     );
 
@@ -289,11 +379,11 @@ createFFEInterpolation(Experiment,Ring, HashTable) := HashTable => (experiment,i
  
         if (interpolation.blackBoxIdeal()).isSingular(point) then return "is not smooth";    
 
-        for key in keys interpolationData.interpolatedIdeals do
+        for key in keys interpolatedIdeals do
         (
-          if  interpolation.isOnComponent (  (interpolationData.interpolatedIdeals#key).ideal, point, 0,  ) then
+          if  interpolation.isOnComponent (  (interpolatedIdeals#key).ideal, point, 0,  ) then
           (
-              if  interpolation.isOnComponent (  (interpolationData.interpolatedIdeals#key).ideal, point, prec,  ) then
+              if  interpolation.isOnComponent (  (interpolatedIdeals#key).ideal, point, prec,  ) then
               (
                  numbers = numbers | {key};
               );
@@ -316,45 +406,29 @@ createFFEInterpolation(Experiment,Ring, HashTable) := HashTable => (experiment,i
 
     interpolation.printInterpolatedIdeals = ()->
    (
-         apply (keys interpolationData.interpolatedIdeals, key-> ( print (key=>new HashTable from interpolationData.interpolatedIdeals#key ) ) );
+         apply (keys interpolatedIdeals, key-> ( print (key=>new HashTable from interpolatedIdeals#key ) ) );
    );
 
-    interpolation = newClass( FFEInterpolationData, interpolation );
+    interpolation = newClass( InterpolatedImage, interpolation );
     return interpolation;
      
 );
 
-createFFEInterpolation(Experiment,Ring, Matrix) := HashTable => (experiment,imageRing, pmap)->
+createInterpolatedImage(Experiment,Ring, Matrix) := HashTable => (experiment,imageRing, pmap)->
 (
-    mapData := new MutableHashTable;
-    mapData#"mapfkt" =  method();
-    mapData#"matrix" = pmap;
-    rng := (experiment.blackBoxIdeal()).ring ; 
-    mapData#"map" = map( rng, imageRing, pmap );
+    mmap := new Map from pmap;
+  
     
-    mapData#"mapfkt" (Matrix) := Matrix => (point)->
-    (
-        return sub(pmap,point);
-    );
-    
-    return createFFEInterpolation(experiment,imageRing,mapData);
+    return createInterpolatedImage(experiment,imageRing,mmap);
     
 );
 
-createFFEInterpolation(Experiment) := HashTable => (experiment)->
+createInterpolatedImage(Experiment) := HashTable => (experiment)->
 (
-    mapData := new MutableHashTable;
-    mapData#"mapfkt" =  method();
+    mmap := new Map from vars (experiment.blackBoxIdeal()).ring  ;
     rng := (experiment.blackBoxIdeal()).ring ;
-    mapData#"matrix" = matrix{ gens rng };
-    mapData#"map" = map( rng, rng, mapData#"matrix" );
     
-    mapData#"mapfkt" (Matrix) := Matrix => (point)->
-    (
-        return point;
-    );
-    
-    return createFFEInterpolation(experiment, rng, mapData);
+    return createInterpolatedImage(experiment, rng, mmap);
 );
 
 -- todo : new type for mapData. Also support dot access to mapData members.

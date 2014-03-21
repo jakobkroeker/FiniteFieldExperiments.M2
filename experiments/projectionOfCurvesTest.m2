@@ -19,6 +19,13 @@ e.countData()
 -- project into IP^2, forgetting the forth variable
 S = K[a,b,c]
 mapS = matrix{{x,y,z}} 
+
+interpolProjection = createInterpolatedImage(e,S,mapS)
+peek interpolProjection
+
+interpolProjection.createAllInterpolatedIdeals(2,1)
+
+viewHelp createAllInterpolatedIdeals
 f = map(R,S,mapS)  -- this is a map of rings !!
 -- we need a map of spaces. This is defined by mapS:
 sub(mapS,point)
