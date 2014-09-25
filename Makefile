@@ -30,7 +30,10 @@ installBlackBoxIdeals:
 installFiniteFieldExperiments: 
 	mkdir -p   ~/.Macaulay2/local/share/Macaulay2/
 	cp FiniteFieldExperiments.m2 ~/.Macaulay2/local/share/Macaulay2/
+	mkdir -p   ~/.Macaulay2/local/share/Macaulay2/FiniteFieldExperiments
+	cp FiniteFieldExperiments/Interpolation.m2 ~/.Macaulay2/local/share/Macaulay2/FiniteFieldExperiments/
 	@echo  -e "#"'!'"/bin/bash \n rm  ~/.Macaulay2/local/share/Macaulay2/FiniteFieldExperiments.m2 " > ~/.Macaulay2/local/share/Macaulay2/FiniteFieldExperimentsUninstall.sh
+	@echo  -e "#"'!'"/bin/bash \n rm  -rf ~/.Macaulay2/local/share/Macaulay2/FiniteFieldExperiments/ " > ~/.Macaulay2/local/share/Macaulay2/FiniteFieldExperimentsUninstall.sh
 
 
 uninstallPadicLift:
