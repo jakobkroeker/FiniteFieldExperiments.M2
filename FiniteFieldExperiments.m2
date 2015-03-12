@@ -3,7 +3,7 @@
 newPackage(
      "FiniteFieldExperiments",
      Version => "0.1", 
-     Date => "15.02.2013",
+     Date => "25.09.2014",
      Authors => {{
                  Name => "Hans-Christian Graf v. Bothmer", 
            Email => "bothmer@math.uni-hannover.de", 
@@ -22,7 +22,7 @@ newPackage(
 
 
 
-
+-- Map eigentlich Morphism
 export {
   "estimateDecomposition", 
   "estimateStratification",
@@ -32,16 +32,16 @@ export {
   "createInterpolationImage",
   "createIterator",
   "createRandomPointIterator",
+  "Map",
   "interpolateBB",
   "interpolate",
-  "isOnComponent",   
+  "isOnComponent",
   "poissonEstimate",
   "Experiment",
   "RandomExperiment",
   "InterpolationImage",
   "FFELogger",
-  "ringCardinality",
-  "Map"  -- eigentlich Morphism
+  "ringCardinality"
 }
 
 FiniteFieldExperimentsProtect = ()->
@@ -117,6 +117,7 @@ FiniteFieldExperimentsProtect = ()->
   protect compatible;
   protect membershipPrecision;
   protect setMembershipPrecision;
+  --protect createMap";
 )
 
  
@@ -200,6 +201,7 @@ FiniteFieldExperimentsExport  = ()->
  exportMutable (  compatible );
  
  exportMutable (  createExperimentData );
+ exportMutable (createMap);
 ) 
 
 needsPackage "SimpleDoc";

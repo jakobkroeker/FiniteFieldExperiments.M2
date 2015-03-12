@@ -1,6 +1,6 @@
 
-restart
-needsPackage"BlackBoxIdeals"
+--needsPackage"BlackBoxIdeals"
+
 
 -- Type Map contains a matrix and a function
 -- to evaluate this matrix on a point
@@ -23,10 +23,10 @@ createMap = (mapMatrix, imageRing) -> (
     mapData#"valueAtJet" = method();
     mapData#"valueAtJet" (HashTable) := HashTable => (jet) -> (
         return new HashTable from {
-     	  "failedJetLength" => jet#"failedJetLength",
-     	  "jet" => (mapData#"valueAt")(jet#"jet"),
-     	  "succeeded" => jet#"succeeded"
-     	  };
+           "failedJetLength" => jet#"failedJetLength",
+           "jet" => (mapData#"valueAt")(jet#"jet"),
+           "succeeded" => jet#"succeeded"
+           };
      );
    
     return new Map from mapData
@@ -78,49 +78,49 @@ doc ///
    Inputs  
         mons:Matrix 
             of monomials
-	jetList:List
-	    of jets    
+        jetList:List
+            of jets    
    Description
         Text
-	   Finds those linear combinations of monomials that vanish
-	   on the given list of jets.
-	   
-	   Lets consider a black box that describes
-	   a line and a plane intersecting at the origin:
+            Finds those linear combinations of monomials that vanish
+            on the given list of jets.
+               
+            Lets consider a black box that describes
+            a line and a plane intersecting at the origin:    
         Example      
-           K = ZZ/5
-           R = K[x,y,z]
-           I = ideal (x*z,y*z)
-           bb = blackBoxIdeal I;       
+            K = ZZ/5
+            R = K[x,y,z]
+            I = ideal (x*z,y*z)
+            bb = blackBoxIdeal I;       
         Text
-           \break 
-	   Consider a point on the line:
+            \break 
+            Consider a point on the line:
         Example
-	   point = matrix{{0,0,1_K}}
-	Text
-	   \break
-	   and a jet of lenght 3 starting at this point and
-	   lying on the variety described by the black box ideal
-	Example
-	   j = jetAt(bb,point,4,1)     
-	Text
-	   \break
-	   Now find linear polynomials containing this jet:
-	Example
-	   interpolate(matrix{{x,y,z}},{j})   
-	Text
-	   Notice that polynomials containig the line are found.
-	   The surface is invisible to the interpolation.   
+            point = matrix{{0,0,1_K}}
+        Text
+            \break
+            and a jet of lenght 3 starting at this point and
+            lying on the variety described by the black box ideal
+        Example
+            j = jetAt(bb,point,4,1)     
+        Text
+            \break
+            Now find linear polynomials containing this jet:
+        Example
+            interpolate(matrix{{x,y,z}},{j})   
+        Text
+            Notice that polynomials containig the line are found.
+            The surface is invisible to the interpolation.   
    Caveat
-      This function does not estimate the lenght of the jet needed to
-      get a useful answer. (The jet should be at least as long as the
-      number of monomials). This is done by @TO interpolateBB @. 
+       This function does not estimate the lenght of the jet needed to
+       get a useful answer. (The jet should be at least as long as the
+       number of monomials). This is done by @TO interpolateBB @. 
    SeeAlso
-      interpolateBB
-      isOnComponent
-      createInterpolatedIdeal
-      createAllInterpolatedIdeals
-      interpolatedIdealKeys      
+       interpolateBB
+       isOnComponent
+       createInterpolatedIdeal
+       createAllInterpolatedIdeals
+       interpolatedIdealKeys      
 ///
 
 TEST ///
@@ -152,18 +152,18 @@ interpolateBB(ZZ,BlackBoxParameterSpace,Matrix,Map) := Ideal =>
      -- irreducible component of the BlackBoxIdeal.
      jetPimage :=  (mmap#"valueAtJet")(jetP);
      --new HashTable from {
-     --	  "failedJetLength" => jetP#"failedJetLength",
-     --	  "jet" => (mmap#"valueAt")(jetP#"jet"),
-     --	  "succeeded" => jetP#"succeeded"
-     --	  };
+     --      "failedJetLength" => jetP#"failedJetLength",
+     --      "jet" => (mmap#"valueAt")(jetP#"jet"),
+     --      "succeeded" => jetP#"succeeded"
+     --      };
      interpolate(mons,{jetPimage})
      )
 
---interpolateBB(ZZ,BlackBoxParameterSpace,Matrix,Matrix) := Ideal => 
---             (maxDegree,BB,point,mmap) -> 
---(
---     interpolateBB(maxDegree,BB,point,new Map from mmap)
---)
+interpolateBB(ZZ,BlackBoxParameterSpace,Matrix,Matrix) := Ideal => 
+             (maxDegree,BB,point,mmap) -> 
+(
+     interpolateBB(maxDegree,BB,point,new Map from mmap)
+)
 
 interpolateBB(ZZ,BlackBoxParameterSpace,Matrix) := Ideal => 
              (maxDegree,BB,point) -> 
@@ -181,27 +181,33 @@ TEST ///
   assert (ideal(x,y) == interpolateBB(1,bb,point))
 ///
 
+
 doc ///
-   Key
-        interpolateBB(ZZ,BlackBoxParameterSpace,Matrix)
-   Headline
+    Key
+        interpolateBB
+        (interpolateBB, ZZ, BlackBoxParameterSpace, Matrix)
+        (interpolateBB, ZZ, BlackBoxParameterSpace, Matrix, Map)
+    Headline
         find polynomials containing a list of jets
-   Usage   
+    Usage   
         I = interpolateBB(maxDegree,BlackBox,point)
-   Inputs  
+        I = interpolateBB(maxDegree,BlackBox,point,map)
+    Inputs  
         maxDegree:ZZ 
             the maximal degree of polynomials considered
-	BlackBox:BlackBoxIdeal
-	point: Matrix
-	    a point where the Blackbox vanishes    
-   Description
+        BlackBox:BlackBoxIdeal
+        point: Matrix
+            a point where the Blackbox vanishes    
+        map: Map
+            
+    Description
         Text
-	   Finds all polynomials of degree at most maxDegree
-	   that contain the component on which the point lies.
-	   If the point is not smooth, an error will be produced.
-	   
-	   Lets consider a black box that describes
-	   a line and a plane intersecting at the origin:
+           Finds all polynomials of degree at most maxDegree
+           that contain the component on which the point lies.
+           If the point is not smooth, an error will be produced.
+       
+           Lets consider a black box that describes
+           a line and a plane intersecting at the origin:
         Example      
            K = ZZ/5
            R = K[x,y,z]
@@ -209,37 +215,37 @@ doc ///
            bb = blackBoxIdeal I;       
         Text
            \break 
-	   Consider two points on the variety described 
-	   by the blackbox:
+           Consider two points on the variety described 
+           by the blackbox:
         Example
-	   pointOnLine = matrix{{0,0,1_K}}
-	   pointOnPlane = matrix{{0,1,0_K}}
-	Text
-	   \break
-	   Now find linear equations containing the respective
-	   components on which the points lie:
-	Example
-	   interpolateBB(1,bb,pointOnLine)
-	   interpolateBB(1,bb,pointOnPlane)
-	Text
-	   \break
-	   Finding points on the different components can be done
-	   by running an @TO Experiment @. Interpolating a component
-	   for all points found can be done by @TO createAllInterpolatedIdeals @.   
-  Caveat
-      This function does not work with multigraded rings.
-      At the moment this has to be done by hand with @TO interpolate @. 
+           pointOnLine = matrix{{0,0,1_K}}
+           pointOnPlane = matrix{{0,1,0_K}}
+        Text
+           \break
+           Now find linear equations containing the respective
+           components on which the points lie:
+        Example
+           interpolateBB(1,bb,pointOnLine)
+           interpolateBB(1,bb,pointOnPlane)
+        Text
+           \break
+           Finding points on the different components can be done
+           by running an @TO Experiment @. Interpolating a component
+           for all points found can be done by @TO createAllInterpolatedIdeals @.   
+    Caveat
+        This function does not work with multigraded rings.
+        At the moment this has to be done by hand with @TO interpolate @. 
       
-      At the moment the interpolation is done by producing one
-      jet of the appropriate length. Often one could interpolate
-      much faster if several shorter jets were used. (Most of the
-      time is used when producing the jets)
-  SeeAlso
-      interpolate
-      isOnComponent
-      createAllInterpolatedIdeals
-      createInterpolatedIdeal
-      interpolatedIdealKeys      
+        At the moment the interpolation is done by producing one
+        jet of the appropriate length. Often one could interpolate
+        much faster if several shorter jets were used. (Most of the
+        time is used when producing the jets)
+    SeeAlso
+        interpolate
+        isOnComponent
+        createAllInterpolatedIdeals
+        createInterpolatedIdeal
+        interpolatedIdealKeys      
 ///
 
 
@@ -290,9 +296,9 @@ createInterpolatedIdeal( Ideal,ZZ,String ) := InterpolatedIdeal =>
                        (I,maxDegree,name)->
 (
      return new InterpolatedIdeal from {
-	  "ideal" => I,
-	  "maxDegree" => maxDegree,
-	  "name" => name
+      "ideal" => I,
+      "maxDegree" => maxDegree,
+      "name" => name
      };
 )
 
@@ -327,8 +333,8 @@ createInterpolatedImage(Experiment,Map) := HashTable => (experiment,imageRing, m
                          (interpolationIdeal,point,precisionOfSmoothnessTest) -> (
          jetP := jetAt(interpolation.blackBoxIdeal() ,point,precisionOfSmoothnessTest,1);
          if jetP#"succeeded" then (
-         	  0 == sub( interpolationIdeal, ((mapdata#"valueAtJet")(jetP))#"jet" )
-	      ) else error "point not smooth"
+               0 == sub( interpolationIdeal, ((mapdata#"valueAtJet")(jetP))#"jet" )
+          ) else error "point not smooth"
      );
     interpolatedIdeals := {};
     interpolation.createAllInterpolatedIdeals  = (maxDegree, precisionOfSmoothnessTest) -> 
