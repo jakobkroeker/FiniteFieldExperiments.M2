@@ -40,7 +40,8 @@ export {
     BlackBoxLogger,
     getEpsRing,
     jetAt,
-    isSingular,
+    isCertainlySingularAt,
+    isProbablySmoothAt,
     "keys1",
     "rebuildBlackBox",
     "acceptedParameterNumber"
@@ -305,7 +306,6 @@ savedEpsRings := new MutableHashTable;
 -- package-global symbol for 
 geps := getSymbol "eps"; 
 
-
 getEpsRing = method();
 
 getEpsRing(Ring, ZZ) := Ring => (coeffring, epsDim)->
@@ -320,7 +320,9 @@ getEpsRing(Ring, ZZ) := Ring => (coeffring, epsDim)->
         leps=(gens(polRing))#0;
         savedEpsRings#(coeffring,epsDim) = polRing/leps^(epsDim+1);    
     ); 
-    return savedEpsRings#(coeffring, epsDim);
+    epsRng := savedEpsRings#(coeffring, epsDim);
+    eps = (gens epsRng)#0;
+    return epsRng
 )
 
 testEpsRing= ()->
@@ -385,7 +387,8 @@ clearCoeffDenominators (Ideal)  :=  Ideal =>  (IdealWithRationalCoeffs)->
 
 doc ///
     Key
-        (clearCoeffDenominators, Ideal )    
+        clearCoeffDenominators
+	(clearCoeffDenominators, Ideal )   
     Headline
         convert an ideal with rational coefficients to an ideal with integer coefficients
     Usage   
@@ -395,7 +398,7 @@ doc ///
              ideal with rational coefficients
     Outputs
         : Ideal
-             ideal with integer coefficients with the same zero set as the input ideal
+             ideal with integer coefficients with the same zero set over QQ as the input ideal
     Description
         Example          
         Text
@@ -823,9 +826,9 @@ jetAtWrapper( BlackBoxParameterSpace, Matrix )  := MutableHashTable => opts -> (
 );
 
 
-isSingular = method();
+isCertainlySingularAt = method();
 --isSingular( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials ) ->
-isSingular( HashTable, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials ) ->
+isCertainlySingularAt( HashTable, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials ) ->
 (
     assert( numTrials>=1 );
 
@@ -1176,12 +1179,19 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
          return  rank blackBox.jacobianAt(point) ;
       );
 
-       localIsSingularWrapper  := ( point )  ->
+      localIsCertainlySingularAtWrapper  := ( point )  ->
         (
-               return isSingular( blackBox,  point, singularTestOptions.precision,  singularTestOptions.numTrials );
+               return isCertainlySingularAt( blackBox,  point, singularTestOptions.precision,  singularTestOptions.numTrials );
         );
 
-     setPointProperty("isSingular" , localIsSingularWrapper );
+      setPointProperty("isCertainlySingularAt" , localIsCertainlySingularAtWrapper );
+
+      localIsProbablySmoothAtWrapper  := ( point )  ->
+        (
+               return not isCertainlySingularAt( blackBox,  point, singularTestOptions.precision,  singularTestOptions.numTrials );
+        );
+
+      setPointProperty("isProbablySmoothAt" , localIsProbablySmoothAtWrapper );
 
 
       setPointProperty( "rankJacobianAt" , localRankJacobianAt );
@@ -1405,19 +1415,34 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
        singularTestOptions.numTrials = numTrials;
        if blackBox.hasPointProperty("valuesAt") then
        (
-           localIsSingularWrapper  := (  point )  ->
+           localIsCertainlySingularWrapper  := (  point )  ->
            (
-               return isSingular( blackBox,  point, singularTestOptions.precision,  singularTestOptions.numTrials );
+               return isCertainlySingularAt( blackBox,  point, singularTestOptions.precision,  singularTestOptions.numTrials );
            );
 
-           if blackBox.hasPointProperty("isSingular") then 
+           if blackBox.hasPointProperty("isCertainlySingularAt") then 
            (
-               blackBox.updatePointProperty("isSingular", localIsSingularWrapper)
+               blackBox.updatePointProperty("isCertainlySingularAt", localIsCertainlySingularWrapper)
            )
            else
            (
-               blackBox.registerPointProperty("isSingular", localIsSingularWrapper);
+               blackBox.registerPointProperty("isCertainlySingularAt", localIsCertainlySingularWrapper);
            );
+           localIsProbablySmoothWrapper  := (  point )  ->
+           (
+               return isProbablySmoothAt( blackBox,  point, singularTestOptions.precision,  singularTestOptions.numTrials );
+           );
+
+           if blackBox.hasPointProperty("isProbablySmoothAt") then 
+           (
+               blackBox.updatePointProperty("isProbablySmoothAt", localIsProbablySmoothWrapper)
+           )
+           else
+           (
+               blackBox.registerPointProperty("isProbablySmoothAt", localIsProbablySmoothWrapper);
+           );
+
+
       );
 
     );
@@ -2262,8 +2287,195 @@ TEST  ///
  
 ///
 
+doc ///
+    Key
+        getEpsRing
+	(getEpsRing, Ring, ZZ)
+    Headline
+        get a ring for jet calculations
+    Usage   
+        getEpsRing(R,d)
+    Inputs  
+        R: Ring
+             the coefficient Ring
+	d: ZZ 
+	     the precision of the Ring for jet calculations
+    Outputs
+        : Ring
+             R[eps]/eps^{d+1}
+    Description
+        Text
+           The advantage of using this function is that for each
+	   precision and coefficient ring R[eps]/eps^{d+1} is
+	   created only once.
+        Example          
+	  E2 = getEpsRing(QQ,2)
+	  eps^2+eps^3
+	  E3 = getEpsRing(QQ,3)
+	  eps^2+eps^3
+	Text
+	  Be aware that there are now several eps-es. This can
+	  lead to unexpected behavior:
+	Example
+	  use E2; eps
+	Text  
+	  Notice that this still gives the eps in E3.
+	  The underscore notation also does not help in this situation:
+	Example
+	  try eps_E2 then "works" else "error"
+	Text	  
+	  The following works, but is not recomended since the 
+	  code does not check whether eps is a variable in a ring:
+	Example
+	  sub(eps,E2)
+	  eps = 1
+	  sub(eps,E2)
+	Text  
+	  We recommend the following:
+	Example
+	  getEpsRing(QQ,2)
+     	  eps
+	Text
+	  The following is also OK:
+	Example	  
+	  eps = (gens E3)#0
+	  eps = (gens E2)#0
+	  -- this works also
+///
+
+doc ///
+    Key
+        isProbablySmoothAt
+     	isCertainlySingularAt
+    Headline
+        heuristic test of smoothness
+    Usage   
+        bb.isProbablySmoothAt(point)
+        bb.isCertainlySingularAt(point)
+    Inputs  
+        bb: BlackBoxIdeal
+             an black box ideal
+	point: Matrix 
+	     the coordinates of a point
+    Outputs
+        : Boolean
+    Description
+        Text
+     	  Checks for smoothness of a point on the
+	  vanishing set of the black box ideal, by
+	  trying to find a jet starting at the point.
+	  If the point is smooth on the vanishing
+	  set of the black box ideal, arbitray jets
+	  can always be found. If one or more jets are found
+	  the point is probably smooth. If the search
+	  for a jet failes only once, the vanishing
+	  set is certainly singular at this point.
+	  
+	  Consinder for example the cuspidal cubic:
+	Example
+	  R = QQ[x,y]
+	  bbI = blackBoxIdeal ideal(x^2-y^3);
+	Text
+	  The cuspidal cubic is singular at the origin:
+	Example    
+	  origin = matrix{{0,0_QQ}}
+	  bbI.isCertainlySingularAt(origin)
+	Text
+	  Consider a point on the cuspidal cubic different from the origin:
+	Example
+	  otherPoint = matrix{{8,4_QQ}}
+	Text
+	  Check whether the other point lies on the cuspidal cubic:
+	Example  
+	  bbI.isZeroAt(otherPoint)
+	Text
+	  We now check for smoothness:
+	Example
+	  bbI.isCertainlySingularAt(otherPoint)
+	  bbI.isProbablySmoothAt(otherPoint)
+	Text
+	  If the point is not on the vanishing set defined by
+	  the black box ideal, "is certainly singular" is always
+	  returned. (This is usefull when this property is watched
+	  in a finite field experiment.)
+        Example
+	  pointNotOnCurve = matrix{{4,5_QQ}}
+	  bbI.isZeroAt(pointNotOnCurve)
+	  bbI.isCertainlySingularAt(pointNotOnCurve)
+	  jetAt(bbI,pointNotOnCurve,1,1)
+	  
+///
+
+doc ///
+    Key
+        jetAt
+    Headline
+        find jets on the varieties defined by a black box
+    Usage   
+        jetAt(bb,point,prec,n)
+    Inputs  
+        bb: BlackBoxIdeal
+             an black box ideal
+	point: Matrix 
+	     the coordinates of a point
+	prec: ZZ
+	     the precision of the desired jet
+	n: ZZ
+	     the number of trial used to find a jet    
+    Outputs
+        : MutableHashTable
+    Description
+        Text
+      	  Tries to find a jet starting at a given point on 
+	  a variety given by a black box.
+	  
+ 	  Consinder for example a nodal cubic:
+	Example
+	  Fp = ZZ/101
+	  R = Fp[x,y]
+	  I = ideal(x^2-y^2+x^3)
+	  bbI = blackBoxIdeal I;
+	Text
+	  Consider a point on the nodal cubic different from the origin:
+	Example
+	  point = matrix{{3,6_Fp}}
+	Text
+	  Check whether the other point lies on the nodal cubic:
+	Example  
+	  bbI.isZeroAt(point)
+	Text
+	  We now look for a jet:
+	Example
+	  j = jetAt(bbI,point,3,1)
+	Text
+	  The defining equations of the ideal indeed vanish on the jet:
+	Example
+	  sub(I,j#"jet")
+     	Text
+	  At the origin the nodal cubic is singular. Short jets can be found,
+	  but not long ones:
+	Example
+	  origin = matrix{{0,0_Fp}}
+	  jetAt(bbI,origin,1,1)  
+  	  jetAt(bbI,origin,2,1)  
+  	  jetAt(bbI,origin,3,1)  
+        Text
+	  Notice that the search for fails at length 2 most of the time,
+	  since the singularity has multiplicity 2. If one tries
+	  long enough a longer jet can be found (lying on one
+	  of the branches at the origin):
+     	Example  	  
+  	  jetAt(bbI,origin,3,200)  
+	  
+///
+
+
+
 end
 -- need test for randomIterator (for fixed error : to less trials  )
 --@TO2{jetAt,"jet"}@ computations at a point independently of the ideal representation. \break \break 
+
+
+--        (clearCoeffDenominators, Ideal )    
 
 

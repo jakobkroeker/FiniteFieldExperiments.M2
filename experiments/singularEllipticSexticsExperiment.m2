@@ -1,9 +1,18 @@
 -- look at the hilbert scheme of singular
 -- elliptic sextics
 
+quit
+-- F12
 restart
 
 path = append(path,"/Users/bothmer/Desktop/projekte/strudel/Jakob2010/GitHub/padicLiftM2/")
+
+uninstallPackage"BlackBoxIdeals"
+installPackage"BlackBoxIdeals"
+viewHelp BlackBoxIdeals
+check BlackBoxIdeals
+
+
 
 uninstallPackage"M2Logging"
 installPackage"M2Logging"
@@ -13,9 +22,6 @@ uninstallPackage"IntervalPkg"
 installPackage"IntervalPkg"
 check IntervalPkg
 
-uninstallPackage"BlackBoxIdeals"
-installPackage"BlackBoxIdeals"
-check BlackBoxIdeals
 
 uninstallPackage"FiniteFieldExperiments"
 installPackage"FiniteFieldExperiments"
