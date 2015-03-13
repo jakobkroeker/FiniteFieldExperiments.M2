@@ -332,18 +332,21 @@ getEpsRing(Ring, ZZ) := Ring => (coeffring, epsDim)->
  
     if (epsDim<0) then error("expected epsDim>0 ");
     
+    epsRng := null;
     if not (savedEpsRings#?(coeffring,epsDim) ) then 
      (
         polRing:=coeffring[leps];
         leps=(gens(polRing))#0;
         savedEpsRings#(coeffring,epsDim) = polRing/leps^(epsDim+1);    
+        epsRng = savedEpsRings#(coeffring, epsDim);
+        eps = (gens epsRng)#0;
         for symb in getPropertySymbols("eps") do 
         (
            assert(symb=!=null);
-           (savedEpsRings#(coeffring,epsDim))#symb  = leps;
+           (savedEpsRings#(coeffring,epsDim))#symb  = eps;
         )
     ); 
-    epsRng := savedEpsRings#(coeffring, epsDim);
+    epsRng = savedEpsRings#(coeffring, epsDim);
     eps = (gens epsRng)#0;
     return epsRng
 )
