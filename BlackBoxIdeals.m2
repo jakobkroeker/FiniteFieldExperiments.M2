@@ -167,7 +167,7 @@ undocumented {
     rankJacobianAt,
     registerPointProperty,
     updatePointProperty,
-    valuesAt,
+--    valuesAt,
     setPointProperty,
     equations,
     rpp,
@@ -1838,9 +1838,9 @@ doc ///
             \,\, \bullet \,{\tt numGenerators() }: number of  generators/equations \break \break             
 
             Point properties:\break
-            \,\, \bullet \, @TO "isZeroAt" @ {\tt (P)} : a check, if the (implicit or explicit) ideal generators or equations vanishes at a given  point {\tt P} \break 
-            \,\, \bullet \,{\tt valuesAt(P)}: evaluation (of the ideal generators) at a point {\tt P}, \break 
-            \,\, \bullet \,{\tt jacobianAt(P)}: computation of the jacobian (of the ideal generators) at a given point {\tt P}, \break
+            \,\, \bullet \, @TO "isZeroAt" @ \break
+            \,\, \bullet \, @TO "valuesAt" @ \break
+            \,\, \bullet \, @TO "jacobianAt" @ \break
             \,\, \bullet \,{\tt bareJacobianAt(P)}: computation of the Jacobian at {\tt P} without degree information \break
             \,\, \bullet \,{\tt rankJacobianAt(P)}: rank of the Jacobian at a point {\tt P} \break \break
                         
@@ -2350,6 +2350,7 @@ doc ///
         Example
           E2.eps
           E3.eps
+          E2.eps^3
         Text
           This was implemented by hand for these rings. It does not work
           in general. 
@@ -2532,17 +2533,99 @@ doc ///
     Key
         "isZeroAt"
     Headline
-        Check, if the implicit or explicit ideal generators vanishes at a given point P 
+         Check if a given point lies on the vanishing set defined by a black box ideal.
     Usage   
-         blackboxIdeal.isZeroAt(point)
+         bbI.isZeroAt(point)
     Inputs  
-        point: BlackBoxIdeal
-             a point
+        bbI: BlackBoxIdeal
+        point: Matrix
+             coordinates of a point
     Outputs
         : Boolean
     Description
         Text
-          nix
+          This is a point property.
+          Checks if the the point lies on the vanishing set defined by the
+          black box ideal. 
+        Example
+          R = QQ[x,y]
+          bbI = blackBoxIdeal ideal(x^2-y^3);
+          bbI.isZeroAt(matrix{{0,0_QQ}})
+          bbI.isZeroAt(matrix{{8,4_QQ}})            
+          bbI.isZeroAt(matrix{{8,5_QQ}})
+///
+
+doc ///
+    Key
+        "valuesAt"
+    Headline
+        evaluate the generators of black box ideal at a given point 
+    Usage   
+        bbI.valuesAt(point)
+    Inputs  
+        bbI: BlackBoxIdeal
+        point: Matrix
+             coordinates of a point
+    Outputs
+        : Boolean
+    Description
+        Text
+          This is a point property. It evaluates the generators of the
+          black box ideal at the point
+        Example
+          R = QQ[x,y]
+          bbI = blackBoxIdeal ideal(x^2,y^3);
+          bbI.valuesAt(matrix{{2,3_QQ}})
+    Caveat
+          This works only with black box ideals, since they contain an algorithm
+          that can evaluate the generators of the black box ideal. A black box parameter spaces
+          might contain only an algorithm that checks whether all generators vanish. 
+          This happens for example if one considers the moduli space of singular cubics. 
+          One can check whether a
+          given cubic is singular without calculating the value of the 
+          corresponding discriminant. 
+///
+
+doc ///
+    Key
+        "jacobianAt"
+    Headline
+        evaluate the jacobian matrix of a black box ideal at a given point 
+    Usage   
+        bbI.jacobianAt(point)
+    Inputs  
+        bbI: BlackBoxIdeal
+        point: Matrix
+             coordinates of a point
+    Outputs
+        : Boolean
+    Description
+        Text
+          This is a point property. It evaluates the jacobian matrix of the
+          black box ideal at the point
+        Example
+          R = QQ[x,y]
+          I = ideal(x^2-y^3);
+          bbI = blackBoxIdeal I;
+          point = matrix{{8,4_QQ}}
+          bbI.isZeroAt(point)
+          bbI.jacobianAt(point)
+          sub(jacobian I,point)
+        Text
+          the cuspidal cubic considered above is singular at the
+          origin. Therefore the jacobian matrix vanishes there:
+        Example
+          origin = matrix{{0,0_QQ}}
+          bbI.isZeroAt(origin)
+          bbI.jacobianAt(origin)
+    Caveat
+          This works only with black box ideals, since they contain an algorithm
+          that can evaluate the generators of the black box ideal. A black box parameter spaces
+          might contain only an algorithm that checks whether all generators vanish. 
+          This happens for example if one considers the moduli space of singular cubics. 
+          One can check whether a
+          given cubic is singular without calculating the value of the 
+          corresponding discriminant. 
 ///
 
 end
