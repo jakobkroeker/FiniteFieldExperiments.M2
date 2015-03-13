@@ -2345,14 +2345,11 @@ doc ///
         Text  
           We recommend the following:
         Example
-          getEpsRing(QQ,2)
-               eps
+          E2.eps
+          E3.eps
         Text
-          The following is also OK:
-        Example      
-          eps = (gens E3)#0
-          eps = (gens E2)#0
-          -- this works also
+          This was implemented by hand for these rings. It does not work
+          in general. 
 ///
 
 doc ///
