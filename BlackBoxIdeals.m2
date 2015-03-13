@@ -80,7 +80,6 @@ protect checkInputPoint;
 protect deduceNumGenerators;
 protect setIsZeroAt;
 protect dropDegreeInfo;
-protect bareJacobianAt;
 protect getUpdatedBlackBox;
 protect type;
 protect unknowns;
@@ -121,7 +120,6 @@ idealBlackBoxesExport = ()->
     exportMutable( deduceNumGenerators );
     exportMutable( setIsZeroAt );
     exportMutable( dropDegreeInfo );
-    exportMutable( bareJacobianAt );
    exportMutable( getUpdatedBlackBox );
    exportMutable( type );
  exportMutable( unknowns );
@@ -149,13 +147,10 @@ undocumented {
     setIsZeroAt,
     setJacobianAt,
     setValuesAt,
-    bareJacobianAt,
     deduceNumGenerators,
     dropDegreeInfo,
     getUpdatedBlackBox,
-    hasPointProperty,
-    isZeroAt,
-    jacobianAt,   
+    hasPointProperty,  
     knownAttributes,
     knownMethods,
     knownProperties,
@@ -167,7 +162,6 @@ undocumented {
     rankJacobianAt,
     registerPointProperty,
     updatePointProperty,
---    valuesAt,
     setPointProperty,
     equations,
     rpp,
@@ -583,7 +577,7 @@ TEST ///
 
 -- dropDegreeInfo:
 --   for some matrix operations (which ones?), degree information needs to be dropped,
---    which is done by this method. Used in '.bareJacobianAt' which in turn is  used in the 'padicLift' package.
+--    which is done by this method. Used in '.jacobianAt' which in turn is  used in the 'padicLift' package.
 --
 dropDegreeInfo := method();
 dropDegreeInfo (Matrix) := Matrix=> (mat)->
@@ -1170,20 +1164,18 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
    --
    --   called by 'outerSetPointProperty'<-{'registerPointProperty', 'updatePointProperty'}, 'setValuesAt'
    --  
-   --   triggers updates for 'bareJacobianAt', 'rankJacobianAt'.
+   --   triggers updates for , 'rankJacobianAt'.
    --  
    setJacobianAt := (pJacobianAt) ->
    ( 
-      bblog.info( "setJacobianAt: updates also (  bareJacobianAt, rankJacobianAt)" );      
+      bblog.info( "setJacobianAt: updates also (   rankJacobianAt)" );      
 
-      setPointProperty( "jacobianAt" , pJacobianAt );
-
-      localBareJacobianAt := ( point)->
+      localJacobianAt := ( point)->
       (
-         return dropDegreeInfo( blackBox.jacobianAt(point) );
+         return dropDegreeInfo( pJacobianAt(point) );
       );
 
-      setPointProperty("bareJacobianAt" , localBareJacobianAt );
+      setPointProperty( "jacobianAt" , localJacobianAt );
 
       localRankJacobianAt := (  point)->
       (
@@ -1214,11 +1206,11 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
    --
    --   called by 'outerSetPointProperty'<-{'registerPointProperty', 'updatePointProperty'}, 'setValuesAt'
    --  
-   --   triggers updates for 'isZeroAt', 'numGenerators', jacobianAt', 'bareJacobianAt', 'rankJacobianAt'.
+   --   triggers updates for 'isZeroAt', 'numGenerators', jacobianAt', 'rankJacobianAt'.
    --  
    setValuesAt := (pValuesAt) ->
    (      
-       bblog.info( "setValuesAt: updates (isZeroAt, numGenerators, jacobianAt, bareJacobianAt, rankJacobianAt)" );      
+       bblog.info( "setValuesAt: updates (isZeroAt, numGenerators, jacobianAt, rankJacobianAt)" );      
 
        localValuesAt := (point)->return valuesAtWrapper(pValuesAt, point ) ;
 
@@ -1285,7 +1277,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
              return setValuesAt(localPropertyMethod);  -- triggers initialization of 'isZeroAt' , 'numGenerators' and 'jacobianAt'
      
          if propertyName==="jacobianAt" then 
-             return setJacobianAt(localPropertyMethod); -- triggers initialization of 'bareJacobianAt' and 'rankJacobianAt'
+             return setJacobianAt(localPropertyMethod); -- triggers initialization of  'rankJacobianAt'
 
            setPointProperty( propertySymbol, localPropertyMethod );
    );
@@ -1841,7 +1833,6 @@ doc ///
             \,\, \bullet \, @TO "isZeroAt" @ \break
             \,\, \bullet \, @TO "valuesAt" @ \break
             \,\, \bullet \, @TO "jacobianAt" @ \break
-            \,\, \bullet \,{\tt bareJacobianAt(P)}: computation of the Jacobian at {\tt P} without degree information \break
             \,\, \bullet \,{\tt rankJacobianAt(P)}: rank of the Jacobian at a point {\tt P} \break \break
                         
             The black boxes may provide (depends on available data) \break 
@@ -2047,7 +2038,6 @@ assert  B2.isZeroAt(line)
 assert(sub(B.jacobian,line)== sub(jacobian I,line))
 assert (B.jacobianAt(line) == sub(jacobian I,line))
 
-assert (B2.bareJacobianAt(line) == B.bareJacobianAt(line))
 
 ///
 
@@ -2109,7 +2099,7 @@ TEST ///
     assert(  bbRankM.hasPointProperty("isZeroAt") );
 
     assert(  bbRankM.hasPointProperty("jacobianAt") );
-    assert(  bbRankM.hasPointProperty("bareJacobianAt") );
+ 
 
     assert( bbRankM.numGenerators() =!= null)
 
@@ -2219,9 +2209,9 @@ doc ///
             \,\, \, \, There are several special property names: {\tt valuesAt, jacobianAt}. \ break 
             \,\, \, \,  If one of this properties is registered or updated, it triggers update of dependent properties \break
             \,\, \, \,  e.g. registering evaluation {\tt 'valuesAt'}  will implicitly \break 
-            \,\, \, \, construct  {\tt 'isZeroAt', 'numGenerators',  'jacobianAt', 'bareJacobianAt', 'rankJacobianAt' } \break 
+            \,\, \, \, construct  {\tt 'isZeroAt', 'numGenerators',  'jacobianAt', 'rankJacobianAt' } \break 
             \,\, \, \,  registering evaluation {\tt 'jacobianAt'}  will implicitly \break 
-            \,\, \, \, construct  {\tt   'bareJacobianAt' , 'rankJacobianAt' } \break 
+            \,\, \, \, construct  {\tt  'rankJacobianAt' } \break 
             \break
             \,\, \bullet  \,{\tt updatePointProperty(propertyName, propertyMethod) }: update an existing point property for a BlackBox. \break
             \,\, \bullet  \,{\tt pointProperty(propertyName) }: get a point property by name . \break 
