@@ -342,7 +342,7 @@ createInterpolatedImage(Experiment,Map) := HashTable => (experiment,imageRing, m
         localInterpolatedIdeals := {};
         for point in (interpolation.experiment()).points() do
         ( 
-            if (interpolation.blackBoxIdeal()).isSingular(point) then continue;
+            if (interpolation.blackBoxIdeal()).isCertainlySingularAt(point) then continue;
              -- check if point is already on one of the known components
              bIsOnComponent := false;
              for interpolData in interpolatedIdeals do
@@ -383,7 +383,7 @@ createInterpolatedImage(Experiment,Map) := HashTable => (experiment,imageRing, m
     (
        numbers := {};
  
-        if (interpolation.blackBoxIdeal()).isSingular(point) then return "is not smooth";    
+        if (interpolation.blackBoxIdeal()).isCertainlySingularAt(point) then return "is not smooth";    
 
         for key in keys interpolatedIdeals do
         (
