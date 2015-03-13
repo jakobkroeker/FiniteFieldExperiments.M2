@@ -2611,13 +2611,15 @@ doc ///
           bbI.isZeroAt(point)
           bbI.jacobianAt(point)
           sub(jacobian I,point)
+          bbI.isProbablySmoothAt(point)
         Text
-          the cuspidal cubic considered above is singular at the
+          The cuspidal cubic considered above is singular at the
           origin. Therefore the jacobian matrix vanishes there:
         Example
           origin = matrix{{0,0_QQ}}
           bbI.isZeroAt(origin)
           bbI.jacobianAt(origin)
+          bbI.isCertainlySingularAt(origin)
     Caveat
           This works only with black box ideals, since they contain an algorithm
           that can evaluate the generators of the black box ideal. A black box parameter spaces
