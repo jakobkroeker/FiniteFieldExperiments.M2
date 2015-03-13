@@ -325,12 +325,12 @@ createPointData =(pBlackBox, point)->
     p := new MutableHashTable;
     p.point = point;
     
-    localIsSingular := null;
-    p.isSingular = ()->
+    localIsCertainlySingularAt := null;
+    p.isCertainlySingularAt = ()->
     (
-        if (localIsSingular=!=null) then return localIsSingular;
-        localIsSingular = blackBox.isSingular(point);
-        return localIsSingular;
+        if (localIsCertainlySingularAt=!=null) then return localIsCertainlySingularAt;
+        localIsCertainlySingularAt = blackBox.isCertainlySingularAt(point);
+        return localIsCertainlySingularAt;
     );
 );
 

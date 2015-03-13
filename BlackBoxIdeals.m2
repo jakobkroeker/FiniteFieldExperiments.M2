@@ -42,7 +42,7 @@ export {
     jetAt,
     isCertainlySingularAt,
     isProbablySmoothAt,
-    "keys1",
+    "keysWithoutSymbols",
     "rebuildBlackBox",
     "acceptedParameterNumber"
 }
@@ -58,7 +58,7 @@ export {
 
 idealBlackBoxesProtect = ()->
 (
-protect eps;
+--protect eps;
 protect jacobianAt;
 protect rankJacobianAt;
 protect transposedJacobianAt;
@@ -172,7 +172,7 @@ undocumented {
     equations,
     rpp,
     upp,
-    keys1,
+    keysWithoutSymbols,
     eps
 } 
 
@@ -303,6 +303,24 @@ TEST ///
 
 savedEpsRings := new MutableHashTable;
 
+getPropertySymbols := method ();
+   getPropertySymbols(String) := List => (propertyName)->
+   (
+      --
+      propertySymbols := {} ;
+      --
+      try  (  propertySymbols = propertySymbols | { getGlobalSymbol(BlackBoxIdeals.Dictionary, propertyName)} );
+      
+      -- todo question: should the symbol in the users private dictionary always be created?
+      try  (  propertySymbols = propertySymbols | { getGlobalSymbol propertyName} ) else 
+       ( 
+              propertySymbols =  propertySymbols | { getGlobalSymbol( User#"private dictionary" propertyName); }
+        );
+      return propertySymbols;
+   );
+
+
+
 -- package-global symbol for 
 geps := getSymbol "eps"; 
 
@@ -319,6 +337,11 @@ getEpsRing(Ring, ZZ) := Ring => (coeffring, epsDim)->
         polRing:=coeffring[leps];
         leps=(gens(polRing))#0;
         savedEpsRings#(coeffring,epsDim) = polRing/leps^(epsDim+1);    
+        for symb in getPropertySymbols("eps") do 
+        (
+           assert(symb=!=null);
+           (savedEpsRings#(coeffring,epsDim))#symb  = leps;
+        )
     ); 
     epsRng := savedEpsRings#(coeffring, epsDim);
     eps = (gens epsRng)#0;
@@ -388,7 +411,7 @@ clearCoeffDenominators (Ideal)  :=  Ideal =>  (IdealWithRationalCoeffs)->
 doc ///
     Key
         clearCoeffDenominators
-	(clearCoeffDenominators, Ideal )   
+        (clearCoeffDenominators, Ideal )   
     Headline
         convert an ideal with rational coefficients to an ideal with integer coefficients
     Usage   
@@ -750,8 +773,8 @@ jetAtSingleTrial( HashTable, Matrix, ZZ ) := MutableHashTable => ( blackBox,  po
 
     for  epsPrecision in 2..jetLength do 
     (
-     	epsRng = getEpsRing( coeffRng, epsPrecision);
-	    eps = (gens epsRng)#0;
+         epsRng = getEpsRing( coeffRng, epsPrecision);
+        eps = (gens epsRng)#0;
   
         valuesAtJet := blackBox.valuesAt( sub(jet,epsRng) );
 
@@ -761,21 +784,21 @@ jetAtSingleTrial( HashTable, Matrix, ZZ ) := MutableHashTable => ( blackBox,  po
    
         if not zero(valuesAtJet) then 
             rightHandSide = transpose last coefficients (valuesAtJet, Monomials=>{ eps^epsPrecision });
-     	 -- one could also use contract since eps^epsPrec is the highest possible degree
+          -- one could also use contract since eps^epsPrec is the highest possible degree
  
         rightHandSide = sub(rightHandSide,coeffRng);
-	
+    
         if not (0==rightHandSide % jacobianM2Transposed ) then (
            failedJetLength = epsPrecision;
-	       liftingFailed=true; break; 
-	    );
+           liftingFailed=true; break; 
+        );
 
         x := rightHandSide // jacobianM2Transposed ;
         x = x + jacobianKernel* random(coeffRng^(numColumns(jacobianKernel)), coeffRng^1 );
-       	x = transpose x;
+           x = transpose x;
  
         jet2 := sub (jet, epsRng )-sub( x, epsRng ) *eps^epsPrecision;
-	    assert ( 0 == blackBox.valuesAt(jet2) );
+        assert ( 0 == blackBox.valuesAt(jet2) );
         jet = jet2;
     );
     -- todo: create a datatype or a hashTable for the return value.
@@ -827,7 +850,7 @@ jetAtWrapper( BlackBoxParameterSpace, Matrix )  := MutableHashTable => opts -> (
 
 
 isCertainlySingularAt = method();
---isSingular( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials ) ->
+--isCertainlySingularAt( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials ) ->
 isCertainlySingularAt( HashTable, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials ) ->
 (
     assert( numTrials>=1 );
@@ -844,10 +867,10 @@ isCertainlySingularAt( HashTable, Matrix, ZZ, ZZ) := MutableHashTable => ( black
     return false; -- should return unknown or something similar!
 );
 
--- 'keys1': returns hashtable keys without symbol keys.
+-- 'keysWithoutSymbols': returns hashtable keys without symbol keys.
 --
-keys1 = method();
-keys1(HashTable) := List => (bb)->
+keysWithoutSymbols = method();
+keysWithoutSymbols(HashTable) := List => (bb)->
 (
    --print "my keys";
    bbh:= new HashTable from bb;
@@ -895,21 +918,6 @@ new BlackBoxIdeal from Thing := ( E, thing) -> (
 );
 
 
-getPropertySymbols := method ();
-   getPropertySymbols(String) := List => (propertyName)->
-   (
-      --
-      propertySymbols := {} ;
-      --
-      try  (  propertySymbols = propertySymbols | { getGlobalSymbol(BlackBoxIdeals.Dictionary, propertyName)} );
-      
-      -- todo question: should the symbol in the users private dictionary always be created?
-      try  (  propertySymbols = propertySymbols | { getGlobalSymbol propertyName} ) else 
-       ( 
-              propertySymbols =  propertySymbols | { getGlobalSymbol( User#"private dictionary" propertyName); }
-        );
-      return propertySymbols;
-   );
 
 
 
@@ -1390,7 +1398,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
    -- (computed as 'keys blackBox' \ { knownMethods(), knownPointProperties(), knownPointPropertiesAsSymbols() }
    blackBox.knownAttributes = ()->
    (
-         all :=  keys1 blackBox;
+         all :=  keysWithoutSymbols blackBox;
          all = select (all, (foo)->(not instance(blackBox#foo,Function)));   
          kM := kP := kPP := kPS := {};
          -- kM =  blackBox.knownMethods();
@@ -1498,6 +1506,8 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
    return blackBox;
 )
 
+--            Provide via registerPointProperty() added new black box properties
+--          via point('.') operator (syntactic sugar)
 rebuildBlackBox = method() ;
 
 rebuildBlackBox(HashTable) := HashTable => ( bb )->
@@ -1524,7 +1534,7 @@ blackBoxParameterSpaceInternal(Ring) := HashTable => ( pRing ) ->
         if not ( blackBox.ring === ring unknown) then 
         ( 
             bblog.error( "the unknown is not element of the equations ideal ring" );
-	        return false;
+            return false;
         );
         return true;
    );
@@ -1821,9 +1831,11 @@ doc ///
          Text
             The {\tt  BlackBoxIdeal } objects implements the interface of @TO BlackBoxParameterSpace @ \break 
             and in addition following methods and attributes:
-            
-            \,\, \bullet \,{\tt isZeroAt(P) }: a check, if the (implicit or explicit) ideal generators or equations vanishes at a given  point {\tt P} \break 
-            \,\, \bullet \,{\tt numGenerators() }: number of  generators/equations \break 
+
+            \,\, \bullet \,{\tt numGenerators() }: number of  generators/equations \break \break             
+
+            Point properties:\break
+            \,\, \bullet \, @TO "isZeroAt" @ {\tt (P)} : a check, if the (implicit or explicit) ideal generators or equations vanishes at a given  point {\tt P} \break 
             \,\, \bullet \,{\tt valuesAt(P)}: evaluation (of the ideal generators) at a point {\tt P}, \break 
             \,\, \bullet \,{\tt jacobianAt(P)}: computation of the jacobian (of the ideal generators) at a given point {\tt P}, \break
             \,\, \bullet \,{\tt bareJacobianAt(P)}: computation of the Jacobian at {\tt P} without degree information \break
@@ -2290,7 +2302,7 @@ TEST  ///
 doc ///
     Key
         getEpsRing
-	(getEpsRing, Ring, ZZ)
+        (getEpsRing, Ring, ZZ)
     Headline
         get a ring for jet calculations
     Usage   
@@ -2298,55 +2310,55 @@ doc ///
     Inputs  
         R: Ring
              the coefficient Ring
-	d: ZZ 
-	     the precision of the Ring for jet calculations
+        d: ZZ 
+         the precision of the Ring for jet calculations
     Outputs
         : Ring
              R[eps]/eps^{d+1}
     Description
         Text
            The advantage of using this function is that for each
-	   precision and coefficient ring R[eps]/eps^{d+1} is
-	   created only once.
+           precision and coefficient ring R[eps]/eps^{d+1} is
+           created only once.
         Example          
-	  E2 = getEpsRing(QQ,2)
-	  eps^2+eps^3
-	  E3 = getEpsRing(QQ,3)
-	  eps^2+eps^3
-	Text
-	  Be aware that there are now several eps-es. This can
-	  lead to unexpected behavior:
-	Example
-	  use E2; eps
-	Text  
-	  Notice that this still gives the eps in E3.
-	  The underscore notation also does not help in this situation:
-	Example
-	  try eps_E2 then "works" else "error"
-	Text	  
-	  The following works, but is not recomended since the 
-	  code does not check whether eps is a variable in a ring:
-	Example
-	  sub(eps,E2)
-	  eps = 1
-	  sub(eps,E2)
-	Text  
-	  We recommend the following:
-	Example
-	  getEpsRing(QQ,2)
-     	  eps
-	Text
-	  The following is also OK:
-	Example	  
-	  eps = (gens E3)#0
-	  eps = (gens E2)#0
-	  -- this works also
+          E2 = getEpsRing(QQ,2)
+          eps^2+eps^3
+          E3 = getEpsRing(QQ,3)
+          eps^2+eps^3
+        Text
+          Be aware that there are now several eps-es. This can
+          lead to unexpected behavior:
+        Example
+          use E2; eps
+        Text  
+          Notice that this still gives the eps in E3.
+          The underscore notation also does not help in this situation:
+        Example
+          try eps_E2 then "works" else "error"
+        Text      
+          The following works, but is not recomended since the 
+          code does not check whether eps is a variable in a ring:
+        Example
+          sub(eps,E2)
+          eps = 1
+          sub(eps,E2)
+        Text  
+          We recommend the following:
+        Example
+          getEpsRing(QQ,2)
+               eps
+        Text
+          The following is also OK:
+        Example      
+          eps = (gens E3)#0
+          eps = (gens E2)#0
+          -- this works also
 ///
 
 doc ///
     Key
         isProbablySmoothAt
-     	isCertainlySingularAt
+        isCertainlySingularAt
     Headline
         heuristic test of smoothness
     Usage   
@@ -2355,60 +2367,61 @@ doc ///
     Inputs  
         bb: BlackBoxIdeal
              an black box ideal
-	point: Matrix 
-	     the coordinates of a point
+        point: Matrix 
+         the coordinates of a point
     Outputs
         : Boolean
     Description
         Text
-     	  Checks for smoothness of a point on the
-	  vanishing set of the black box ideal, by
-	  trying to find a jet starting at the point.
-	  If the point is smooth on the vanishing
-	  set of the black box ideal, arbitray jets
-	  can always be found. If one or more jets are found
-	  the point is probably smooth. If the search
-	  for a jet failes only once, the vanishing
-	  set is certainly singular at this point.
-	  
-	  Consinder for example the cuspidal cubic:
-	Example
-	  R = QQ[x,y]
-	  bbI = blackBoxIdeal ideal(x^2-y^3);
-	Text
-	  The cuspidal cubic is singular at the origin:
-	Example    
-	  origin = matrix{{0,0_QQ}}
-	  bbI.isCertainlySingularAt(origin)
-	Text
-	  Consider a point on the cuspidal cubic different from the origin:
-	Example
-	  otherPoint = matrix{{8,4_QQ}}
-	Text
-	  Check whether the other point lies on the cuspidal cubic:
-	Example  
-	  bbI.isZeroAt(otherPoint)
-	Text
-	  We now check for smoothness:
-	Example
-	  bbI.isCertainlySingularAt(otherPoint)
-	  bbI.isProbablySmoothAt(otherPoint)
-	Text
-	  If the point is not on the vanishing set defined by
-	  the black box ideal, "is certainly singular" is always
-	  returned. (This is usefull when this property is watched
-	  in a finite field experiment.)
+          Checks for smoothness of a point on the
+          vanishing set of the black box ideal, by
+          trying to find a jet starting at the point.
+          If the point is smooth on the vanishing
+          set of the black box ideal, arbitray jets
+          can always be found. If one or more jets are found
+          the point is probably smooth. If the search
+          for a jet failes only once, the vanishing
+          set is certainly singular at this point.
+          
+          Consinder for example the cuspidal cubic:
         Example
-	  pointNotOnCurve = matrix{{4,5_QQ}}
-	  bbI.isZeroAt(pointNotOnCurve)
-	  bbI.isCertainlySingularAt(pointNotOnCurve)
-	  jetAt(bbI,pointNotOnCurve,1,1)
-	  
+          R = QQ[x,y]
+          bbI = blackBoxIdeal ideal(x^2-y^3);
+        Text
+          The cuspidal cubic is singular at the origin:
+        Example    
+          origin = matrix{{0,0_QQ}}
+          bbI.isCertainlySingularAt(origin)
+        Text
+          Consider a point on the cuspidal cubic different from the origin:
+        Example
+          otherPoint = matrix{{8,4_QQ}}
+        Text
+          Check whether the other point lies on the cuspidal cubic:
+        Example  
+          bbI.isZeroAt(otherPoint)
+        Text
+          We now check for smoothness:
+        Example
+          bbI.isCertainlySingularAt(otherPoint)
+          bbI.isProbablySmoothAt(otherPoint)
+        Text
+          If the point is not on the vanishing set defined by
+          the black box ideal, "is certainly singular" is always
+          returned. (This is usefull when this property is watched
+          in a finite field experiment.)
+        Example
+          pointNotOnCurve = matrix{{4,5_QQ}}
+          bbI.isZeroAt(pointNotOnCurve)
+          bbI.isCertainlySingularAt(pointNotOnCurve)
+          jetAt(bbI,pointNotOnCurve,1,1)
+      
 ///
 
 doc ///
     Key
         jetAt
+        (jetAt, BlackBoxParameterSpace, Matrix, ZZ, ZZ)
     Headline
         find jets on the varieties defined by a black box
     Usage   
@@ -2416,60 +2429,121 @@ doc ///
     Inputs  
         bb: BlackBoxIdeal
              an black box ideal
-	point: Matrix 
-	     the coordinates of a point
-	prec: ZZ
-	     the precision of the desired jet
-	n: ZZ
-	     the number of trial used to find a jet    
+        point: Matrix 
+             the coordinates of a point
+        prec: ZZ
+             the precision of the desired jet
+        n: ZZ
+             the number of trial used to find a jet    
     Outputs
         : MutableHashTable
     Description
         Text
-      	  Tries to find a jet starting at a given point on 
-	  a variety given by a black box.
-	  
- 	  Consinder for example a nodal cubic:
-	Example
-	  Fp = ZZ/101
-	  R = Fp[x,y]
-	  I = ideal(x^2-y^2+x^3)
-	  bbI = blackBoxIdeal I;
-	Text
-	  Consider a point on the nodal cubic different from the origin:
-	Example
-	  point = matrix{{3,6_Fp}}
-	Text
-	  Check whether the other point lies on the nodal cubic:
-	Example  
-	  bbI.isZeroAt(point)
-	Text
-	  We now look for a jet:
-	Example
-	  j = jetAt(bbI,point,3,1)
-	Text
-	  The defining equations of the ideal indeed vanish on the jet:
-	Example
-	  sub(I,j#"jet")
-     	Text
-	  At the origin the nodal cubic is singular. Short jets can be found,
-	  but not long ones:
-	Example
-	  origin = matrix{{0,0_Fp}}
-	  jetAt(bbI,origin,1,1)  
-  	  jetAt(bbI,origin,2,1)  
-  	  jetAt(bbI,origin,3,1)  
+          Tries to find a jet starting at a given point on 
+          a variety given by a black box.
+          
+          Consinder for example a nodal cubic:
+        Example
+          Fp = ZZ/101
+          R = Fp[x,y]
+          I = ideal(x^2-y^2+x^3)
+          bbI = blackBoxIdeal I;
         Text
-	  Notice that the search for fails at length 2 most of the time,
-	  since the singularity has multiplicity 2. If one tries
-	  long enough a longer jet can be found (lying on one
-	  of the branches at the origin):
-     	Example  	  
-  	  jetAt(bbI,origin,3,200)  
-	  
+          Consider a point on the nodal cubic different from the origin:
+        Example
+          point = matrix{{3,6_Fp}}
+        Text
+          Check whether the other point lies on the nodal cubic:
+        Example  
+          bbI.isZeroAt(point)
+        Text
+          We now look for a jet:
+        Example
+          j = jetAt(bbI,point,3,1)
+        Text
+          The defining equations of the ideal indeed vanish on the jet:
+        Example
+          sub(I,j#"jet")
+        Text
+          At the origin the nodal cubic is singular. Short jets can be found,
+          but not long ones:
+        Example
+          origin = matrix{{0,0_Fp}}
+          jetAt(bbI,origin,1,1)  
+          jetAt(bbI,origin,2,1)  
+          jetAt(bbI,origin,3,1)  
+        Text
+          Notice that the search for fails at length 2 most of the time,
+          since the singularity has multiplicity 2. If one tries
+          long enough a longer jet can be found (lying on one
+          of the branches at the origin):
+        Example        
+            jetAt(bbI,origin,3,200)  
+      
 ///
 
 
+doc ///
+    Key
+        rebuildBlackBox
+    Headline
+        provide new added black box properties via point('.') operator
+    Usage   
+        rebuildBlackBox(bb)
+    Inputs  
+        bb: BlackBoxIdeal
+             a black box ideal
+        bb: BlackBoxParameterSpace
+             a black box parameter space
+    Outputs
+        : BlackBoxIdeal
+        : BlackBoxParameterSpace
+    Description
+        Text
+          Provide via registerPointProperty() added new black box properties
+          via point('.') operator (syntactic sugar)  
+        Example
+            K = ZZ/101
+            bbC = blackBoxParameterSpace(2,K);
+
+            valueAt = (point) -> ( 
+                 R = K[x,y];
+                 I = ideal(x^2-y^2+x^3);
+                 return sub(I,sub(point,R) )
+             )
+        Text
+            register this function in the BlackBox
+        Example
+            updatedbbC = bbC.registerPointProperty("valueAt",valueAt);
+        Text
+            in case we do not use updatedbbC we cannot access 'valueAt' via point operator:
+        Example
+            point = matrix{{3,6_K}};
+            try bbC.valueAt(point) else "error"
+            updatedbbC.valueAt(point) -- ok
+        Text
+            however, we can get construct another updated black box using 'rebuildBlackBox()'
+        Example
+            bbC = rebuildBlackBox(bbC);
+            bbC.valueAt(point) -- ok
+///
+
+doc ///
+    Key
+        "isZeroAt"
+    Headline
+        Check, if the implicit or explicit ideal generators vanishes at a given point P 
+    Usage   
+         blackboxIdeal.isZeroAt(point)
+    Inputs  
+        point: BlackBoxIdeal
+             a point
+    Outputs
+        : Boolean
+    Description
+        Text
+          nix
+///
 
 end
 -- need test for randomIterator (for fixed error : to less trials  )
