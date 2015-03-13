@@ -167,7 +167,8 @@ undocumented {
     rpp,
     upp,
     keysWithoutSymbols,
-    eps
+    eps,
+    acceptedParameterNumber
 } 
 
 
@@ -1811,8 +1812,9 @@ testBlackBoxIdealFromEvaluation = ()->
 doc ///
    Key
         BlackBoxIdeal
+        (NewFromMethod, BlackBoxIdeal, Ideal)
    Headline
-        an unified interface to an implicit or explicit ideal (with rationals as the base coefficient ring)
+        an unified interface to a black box ideal
    Usage   
         new BlackBoxIdeal from pIdeal
         blackBoxIdealFromEvaluation( rng, evaluationMethod )
@@ -1833,12 +1835,13 @@ doc ///
             \,\, \bullet \, @TO "isZeroAt" @ \break
             \,\, \bullet \, @TO "valuesAt" @ \break
             \,\, \bullet \, @TO "jacobianAt" @ \break
-            \,\, \bullet \,{\tt rankJacobianAt(P)}: rank of the Jacobian at a point {\tt P} \break \break
+            \,\, \bullet \, @TO "rankJacobianAt" @ \break
                         
-            The black boxes may provide (depends on available data) \break 
+            If the black boxes was generated from an explicit ideal, the
+            following properties are also defined: \break 
             \,\, \bullet \,{\tt unknowns}: a list of the parameter variables . \break
-            \,\, \bullet \,{\tt ideal}: the origin ideal  \break
-            \,\, \bullet \,{\tt equations}: generators/equations of the origin ideal/polynomial system \break
+            \,\, \bullet \,{\tt ideal}: the original ideal  \break
+            \,\, \bullet \,{\tt equations}: generators/equations of the original ideal/polynomial system \break
             
         Text
             \break  For an example see @TO blackBoxIdealFromEvaluation@, @TO blackBoxIdeal @.
@@ -2183,14 +2186,19 @@ doc ///
 doc ///
     Key
         BlackBoxParameterSpace
+        (NewFromMethod,BlackBoxParameterSpace,Ring)
     Headline
-          black boxes for explicit and implicitly given moduli spaces(?)
+          black boxes for parameter spaces
     Description
         Text
+            A black box parameter space is used to implement parameter spaces
+            with their universal families in a pointwise fashion.
+            
+            @TO "Singularities of cubic surfaces" @
+      
             Implements an unified interface for some explicit and implicit given ideals. \break  \break
             see also @TO BlackBoxIdeal @
             \break             \break
-
             The simplest parameter space black box  implements  \break \break 
             Attributes:\break 
             \,\, \bullet \,{\tt numVariables }: number of variables in the parameter space. \break
@@ -2226,7 +2234,104 @@ doc ///
            \break  For usage example see @TO blackBoxParameterSpace@
 ///
             
+doc ///
+    Key
+        "Singularities of cubic surfaces"
+    Headline
+        use a blackBoxParameterSpace to study the space of cubic surfaces
+    Description
+        Text
+            A black box parameter space is used to implement parameter spaces
+            with their universal families in a pointwise fashion.
+            
+            Let us build the parameter space of cubic surfaces with a view of 
+            studying its stratification with respect to singularity type.
+            
+            We work in charateristic 7.            
+        Example    
+            K = ZZ/7
+        Text
+            The coordinate ring of IP^3
+        Example
+            R = K[x,y,z,w]
+        Text  
+            Make an empty blackbox which will later contain our 
+            describtion of the parameter space of cubic surfaces.
+            It will depend on 20 parameters, since acubic polynomial 
+            in 4 variables has 20 coefficients.
+        Example
+            bbC = blackBoxParameterSpace(20,K);
+            bbC.knownPointProperties()
+        Text
+            We now build the cubics from the coefficents, i.e. we
+            construct the member of the universal familiy over 
+            a given parameter point:
+        Example
+            mons3 = matrix entries transpose super basis(3,R)
+            cubicAt = (point) -> matrix entries (point*mons3)
+        Text 
+            register this function in the black box 
+        Example
+            bbC = bbC.registerPointProperty("cubicAt",cubicAt);
+            bbC.knownPointProperties()
+        Text
+            Lets test this functionality with some special cubics.
+            The first example is the cubic cone. It is singular
+            at (0:0:0:1):                   
+        Example    
+            cubicCone = matrix{{x^3+y^3+z^3}}
+            coeffCubicCone = contract(transpose mons3,cubicCone)
+            bbC.cubicAt(coeffCubicCone)
+        Text
+            The second example is the Fermat cubic. It is smooth everywhere    
+        Example
+            cubicFermat = matrix{{x^3+y^3+z^3+w^3}}
+            coeffCubicFermat = contract(transpose mons3,cubicFermat)
+            bbC.cubicAt(coeffCubicFermat)
+        Text
+            Now we want to implement the stratification by singularity type.
+            For this we first determine the singular locus of a cubic surface:
+        Example
+            singularLocusAt = (bb,point) -> ideal jacobian bb.cubicAt(point)
+            bbC = bbC.rpp("singularLocusAt",singularLocusAt);
+            bbC.knownPointProperties()
+            bbC.singularLocusAt(coeffCubicCone)   
+            bbC.singularLocusAt(coeffCubicFermat)
+        Text
+            As a first approximation of the singularity type we use
+            the degree of the singular locus
+        Example
+            degreeSingularLocusAt = (bb,point) -> (
+                 s := bb.singularLocusAt(point);
+                 if dim s == 0 then return 0;                
+                 if dim s == 1 then return degree s;                 
+                 if dim s >= 2 then return infinity;
+              )
+            bbC = bbC.rpp("degreeSingularLocusAt",degreeSingularLocusAt);
+            bbC.knownPointProperties()
+        Text
+            Calculate the degree of the singular locus for our examples
+        Example
+            bbC.degreeSingularLocusAt(coeffCubicCone)
+            bbC.degreeSingularLocusAt(coeffCubicFermat)
+        Text
+            Now the BlackBoxParameterspace hat a number of point properties
+        Example
+            bbC.knownPointProperties()
+        Text
+            These properties can now be used in a finite field experiment
+            that studies the statification of our parameter space. Here is a
+            simple minded version of such an experiment:
+        Example
+            tally apply(100,i->bbC.degreeSingularLocusAt(random(K^1,K^20))) 
+        Text
+            We see that there is an open stratum of smooth cubics. The
+            largest closed stratum consists of those cubics with a A1 singularity.
+            The package finiteFieldExperiments helps to do the bookkeeping 
+            for such experiments and also provides more detailed interpretation
+            of the results.
 
+///
 
 doc ///
     Key
@@ -2610,6 +2715,61 @@ doc ///
           bbI.isZeroAt(origin)
           bbI.jacobianAt(origin)
           bbI.isCertainlySingularAt(origin)
+    Caveat
+          This works only with black box ideals, since they contain an algorithm
+          that can evaluate the generators of the black box ideal. A black box parameter spaces
+          might contain only an algorithm that checks whether all generators vanish. 
+          This happens for example if one considers the moduli space of singular cubics. 
+          One can check whether a
+          given cubic is singular without calculating the value of the 
+          corresponding discriminant. 
+///
+
+doc ///
+    Key
+        "rankJacobianAt"
+    Headline
+        determine the rank of the jacobian matrix of a black box ideal at a given point 
+    Usage   
+        bbI.rankJacobianAt(point)
+    Inputs  
+        bbI: BlackBoxIdeal
+        point: Matrix
+             coordinates of a point
+    Outputs
+        : Boolean
+    Description
+        Text
+          This is a point property. It evaluates the jacobian matrix of the
+          black box ideal at the point and determines its rank.
+        Example
+          R = QQ[x,y]
+          I = ideal(x^2-y^3);
+          bbI = blackBoxIdeal I;
+          point = matrix{{8,4_QQ}}
+          bbI.isZeroAt(point)
+          bbI.jacobianAt(point)
+          bbI.rankJacobianAt(point)
+          bbI.isProbablySmoothAt(point)
+        Text
+          The cuspidal cubic considered above is singular at the
+          origin. Therefore the jacobian matrix hat rank 0 there:
+        Example
+          origin = matrix{{0,0_QQ}}
+          bbI.isZeroAt(origin)
+          bbI.jacobianAt(origin)
+          bbI.rankJacobianAt(origin)
+          bbI.isCertainlySingularAt(origin)
+        Text
+          This point property is usefull when running experiments on
+          black boxes that have serveral components of unknown 
+          codimension. The rank of the jacobian matrix gives a upper bound on 
+          the codimension of the components containing the point (with
+          equality if the vanishing set is smooth at the point). Sorting 
+          the number of points found in an experiment by the rank of their
+          jacobian matrices
+          helps to estimate the number of components of the vanishing set
+          of the black box in each codimension.   
     Caveat
           This works only with black box ideals, since they contain an algorithm
           that can evaluate the generators of the black box ideal. A black box parameter spaces
