@@ -61,8 +61,6 @@ idealBlackBoxesProtect = ()->
 --protect eps;
 protect jacobianAt;
 protect rankJacobianAt;
-protect transposedJacobianAt;
-protect transposedJacobian;
 protect valuesAt;
 protect unknownIsValid;
 protect numVariables;
@@ -103,8 +101,6 @@ idealBlackBoxesExport = ()->
     exportMutable( eps );
     exportMutable( jacobianAt);
     exportMutable( rankJacobianAt);
-    exportMutable( transposedJacobian);
-    exportMutable( transposedJacobianAt);
     exportMutable( valuesAt);
     exportMutable( unknownIsValid);                 
     exportMutable( numVariables);  
@@ -150,25 +146,15 @@ undocumented {
     deduceNumGenerators,
     dropDegreeInfo,
     getUpdatedBlackBox,
-    hasPointProperty,  
-    knownAttributes,
-    knownMethods,
-    knownProperties,
-    knownPointProperties,
-    numGenerators,
-    numVariables,
-    pointProperty,
     pointProperties,
-    rankJacobianAt,
-    registerPointProperty,
-    updatePointProperty,
-    setPointProperty,
     equations,
-    rpp,
-    upp,
     keysWithoutSymbols,
-    eps,
-    acceptedParameterNumber
+    checkInputPoint,
+    knownPointPropertiesAsSymbols,
+    type,
+    unknownIsValid,
+    unknowns,
+    numTrials   
 } 
 
 
@@ -1813,6 +1799,7 @@ doc ///
    Key
         BlackBoxIdeal
         (NewFromMethod, BlackBoxIdeal, Ideal)
+        (NewFromMethod, BlackBoxIdeal, Thing)
    Headline
         an unified interface to a black box ideal
    Usage   
@@ -2187,6 +2174,7 @@ doc ///
     Key
         BlackBoxParameterSpace
         (NewFromMethod,BlackBoxParameterSpace,Ring)
+        (NewFromMethod,BlackBoxParameterSpace,Thing)
     Headline
           black boxes for parameter spaces
     Description
@@ -2401,6 +2389,7 @@ doc ///
     Key
         getEpsRing
         (getEpsRing, Ring, ZZ)
+        eps
     Headline
         get a ring for jet calculations
     Usage   
