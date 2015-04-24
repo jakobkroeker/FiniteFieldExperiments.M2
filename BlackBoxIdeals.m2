@@ -154,7 +154,6 @@ undocumented {
     dropDegreeInfo,
     getUpdatedBlackBox,
     hasPointProperty,
-    isZeroAt,
     jacobianAt,   
     knownAttributes,
     knownMethods,
