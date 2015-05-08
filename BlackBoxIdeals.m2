@@ -2716,6 +2716,77 @@ doc ///
 
 doc ///
     Key
+        "registerPointProperty"
+        "rpp"
+    Headline
+        register a new point property in a black box.
+    Usage   
+        bbI.registerPointProperty(name,propertyAt)
+        bbI.registerPointProperty(name,propertyAt)
+    Inputs  
+        bbI: BlackBoxParameterSpace
+        name : String
+          name of the new point property
+        propertAt: Function 
+          that takes coordinates of a point and returns anything.
+    Outputs
+        : BlackBoxParameterSpace
+    Description
+        Text
+          This method is used to register new property in a
+          blackBoxIdeal or a blackBoxParameterSpace. 
+          
+          Lets for example build a black box parameter space
+          for cubic surfaces in IP^3 over the finite field with
+          7 Elements.
+        Example
+          Fp = ZZ/7
+          R = Fp[x,y,w,z]
+        Text
+          there are 20 monomials of degree 3 in 4 variables
+        Example
+          mons3 = basis(3,R)
+        Text
+          Therefore we need a 20 dimensional parameter space
+        Example
+          bbC = blackBoxParameterSpace(20,Fp);
+        Text
+          This has no known point properties 
+        Example
+           bbC.knownPointProperties()
+        Text
+          We now make a function that constructs a cubic
+          polynomial from 20 parameters
+        Example
+          cubicAt = (point) -> point*transpose mons3
+          cubicAt(matrix{{1_Fp,19:0}})
+          fermatPoint = matrix {{1_Fp,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,1}}
+          cubicAt(fermatPoint)
+        Text
+          To have this available inside the blackbox we need to register
+          it
+        Example
+          bbC = bbC.registerPointProperty("cubicAt",cubicAt);
+          bbC.knownPointProperties()
+        Text
+          Now we can use the property from the black box
+        Example
+          bbC#"cubicAt"(fermatPoint)
+          bbC.cubicAt(fermatPoint)
+        Text
+          Registering a point property is useful when the black box
+          is used in a finite field experiment. Registered
+          point properties are available to an experiment while it is
+          running. Also it is useful to register for bookkeeping reasons.
+          so that for example knownPointProperties will return
+          the correct answer.
+///
+
+
+
+
+doc ///
+    Key
         "rankJacobianAt"
     Headline
         determine the rank of the jacobian matrix of a black box ideal at a given point 

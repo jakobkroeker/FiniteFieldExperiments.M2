@@ -1,8 +1,7 @@
 -- look at the hilbert scheme of singular
 -- elliptic sextics
 
-quit
--- F12
+quit -- F12
 restart
 
 path = append(path,"/Users/bothmer/Desktop/projekte/strudel/Jakob2010/GitHub/padicLiftM2/")
