@@ -2721,8 +2721,8 @@ doc ///
     Headline
         register a new point property in a black box.
     Usage   
-        bbI.registerPointProperty(name,propertyAt)
-        bbI.registerPointProperty(name,propertyAt)
+        bbI = bbI.registerPointProperty(name,propertyAt)
+        bbI = bbI.rpp(name,propertyAt)
     Inputs  
         bbI: BlackBoxParameterSpace
         name : String
@@ -2733,6 +2733,10 @@ doc ///
         : BlackBoxParameterSpace
     Description
         Text
+          rpp and 
+          registerPointProperty are synonymous. rpp is provided
+          to save typing time...
+          
           This method is used to register new property in a
           blackBoxIdeal or a blackBoxParameterSpace. 
           
@@ -2777,11 +2781,158 @@ doc ///
           Registering a point property is useful when the black box
           is used in a finite field experiment. Registered
           point properties are available to an experiment while it is
-          running. Also it is useful to register for bookkeeping reasons.
+          running. Also it is useful to register for bookkeeping reasons,
           so that for example knownPointProperties will return
           the correct answer.
 ///
 
+doc ///
+    Key
+        "updatePointProperty"
+        "upp"
+    Headline
+        change a point property in a black box.
+    Usage   
+        bbI.updatePointProperty(name,propertyAt)
+        bbI.upp(name,propertyAt)
+    Inputs  
+        bbI: BlackBoxParameterSpace
+        name : String
+          name of point property to be changed
+        propertAt: Function 
+          that takes coordinates of a point and returns anything.
+    Outputs
+        : BlackBoxParameterSpace
+    Description
+        Text
+          upp and 
+          updatePointProperty are synonymous.
+          
+          This method is used to change a property of 
+          blackBoxIdeal or a blackBoxParameterSpace. The need
+          for this arises usually while programming when one
+          realizes that a programming mistake was made.  
+          
+          Lets look at a stupid, but illustrative example:       
+        Example
+          bbC = blackBoxParameterSpace(2,QQ);
+          bbC = bbC.rpp("product",(point) -> sum flatten entries point);
+          bbC.product(matrix{{5,6_QQ}})
+          bbC.upp("product",(point) -> product flatten entries point);
+          bbC.product(matrix{{5,6_QQ}})
+    SeeAlso
+         registerPointProperty
+         rpp
+///
+
+doc ///
+    Key
+        "hasPointProperty"
+    Headline
+        check whether a point property of a black box is defined
+    Usage   
+        bbI.hasPointProperty(name)
+    Inputs  
+        bbI: BlackBoxParameterSpace
+        name : String
+          name of point property to be checked
+    Outputs
+        : Boolean
+    Description
+        Text
+          check whether a point property is defined.
+          
+          Every BlackBoxIdeal has the property "jacobianAt" since
+          it has (at least implicitly) access to a representation of 
+          the generators of the ideal:
+        Example
+          R = QQ[x,y]
+          bbI = blackBoxIdeal ideal (x^2-y^3);
+          bbI.hasPointProperty("jacobianAt")
+          bbI.knownPointProperties()
+        Text
+          A blackBoxParameterSpace usually does not have 
+          the property "jacobianAt" since such a parameter space
+          does not even have an implicit representation of 
+          the equations.
+        Example
+          bbParam = blackBoxParameterSpace(2,QQ);     
+          bbParam.hasPointProperty("jacobianAt") 
+          bbParam.knownPointProperties()
+        Text
+          To illustrate why this can happen think for example of 
+          the space of
+          singular cubics. In a BlackBoxParameterSpace one
+          would simply test the smoothness of a give cubic
+          via Groebner basis calculation. This does not automatically
+          give rise to a representation of the corresponding
+          Diskriminant. 
+    SeeAlso
+         knownPointProperties
+         registerPointProperty
+///
+
+doc ///
+    Key
+        "knownAttributes"
+        "numVariables"
+    Headline
+        list the attributes of a black box 
+    Usage   
+        bbI.knownAttributes()
+    Inputs  
+        bbI: BlackBoxParameterSpace
+    Outputs
+        : List       
+    Description
+        Text
+          Every BlackBoxIdeal has some properties
+          provided by the package:
+        Example
+          R = QQ[x,y]
+          bbI = blackBoxIdeal ideal (x^2-y^3);
+          bbI.knownAttributes()
+        Text
+          Lets look at these attributes in turn
+        Example
+          bbI.ideal
+          bbI.numVariables
+          bbI.ring
+          bbI.type
+        Text
+          The type can also be "BlackBoxParameterSpace"  
+        Example
+          bbI.unknowns
+          bbI.equations
+          bbI.coefficientRing
+          bbI.jacobian
+        Text
+          Lets now look at a blackBoxIdeal defined by an
+          evaluation. The standart example is the determinant
+          of a matrix:
+        Example
+          M = (point) -> (point_{0,1,2}||point_{3,4,5}||point_{6,7,8})
+          phonePoint = matrix{{1,2,3,4,5,6,7,8,9_QQ}}
+          M(phonePoint)
+          detM = (point) -> matrix{{det(M(point))}}
+          detM(phonePoint)   
+          S = QQ[m_1..m_9]  
+          bbE = blackBoxIdealFromEvaluation( S, detM );
+          bbE.valuesAt(phonePoint)
+          bbE.knownAttributes()
+        Text
+          Notice that "equations" and "jacobian" are missing, since
+          no explicit equations of the blackBoxIdeal are provided.
+        Example
+          bbP = blackBoxParameterSpace(2,QQ);
+          bbP.knownAttributes()
+        Text
+          For a blackPointParameterSpace "ring" and "unknowns" are 
+          missing since there are now equations (not even implicit ones)  
+    SeeAlso
+         knownPointProperties
+         knownMethods
+///
 
 
 
