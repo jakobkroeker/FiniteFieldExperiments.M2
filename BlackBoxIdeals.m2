@@ -2886,8 +2886,12 @@ doc ///
         : List       
     Description
         Text
-          Every BlackBoxIdeal has some properties
-          provided by the package:
+          Every BlackBoxIdeal has some attributes
+          provided by the package 
+          (no new attributes can be defined by the user).
+          The difference between attributes and properties is,
+          that an attribute is a constant while a property is 
+          a function.
         Example
           R = QQ[x,y]
           bbI = blackBoxIdeal ideal (x^2-y^3);
@@ -2928,7 +2932,7 @@ doc ///
           bbP.knownAttributes()
         Text
           For a blackPointParameterSpace "ring" and "unknowns" are 
-          missing since there are now equations (not even implicit ones)  
+          missing since there are no equations (not even implicit ones)  
     SeeAlso
          knownPointProperties
          knownMethods
