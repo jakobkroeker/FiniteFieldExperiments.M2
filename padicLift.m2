@@ -347,7 +347,7 @@ liftStep = ( systemData, vanishingCoordinates ) ->
   
    systemData.unknowns;
 
-    transposedM2JacobianAtSolution := transpose systemData.bareJacobianAt(localVanishingCoordinates); -- jacobian without degree information
+    transposedM2JacobianAtSolution := transpose systemData.jacobianAt(localVanishingCoordinates); -- jacobian without degree information
 
     prime := ( factor currchar)#0#0;
    

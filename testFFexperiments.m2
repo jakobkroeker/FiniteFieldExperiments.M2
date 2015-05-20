@@ -191,7 +191,7 @@ decomposeResult := apply(keys e.pointLists(),k->(
      	  unique flatten apply(unique L,P->(
 	  	    rank bbI.jacobianAt(P);
 	  	    time jetP = jetAt(bbI,P,20,1);
-		    if not isSingular(bbI,P,20,1) then
+		    if not isCertainlySingularAt(bbI,P,20,1) then
 	  	    {interpolate(mons,{jetP})}
 	  	    ))
      	  ))
