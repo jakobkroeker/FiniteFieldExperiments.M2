@@ -162,7 +162,7 @@ e.tryProperty("isAclosedAt")
 e.tryProperty("isBclosedAt")
 -- all B are closed
 e.tryProperty("bettiAt")
-e.tryProperty("isSingular")
+e.tryProperty("isCertainlySingularAt")
 
 -- sysygies of three cubics
 restart

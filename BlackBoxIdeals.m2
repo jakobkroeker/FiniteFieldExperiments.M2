@@ -44,7 +44,8 @@ export {
     isProbablySmoothAt,
     "keysWithoutSymbols",
     "rebuildBlackBox",
-    "acceptedParameterNumber"
+    "guessAcceptedParameterNumber",
+    "dropDegreeInfo"
 }
 
 --undocumented {
@@ -77,7 +78,6 @@ protect setValuesAt;
 protect checkInputPoint;
 protect deduceNumGenerators;
 protect setIsZeroAt;
-protect dropDegreeInfo;
 protect getUpdatedBlackBox;
 protect type;
 protect unknowns;
@@ -115,7 +115,6 @@ idealBlackBoxesExport = ()->
     exportMutable(  checkInputPoint);
     exportMutable( deduceNumGenerators );
     exportMutable( setIsZeroAt );
-    exportMutable( dropDegreeInfo );
    exportMutable( getUpdatedBlackBox );
    exportMutable( type );
  exportMutable( unknowns );
@@ -140,13 +139,14 @@ idealBlackBoxesExport = ()->
 -- please do only mark documented symbols as undocumented, at least there should be a comment note inside this package.
 -- 
 undocumented { 
-    setIsZeroAt,
-    setJacobianAt,
-    setValuesAt,
-    deduceNumGenerators,
-    dropDegreeInfo,
+    setIsZeroAt,      -- internal   
+    setJacobianAt,    -- internal   
+    setValuesAt,      -- internal   
+    setPointProperty, -- internal   
+    deduceNumGenerators, -- internal   
+    dropDegreeInfo,      -- internal   
     getUpdatedBlackBox,
-    pointProperties,
+    pointProperties,     -- internal key     
     equations,
     keysWithoutSymbols,
     checkInputPoint,
@@ -154,7 +154,8 @@ undocumented {
     type,
     unknownIsValid,
     unknowns,
-    numTrials   
+    numTrials,
+    pointProperty -- internal function
 } 
 
 
@@ -197,24 +198,30 @@ Symbol ? String := (str,symb)->
 -- find out for a function, how many parameters it does accept.
 -- if a function accepts variable number of parameters, returns null
 -- if it did not find 'numparms:' in the disasseble string, returns null.
-acceptedParameterNumber = method();
-acceptedParameterNumber( Function ) := ZZ => (foo)->
+guessAcceptedParameterNumber = method();
+guessAcceptedParameterNumber( Function ) := ZZ => (foo)->
 (
     lst := disassemble foo;
 
     bblog.debug  ("disassemble result: " | lst );
-
     lst = separate( " ", lst );
 
      restargsPos := position( lst, (str)-> str=="restargs:" );
      numparmsPos := position( lst, (str)-> str=="numparms:" );
 
+
+
      if restargsPos=!=null then 
-         if lst#(restargsPos+1)=="true" then 
-         ( 
-            bblog.info ("do not know how to handle methods with a chain of several '->' ");
-            return null; 
+     (
+         newlst := drop (lst, restargsPos);
+         restargsPos = position( newlst, (str)-> str=="restargs:" ); 
+         
+         if restargsPos=!=null then 
+         (
+           bblog.info ("do not know how to handle methods with a chain of several '->' ");
+            --return null; 
          );
+     );
 
      if numparmsPos===null then 
      (
@@ -225,14 +232,17 @@ acceptedParameterNumber( Function ) := ZZ => (foo)->
          return  value lst#(numparmsPos+1);
 );
 
+
+
 -- find out for a method , how many parameters it does accept, only if a single function is installed for that method
 -- if multiple functions are installed for the same method, returns null.
-acceptedParameterNumber( MethodFunction ) := ZZ=>(foo)->
+-- status: beta.
+guessAcceptedParameterNumber( MethodFunction ) := ZZ=>(foo)->
 (
    func := apply( methods foo , m-> lookup m);
    if #func==1 then 
    (
-        return  (acceptedParameterNumber func#0);
+        return  (guessAcceptedParameterNumber func#0);
    );
    if #func>1 then 
    (
@@ -241,36 +251,40 @@ acceptedParameterNumber( MethodFunction ) := ZZ=>(foo)->
    )
    else
    (
-     error ("acceptedParameterNumber: no functions installed for that method; something is screwed up ");
+     error ("guessAcceptedParameterNumber: no functions installed for that method; something is screwed up ");
    );
 );
 
 
 
-testAcceptedParameterNumber = ()->
+testGuessAcceptedParameterNumber = ()->
 (
    a:=null;   b:=null;   c:=null;
 
    foo := (a)->(5);
-   assert(1==acceptedParameterNumber foo);
+   assert(1==guessAcceptedParameterNumber foo);
 
    bar := (a,b)->(5);
-   assert(2==acceptedParameterNumber bar);
+   assert(2==guessAcceptedParameterNumber bar);
 
    foobar := method();
    foobar(Boolean,Boolean,String) := ZZ => (a, b, c)->5;
-   assert( 3==acceptedParameterNumber foobar );
+   assert( 3==guessAcceptedParameterNumber foobar );
 
-   foo = a->(a,b)->(5);
+   -- do not know how to check and what to do for this case:
+   -- foo = a->(a,b)->(5);
 
-   assert( null===acceptedParameterNumber foo );
+   foo = a->(a,b);
+
+   assert( 1==guessAcceptedParameterNumber foo );
+
 )
 
 
 TEST ///
  debug BlackBoxIdeals
  idealBlackBoxesProtect()
- testAcceptedParameterNumber()
+ testGuessAcceptedParameterNumber()
 ///
 
 
@@ -566,7 +580,7 @@ TEST ///
 --   for some matrix operations (which ones?), degree information needs to be dropped,
 --    which is done by this method. Used in '.jacobianAt' which in turn is  used in the 'padicLift' package.
 --
-dropDegreeInfo := method();
+dropDegreeInfo = method();
 dropDegreeInfo (Matrix) := Matrix=> (mat)->
 (
    return map( (ring mat)^(numRows mat) ,(ring mat)^(numColumns mat), mat );
@@ -1008,7 +1022,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
    --
    blackBox.knownPointProperties = ()->
    (   
-      return unique apply (keys pointProperties, key->toString key);
+      return sort unique apply (keys pointProperties, key->toString key);
    );
 
 
@@ -1235,7 +1249,8 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
    (
      propertyName := toString  propertySymbol;
 
-      acceptedNumParameters := acceptedParameterNumber propertyMethod;
+
+      acceptedNumParameters := guessAcceptedParameterNumber propertyMethod;
 
       if not (acceptedNumParameters==2 or  acceptedNumParameters==1 ) then 
           error (" provided method " | propertyName | " expected to accept 1 or 2 parameters:  ( blackbox, point ),  or (point) , but the passed one seems to accept " | toString acceptedNumParameters);
@@ -1292,7 +1307,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
            propertySymbol := getPropertySymbol(propertyName);
            outerSetPointProperty( propertySymbol, propertyMethod );
       ) 
-      else ( error "property"| toString propertyName | "does not exist.");
+      else ( error ("point property "| toString propertyName | " does not exist.") );
       return blackBox.getUpdatedBlackBox(blackBox);
    );
 
@@ -1316,7 +1331,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
       (
            outerSetPointProperty( propertySymbol, propertyMethod );
       )
-      else error(" method "| propertyName |" seems already registered, please use 'updatePointProperty' for updating.");
+      else error(" key  "| propertyName |"  exists already. If it is a point property, please use 'updatePointProperty' for updating.");
       return blackBox.getUpdatedBlackBox(blackBox);
    );
 
@@ -1340,12 +1355,12 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
                   getGlobalSymbol( BlackBoxIdeals.Dictionary, "knownPointProperties" ),
                   getGlobalSymbol( BlackBoxIdeals.Dictionary, "knownPointPropertiesAsSymbols" ),
                   getGlobalSymbol( BlackBoxIdeals.Dictionary, "hasPointProperty" ),
-                  getGlobalSymbol( BlackBoxIdeals.Dictionary, "pointProperty" ),
+                  --getGlobalSymbol( BlackBoxIdeals.Dictionary, "pointProperty" ),
                   getGlobalSymbol( BlackBoxIdeals.Dictionary, "registerPointProperty" ),
                   getGlobalSymbol( BlackBoxIdeals.Dictionary, "setSingularityTestOptions" ),
                   getGlobalSymbol( BlackBoxIdeals.Dictionary, "rpp" ), 
                   getGlobalSymbol( BlackBoxIdeals.Dictionary, "upp" ), 
-                  getGlobalSymbol( BlackBoxIdeals.Dictionary, "updatePointProperty" ),
+                  getGlobalSymbol( BlackBoxIdeals.Dictionary, "updatePointProperty" )
                   ----getGlobalSymbol( BlackBoxIdeals.Dictionary, "getUpdatedBlackBox" ),
                   --getGlobalSymbol( BlackBoxIdeals.Dictionary, "unknownIsValid" )
             };
@@ -1360,12 +1375,14 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
     --                getUpdatedBlackBox,
     --                unknownIsValid
     --              };
-      return methods;
+
+        sortedMethods := sort apply(methods, i-> ( toString i, i ));
+        sortedMethods = apply(sortedMethods, i->(i_1));
+        return sortedMethods;  
+        --return methods;
    );
   
   
-  -- that is not correct. 1. sometmes the numGenerator-property does not exist and 2. it depends on valuesAt(?)
-
   blackBox.knownProperties = ()->
    (  
       properties := {};
@@ -1377,7 +1394,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
   );
 
    -- 'knownAttributes' returns a list of known Attributes. 
-   -- (computed as 'keys blackBox' \ { knownMethods(), knownPointProperties(), knownPointPropertiesAsSymbols() }
+   -- (computed as 'keys blackBox which are not Functions' \ {knownPointPropertiesAsSymbols() }
    blackBox.knownAttributes = ()->
    (
          all :=  keysWithoutSymbols blackBox;
@@ -1391,7 +1408,9 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
          for symb in toRemove do
            all = delete(symb,all);
 
-         return all;  
+         sortedAttributes := sort apply(all, i-> ( toString i, i ));
+         sortedAttributes = apply(sortedAttributes, i->(i_1));
+         return sortedAttributes;  
      );
 
 
@@ -2025,8 +2044,9 @@ apply(100,i->(
 
 assert  B2.isZeroAt(line)
 
+
 assert(sub(B.jacobian,line)== sub(jacobian I,line))
-assert (B.jacobianAt(line) == sub(jacobian I,line))
+assert (B.jacobianAt(line) == dropDegreeInfo( sub(jacobian I,line)) )
 
 
 ///
@@ -2330,6 +2350,8 @@ doc ///
         Text
             Implements an unified interface for some explicit and implicit given ideals \break  
             \break
+            Purpose: use a unified interface for finite field experiments; see FiniteFieldExperiments and padicLift package
+            \break
             Currently three BlackBox constructors are available:\break
             \,\,  \bullet \,   @TO blackBoxParameterSpace@  \break
             \,\,  \bullet \,   @TO blackBoxIdeal@  \break
@@ -2337,10 +2359,7 @@ doc ///
 
             All black boxes implement the interface of @TO BlackBoxParameterSpace @ \break
             If the black box was created from an ideal or an evaluation, it has additional properties, see  @TO BlackBoxIdeal @ \break  
-         
-            The blackbox interface allows implementation of some algorithms e.g. padic lifting. 
-            
-            
+                        
       
     Caveat
          the black box properties are write-protected to prevent accidental modification  by the user; \break 
