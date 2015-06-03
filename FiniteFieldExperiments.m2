@@ -438,7 +438,6 @@ ExperimentData + ExperimentData := ExperimentData=>(ed1,ed2)->
 
    if ( ed1.coefficientRing === ed2.coefficientRing and
         ed1.propertyList    == ed2.propertyList and
-        keys ed1.countData      == keys ed2.countData and    
         ed1.isRandom        == ed2.isRandom  ) then 
   (
     edNew := new ExperimentData from ed1;
