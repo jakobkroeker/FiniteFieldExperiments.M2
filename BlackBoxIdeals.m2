@@ -2679,6 +2679,12 @@ doc ///
           R = QQ[x,y]
           bbI = blackBoxIdeal ideal(x^2,y^3);
           bbI.valuesAt(matrix{{2,3_QQ}})
+        Text
+          valuesAt is a special pointProperty
+          in the sense that the package uses them to compute other
+          point properties. Therefore
+          updating valuesAt triggers updates for 
+          isZeroAt, numGenerators, jacobianAt, rankJacobianAt. 
     Caveat
           This works only with black box ideals, since they contain an algorithm
           that can evaluate the generators of the black box ideal. A black box parameter spaces
@@ -2723,6 +2729,12 @@ doc ///
           bbI.isZeroAt(origin)
           bbI.jacobianAt(origin)
           bbI.isCertainlySingularAt(origin)
+        Text
+          jacobianAt is a special pointProperty
+          in the sense that the package uses it to compute other
+          pointProperties. Therefore an update of 
+          jacobianAt triggers an update 
+          for 'rankJacobianAt'.  
     Caveat
           This works only with black box ideals, since they contain an algorithm
           that can evaluate the generators of the black box ideal. A black box parameter spaces
@@ -2839,9 +2851,21 @@ doc ///
           bbC.product(matrix{{5,6_QQ}})
           bbC.upp("product",(point) -> product flatten entries point);
           bbC.product(matrix{{5,6_QQ}})
+        Text
+          It is also possible to update pointProperties that are
+          predefined by the package. Here
+          valuesAt and jacobianAt are special pointProperties,
+          in the sense that the package uses them to compute other
+          pointProperties. Therefore
+          updating valuesAt triggers updates for 
+          isZeroAt, numGenerators, jacobianAt, rankJacobianAt.
+          Similarily updating jacobianAt triggers an update 
+          for 'rankJacobianAt'.  
     SeeAlso
          registerPointProperty
          rpp
+         valuesAt
+         jacobianAt
 ///
 
 doc ///
@@ -2905,8 +2929,12 @@ doc ///
         : List       
     Description
         Text
-          Every BlackBoxIdeal has some properties
-          provided by the package:
+          Every BlackBoxIdeal has some attributes
+          provided by the package 
+          (no new attributes can be defined by the user).
+          The difference between attributes and methods is,
+          that an attribute is a constant while a property is 
+          a function.
         Example
           R = QQ[x,y]
           bbI = blackBoxIdeal ideal (x^2-y^3);
@@ -2914,7 +2942,10 @@ doc ///
         Text
           Lets look at these attributes in turn
         Example
+          bbI.coefficientRing
+          bbI.equations
           bbI.ideal
+          bbI.jacobian
           bbI.numVariables
           bbI.ring
           bbI.type
@@ -2922,9 +2953,6 @@ doc ///
           The type can also be "BlackBoxParameterSpace"  
         Example
           bbI.unknowns
-          bbI.equations
-          bbI.coefficientRing
-          bbI.jacobian
         Text
           Lets now look at a blackBoxIdeal defined by an
           evaluation. The standart example is the determinant
@@ -2947,11 +2975,95 @@ doc ///
           bbP.knownAttributes()
         Text
           For a blackPointParameterSpace "ring" and "unknowns" are 
-          missing since there are now equations (not even implicit ones)  
+          missing since there are no equations (not even implicit ones)  
     SeeAlso
          knownPointProperties
          knownMethods
 ///
+
+doc ///
+    Key
+        "knownMethods"
+    Headline
+        list the methods of a black box 
+    Usage   
+        bbI.knownMethods()
+    Inputs  
+        bbI: BlackBoxParameterSpace
+    Outputs
+        : List       
+    Description
+        Text
+          Every BlackBoxIdeal has some methods
+          provided by the package 
+          (no new attributes can be defined by the user).
+          The difference between attributes and methods is,
+          that an attribute is a constant while a property is 
+          a function.
+        Example
+          R = QQ[x,y]
+          bbI = blackBoxIdeal ideal (x^2-y^3);
+          bbI.knownMethods()
+        Text
+          Each of these methods has their own documentation node.
+    SeeAlso
+         hasPointProperty
+         knownAttributes
+         knownPointProperties
+         knownPointPropertiesAsSymbols
+         registerPointProperty
+         rpp
+         setSingularityTestOptions
+         updatePointProperty
+         upp
+///
+
+doc ///
+    Key
+        "knownPointProperties"
+    Headline
+        list the pointProperties of a black box 
+    Usage   
+        bbI.knownPointProperties()
+    Inputs  
+        bbI: BlackBoxParameterSpace
+    Outputs
+        : List       
+    Description
+        Text
+          A pointProperty of a black box is a function that depends
+          only on the coordinates of a point in the parameter space. 
+        Example
+          R = QQ[x,y]
+          bbI = blackBoxIdeal ideal (x^2-y^3);
+          bbI.knownPointProperties()
+          bbI.isZeroAt(matrix{{0,0_QQ}})
+          bbI.jacobianAt(matrix{{1,1_QQ}})
+          bbI.isProbablySmoothAt(matrix{{1,1_QQ}})
+          bbI.isCertainlySingularAt(matrix{{0,0_QQ}})
+        Text
+          Each of these pointProperties has their own documentation node.
+          New pointProperties can be defined by user using registerPointProperty.
+          Exisiting pointProperties can be changed by using 
+          updatePointProperty. 
+          
+          valuesAt and jacobianAt are special pointProperties,
+          in the sense that the package uses them to compute other
+          point properties. Therefore
+          updating valuesAt triggers updates for 
+          isZeroAt, numGenerators, jacobianAt, rankJacobianAt.
+          Similarily updating jacobianAt triggers an update 
+          for 'rankJacobianAt'.
+    SeeAlso
+      isCertainlySingularAt
+      isProbablySmoothAt
+      isZeroAt
+      jacobianAt
+      rankJacobianAt
+      valuesAt
+      registerPointProperty
+      updatePointProperty
+ ///
 
 
 
