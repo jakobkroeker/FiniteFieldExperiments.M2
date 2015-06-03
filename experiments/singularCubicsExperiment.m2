@@ -186,7 +186,7 @@ e.tryProperty("multiplicitiesSingularLocusAt")
 e.clear() 
 -- this erases statistics
 e.collectedCount()
-e.countData()
+e.count()
 -- NICE TO HAVE: e.clear does not need to erase collected points. They only
 -- need to be reclassified if wached properties are added or removed
 e.watchedProperties()
@@ -228,7 +228,7 @@ e.estimateStratification()
 -- lets do more points
 time e.run(10000)    
 -- used 94.8239 seconds
-e.countData()
+e.count()
 e.estimateStratification()     
 
 -- notice that we only count point on the open stratum corresponding

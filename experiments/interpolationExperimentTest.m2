@@ -31,7 +31,7 @@ e.interpolatedIdealKeys(point0,10)
 e.interpolatedIdealKeys(point0)
 
 e.printInterpolatedIdeals()
-e.countData()
+e.count()
 bbI.isCertainlySingularAt(point0)
 bbI.knownPointProperties()
 e.setMembershipPrecision(2)
