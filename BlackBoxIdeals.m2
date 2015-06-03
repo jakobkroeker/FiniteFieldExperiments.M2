@@ -155,7 +155,8 @@ undocumented {
     unknownIsValid,
     unknowns,
     numTrials,
-    pointProperty -- internal function
+    pointProperty, -- internal function
+    guessAcceptedParameterNumber -- internal function
 } 
 
 
@@ -2582,8 +2583,7 @@ doc ///
           long enough a longer jet can be found (lying on one
           of the branches at the origin):
         Example        
-            jetAt(bbI,origin,3,200)  
-      
+            jetAt(bbI,origin,3,200) 
 ///
 
 
@@ -3120,6 +3120,64 @@ doc ///
           One can check whether a
           given cubic is singular without calculating the value of the 
           corresponding discriminant. 
+///
+
+doc ///
+    Key
+        "setSingularityTestOptions"
+    Headline
+        change how singularities are detected
+    Usage   
+        bbI.setSingularityTestOptions(precision,numTrials)
+    Inputs  
+        bbI: BlackBoxIdeal
+        precision: ZZ
+             length of jets used
+        numTrials: ZZ
+             number of such jets required     
+    Outputs
+        : Boolean
+    Description
+        Text
+          To test wether a given point P on a variety given by
+          a black box ideal is smooth, the package tries to construct
+          2 jets of length 10 starting at P. If the
+          variety is smooth at P such jets always exists. If the variety is
+          singular at P a generic jet can not be extended to arbitrary length.
+          If the required number of jets can not be found the point property 
+          isCertainlySingular has the value true. If the required number 
+          of jets can be found the point property isProbablySmooth has the
+          value true.
+        Example
+          R = QQ[x,y]
+          I = ideal(x^5-y^7);
+          bbI = blackBoxIdeal I;
+          smoothPoint = matrix{{8,4_QQ}}
+          bbI.isProbablySmoothAt(smoothPoint)
+          origin = matrix{{0,0_QQ}}
+          bbI.isProbablySmoothAt(origin)
+          bbI.isCertainlySingularAt(origin)
+        Text
+          Since the singularity of the above curve
+          at the origin is of small degree
+          it is detected by looking at jets of length 10.
+          If we change the test options to look only at jets of length 4,
+          the singularity can not be detected.
+        Example
+          bbI.setSingularityTestOptions(4,1)
+          bbI.isCertainlySingularAt(origin)
+        Text
+          The construction of jets is time intensive. For many applications
+          precision=2 and numTrials=1 is sufficient, even if this only detects
+          the most simple singularities.  
+    Caveat
+          This works only with black box ideals, since they contain an algorithm
+          that can calculate the derivative of the equations at a given point
+          (jacobianAt). This is needed to construct jets iteratively.
+    SeeAlso
+          isCertainlySingularAt
+          isProbablySmoothAt
+          jetAt
 ///
 
 end
