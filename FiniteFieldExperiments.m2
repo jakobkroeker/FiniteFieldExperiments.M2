@@ -51,7 +51,7 @@ FiniteFieldExperimentsProtect = ()->
   protect setPointIterator;
   protect setPointGenerator;
   protect printInterpolatedIdeals;
-  protect clearRecordList;
+  protect clearWatchedProperties;
   protect testDebug;
   protect next;
   protect begin;
@@ -132,7 +132,7 @@ FiniteFieldExperimentsExport  = ()->
   exportMutable (membershipPrecision);
   exportMutable (setMembershipPrecision);
 
-  exportMutable( clearRecordList);
+  exportMutable( clearWatchedProperties);
   exportMutable( testDebug);
   exportMutable( next);
   exportMutable( begin);
@@ -1155,7 +1155,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
       );   
    );
 
-  experiment.clearRecordList = (   )->
+  experiment.clearWatchedProperties = (   )->
   (
       setRecordedPropertiesInternal({});
   );
