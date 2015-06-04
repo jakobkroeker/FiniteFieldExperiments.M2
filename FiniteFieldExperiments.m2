@@ -29,7 +29,6 @@ export {
   "estimateCodim", 
   "estimateNumberOfComponents",              
   "createInterpolatedIdeal",
-  "createInterpolationImage",
   "createIterator",
   "createRandomPointIterator",
   "Map",
@@ -41,7 +40,8 @@ export {
   "RandomExperiment",
   "InterpolationImage",
   "FFELogger",
-  "ringCardinality"
+  "ringCardinality",
+  "createInterpolatedImage"
 }
 
 FiniteFieldExperimentsProtect = ()->
@@ -71,14 +71,12 @@ FiniteFieldExperimentsProtect = ()->
   protect setIsInteresting;
   protect isInteresting;
   protect interpolatedIdeals;
-  protect maxDegree;
 
   protect getExperimentData;
   protect setRecordedProperties;
   protect recordProperty;
   protect ignoreProperty;
   protect ignoreProperties;
-  protect observedProperties;
 
   protect update;
   protect updateExperiment;
@@ -97,11 +95,9 @@ FiniteFieldExperimentsProtect = ()->
   protect propertyAt;
 
   protect tryProperty;
-  protect bbi;
 
   protect recordedProperties;
   protect watchedProperties;
-  protect useProperties;
   protect useJacobianAt;
   protect usedJacobianAt;
 
@@ -149,7 +145,6 @@ FiniteFieldExperimentsExport  = ()->
   exportMutable(coefficientRingCardinality);
   exportMutable( pointLists );
   exportMutable( pointsByKey );
-  exportMutable( maxDegree ) ;
 
   exportMutable( countData );
 
@@ -161,7 +156,6 @@ FiniteFieldExperimentsExport  = ()->
   exportMutable( recordProperty);
   exportMutable( ignoreProperty);
   exportMutable( ignoreProperties);
-  exportMutable( observedProperties);
 
 
   exportMutable( update);
@@ -179,11 +173,9 @@ FiniteFieldExperimentsExport  = ()->
  exportMutable( propertyAt);
 
  exportMutable( tryProperty );
- exportMutable( bbi );
 
  exportMutable( recordedProperties);
  exportMutable( watchedProperties);
- exportMutable( useProperties);
  exportMutable( useJacobianAt);
  exportMutable( usedJacobianAt);
  
@@ -204,11 +196,44 @@ FiniteFieldExperimentsExport  = ()->
  exportMutable (createMap);
 ) 
 
+undocumented {
+begin, 			--document in random point iterator, later.
+next, 			 --document in random point iterator, later.
+point, 			--document in random point iterator, later.
+reset, 			--iterator
+compatible, --internal
+createMap,
+estimateNumberOfComponents, --internal
+estimateCodim, --deprecated
+ringCardinality, --internal
+experiment,      --internal
+experimentData, --internal
+getExperimentData,
+isInteresting, --internal
+interpolatedIdeals, --internal
+isRandom, --internal
+jacobianAtKey, --document later, redesign
+usedJacobianAt, -- for user information, maybe improve and then document
+loadData,  --IO; in development
+propertyAt, --unnecessary
+saveData, --IO; in development
+savedExperimentData412398472398473923847, --IO; in development
+testDebug,
+update, --intern
+updateExperiment, -- newFeature not ready.
+FFELogger, -- internal for debug.
+recordProperties,    -- replace with watchProperties
+recordProperty,      -- replace with watchProperty
+recordedProperties,  -- replace with watchedProperties
+
+}
+
+
 needsPackage "SimpleDoc";
 needsPackage "Text";
 
 
-exportMutable(savedExperimentData412398472398473923847 );
+exportMutable( savedExperimentData412398472398473923847 );
 
 FiniteFieldExperimentsExport();
 
