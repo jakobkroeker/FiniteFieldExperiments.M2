@@ -286,26 +286,29 @@ new InterpolatedIdeal from MutableHashTable :=  (InterpolatedIdealAncestor,l)->
 
 new InterpolatedIdeal from List :=  (InterpolatedIdealAncestor,l)->
 (  
-     return new InterpolatedIdeal from l;
+     return new InterpolatedIdeal from new MutableHashTable from l;
 );
 
 
 
-createInterpolatedIdeal = method();
-createInterpolatedIdeal( Ideal,ZZ,String ) := InterpolatedIdeal => 
+createInterpolatedIdealObj = method();
+createInterpolatedIdealObj( Ideal,ZZ,String ) := InterpolatedIdeal => 
                        (I,maxDegree,name)->
 (
-     return new InterpolatedIdeal from {
+     result := new InterpolatedIdeal from {
       "ideal" => I,
       "maxDegree" => maxDegree,
       "name" => name
      };
+     return result;
 )
 
---createInterpolatedIdeal (ZZ,BlackBoxIdeal,Matrix) := InterpolatedIdeal => (maxDegree, BB, point)->
---(
---   createInterpolatedIdeal ( interpolateBB(maxDegree,BB,point), maxDegree, "" )
---)
+createInterpolatedIdeal = method();
+--internal method
+createInterpolatedIdeal (ZZ,BlackBoxIdeal,Matrix) := InterpolatedIdeal => (maxDegree, BB, point)->
+(
+   createInterpolatedIdealObj ( interpolateBB(maxDegree,BB,point), maxDegree, "" )
+)
 
 
 
@@ -318,7 +321,7 @@ createInterpolatedImage = method();
 
 -- observer observable längst fällig!
 
-createInterpolatedImage(Experiment,Map) := HashTable => (experiment,imageRing, mapdata)->
+createInterpolatedImage(Experiment,Ring, Map) := HashTable => (experiment,imageRing, mapdata)->
 (
     interpolation := new MutableHashTable;
 
@@ -342,7 +345,10 @@ createInterpolatedImage(Experiment,Map) := HashTable => (experiment,imageRing, m
         localInterpolatedIdeals := {};
         for point in (interpolation.experiment()).points() do
         ( 
-            if (interpolation.blackBoxIdeal()).isCertainlySingularAt(point) then continue;
+             if (interpolation.blackBoxIdeal()).isCertainlySingularAt(point) then 
+             (
+                continue;
+             );
              -- check if point is already on one of the known components
              bIsOnComponent := false;
              for interpolData in interpolatedIdeals do
@@ -356,12 +362,17 @@ createInterpolatedImage(Experiment,Map) := HashTable => (experiment,imageRing, m
                      );
                  );
              );
-             if bIsOnComponent then continue;
+             if bIsOnComponent then 
+             (
+                 continue;
+             );
+
 
              localInterpolatedIdeals = localInterpolatedIdeals | { createInterpolatedIdeal (maxDegree, interpolation.blackBoxIdeal(), point)  };             
+
         );
         interpolatedIdeals = new MutableHashTable from 
-           apply ( #localInterpolatedIdeals, idx-> (("ideal_" |toString idx ) => interpolatedIdeals#idx ) ) ;
+           apply ( #localInterpolatedIdeals, idx-> (("ideal_" |toString idx ) => localInterpolatedIdeals#idx ) ) ;
        
     );
 

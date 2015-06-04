@@ -50,7 +50,7 @@ time e.run(10)
 -- used 48.6921 seconds (for 10)
 
 e.watchedProperties()
-e.countData()
+e.count()
 
 time e.createAllInterpolatedIdeals(4,2)
 
