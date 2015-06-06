@@ -107,18 +107,17 @@ FiniteFieldExperimentsProtect = ()->
   protect stratificationIntervalView;
   protect countsByCount;  --protect countsByCount;
 
- 
-  --protect  estimateStratification2;
   protect experimentData; 
   protect isRandom;
   protect compatible;
   protect membershipPrecision;
   protect setMembershipPrecision;
-);
+  --protect createMapHelper;
+)
 
  
 
-FiniteFieldExperimentsExport = ()->
+FiniteFieldExperimentsExport  = ()->
 (
     exportMutable( bareIdeals );
   exportMutable(experiment);
@@ -195,7 +194,7 @@ FiniteFieldExperimentsExport = ()->
  
  exportMutable (  createExperimentData );
  exportMutable (createMapHelper);
-);
+) 
 
 undocumented {
 estimateStratification2, -- deprecated
@@ -275,9 +274,8 @@ poissonEstimate(ZZ) := HashTable => opts -> (numPoints) ->
 
 TEST ///
   loadPackage ("FiniteFieldExperiments",Reload=>true)
-  FiniteFieldExperimentsProtect()
   debug FiniteFieldExperiments
-
+  FiniteFieldExperimentsProtect()
   assert ( (poissonEstimate(16,"confidence" => 2)).min == 8  );
   assert ( (poissonEstimate(16,"confidence" => 2)).max == 24 );
 ///
@@ -288,9 +286,8 @@ TEST ///
 
 TEST ///
   loadPackage ("FiniteFieldExperiments",Reload=>true)
-  FiniteFieldExperimentsProtect()
   debug FiniteFieldExperiments
-
+  FiniteFieldExperimentsProtect()
   assert (poissonEstimate(16,"confidence"=>2) == new Interval from (8,24))
 ///
 
