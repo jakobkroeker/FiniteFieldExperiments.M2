@@ -24,8 +24,6 @@ newPackage(
 
 -- Map eigentlich Morphism
 export {
-  "FiniteFieldExperimentsExport",
-  "FiniteFieldExperimentsProtect",
   "estimateDecomposition", 
   "estimateStratification",
   "estimateCodim", 
