@@ -39,7 +39,7 @@ new MapHelper from Matrix := (XXX, mapMatrix) -> (
      --m := rank source mapMatrix;
      --xxx := symbol xxx;    -- todo: get symbol in user space?
      --imageRing := K[xxx_1..xxx_m];
-	 imageRing := null; 
+     imageRing := null; 
      return createMapHelper(mapMatrix, imageRing);
 );
 
@@ -379,7 +379,7 @@ createInterpolatedImage(Experiment,Ring, MapHelper) := HashTable => (experiment,
              );
 
              localInterpolatedIdeals = localInterpolatedIdeals | { createInterpolatedIdeal (maxDegree, interpolation.blackBoxIdeal(), point, ("ideal_" |toString idealCount ))  };             
-		     idealCount = idealCount +1 ;
+             idealCount = idealCount +1 ;
 
         );
         interpolatedIdeals = new MutableHashTable from 

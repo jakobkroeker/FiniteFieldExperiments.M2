@@ -119,111 +119,111 @@ FiniteFieldExperimentsProtect = ()->
 
 FiniteFieldExperimentsExport  = ()->
 (
-    exportMutable("bareIdeals");
-  exportMutable("experiment");
-  exportMutable("reset");
-  exportMutable("setPointIterator");
-  exportMutable("setPointGenerator");
-  exportMutable("printInterpolatedIdeals");
-  exportMutable("membershipPrecision");
-  exportMutable("setMembershipPrecision");
+    exportMutable(bareIdeals);
+  exportMutable(experiment);
+  exportMutable(reset);
+  exportMutable(setPointIterator);
+  exportMutable(setPointGenerator);
+  exportMutable(printInterpolatedIdeals);
+  exportMutable(membershipPrecision);
+  exportMutable(setMembershipPrecision);
 
-  exportMutable("clearWatchedProperties");
-  exportMutable("testDebug");
-  exportMutable("next");
-  exportMutable("begin");
-  exportMutable("count");
-  exportMutable("point");
-  exportMutable("collectedCount");
-  exportMutable("pointKeys");
-  exportMutable("points");
-  exportMutable("trials");
-  exportMutable("interpolatedIdeals");
-  exportMutable("createAllInterpolatedIdeals");
-  exportMutable("interpolatedIdealKeys");
+  exportMutable(clearWatchedProperties);
+  exportMutable(testDebug);
+  exportMutable(next);
+  exportMutable(begin);
+  exportMutable(count);
+  exportMutable(point);
+  exportMutable(collectedCount);
+  exportMutable(pointKeys);
+  exportMutable(points);
+  exportMutable(trials);
+  exportMutable(interpolatedIdeals);
+  exportMutable(createAllInterpolatedIdeals);
+  exportMutable(interpolatedIdealKeys);
  
-  exportMutable("coefficientRingCardinality");
-  exportMutable("pointLists");
-  exportMutable("pointsByKey");
+  exportMutable(coefficientRingCardinality);
+  exportMutable(pointLists);
+  exportMutable(pointsByKey);
 
-  exportMutable("countData");
+  exportMutable(countData);
 
-  exportMutable("setIsInteresting");
-  exportMutable("isInteresting");
+  exportMutable(setIsInteresting);
+  exportMutable(isInteresting);
 
-  exportMutable("getExperimentData");
-  exportMutable("setRecordedProperties");
-  exportMutable("recordProperty");
-  exportMutable("ignoreProperty");
-  exportMutable("ignoreProperties");
+  exportMutable(getExperimentData);
+  exportMutable(setRecordedProperties);
+  exportMutable(recordProperty);
+  exportMutable(ignoreProperty);
+  exportMutable(ignoreProperties);
 
 
-  exportMutable("update");
-  exportMutable("updateExperiment");
-  exportMutable("saveData");
-  exportMutable("loadData");
+  exportMutable(update);
+  exportMutable(updateExperiment);
+  exportMutable(saveData);
+  exportMutable(loadData);
 
- exportMutable("propertyList");
- exportMutable("clear");
- exportMutable("jacobianAtKey");
- exportMutable("watchProperties");
- exportMutable("watchProperty");
- exportMutable("recordProperties");
- exportMutable("propertyName");
- exportMutable("propertyAt");
+ exportMutable(propertyList);
+ exportMutable(clear);
+ exportMutable(jacobianAtKey);
+ exportMutable(watchProperties);
+ exportMutable(watchProperty);
+ exportMutable(recordProperties);
+ exportMutable(propertyName);
+ exportMutable(propertyAt);
 
- exportMutable("tryProperty");
+ exportMutable(tryProperty);
 
- exportMutable("recordedProperties");
- exportMutable("watchedProperties");
- exportMutable("useJacobianAt");
- exportMutable("usedJacobianAt");
+ exportMutable(recordedProperties);
+ exportMutable(watchedProperties);
+ exportMutable(useJacobianAt);
+ exportMutable(usedJacobianAt);
  
 
-  exportMutable("minPointsPerComponent");
-  exportMutable("setMinPointsPerComponent");
-  exportMutable("stratificationIntervalView");
+  exportMutable(minPointsPerComponent);
+  exportMutable(setMinPointsPerComponent);
+  exportMutable(stratificationIntervalView);
 
  
-  exportMutable("countsByCount");
+  exportMutable(countsByCount);
 
- exportMutable("estimateStratification2");
- exportMutable("experimentData");
- exportMutable("isRandom");
- exportMutable("compatible");
+ exportMutable(estimateStratification2);
+ exportMutable(experimentData);
+ exportMutable(isRandom);
+ exportMutable(compatible);
  
- exportMutable("createExperimentData");
- exportMutable("createMapHelper");
+ exportMutable(createExperimentData);
+ exportMutable(createMapHelper);
 ) 
 
 undocumented {
 estimateStratification2, -- deprecated
-propertyList,  --internal variable
-propertyName,  --internal variable
-countData,     --internal variable
-createExperimentData, --internal, only used for IO
-createIterator, --document in random point iterator, later.
+propertyList,              --internal variable
+propertyName,              --internal variable
+countData,                 --internal variable
+createExperimentData,      --internal, only used for IO
+createIterator,            --document in random point iterator, later.
 createRandomPointIterator, --document in random point iterator, later.
 begin,                         --document in random point iterator, later.
 next,                          --document in random point iterator, later.
 point,                         --document in random point iterator, later.
 reset,                         --iterator
-compatible,   --internal method
+compatible,           --internal method
 createMapHelper,
-estimateNumberOfComponents, --internal
-estimateCodim,   --deprecated
-ringCardinality, --internal
-experiment,      --internal
-experimentData,  --internal
+estimateNumberOfComponents,    --internal
+estimateCodim,      --deprecated
+ringCardinality,    --internal
+experiment,         --internal
+experimentData,     --internal
 getExperimentData,
 isInteresting,      --internal
 interpolatedIdeals, --internal
-isRandom,  --internal
-jacobianAtKey,  --document later, redesign
-usedJacobianAt, -- for user information, maybe improve and then document
-loadData,   --IO; in development
-propertyAt, --unnecessary
-saveData,   --IO; in development
+isRandom,           --internal
+jacobianAtKey,      --document later, redesign
+usedJacobianAt,     -- for user information, maybe improve and then document
+loadData,           --IO; in development
+propertyAt,         --unnecessary/deprecated
+saveData,           --IO; in development
 savedExperimentData412398472398473923847, --IO; in development
 testDebug,
 update,              --intern
@@ -240,7 +240,7 @@ needsPackage "SimpleDoc";
 needsPackage "Text";
 
 
-exportMutable("savedExperimentData412398472398473923847" );
+exportMutable(savedExperimentData412398472398473923847);
 
 FiniteFieldExperimentsExport();
 

@@ -445,7 +445,7 @@ nextLift (HashTable, Matrix)  := Matrix=> (systemData , vanishingCoordinates) ->
 nextLift (Ideal, Matrix)  := Matrix=> (equationsIdeal , vanishingCoordinates) ->
 (
         if  ((coefficientRing ring equationsIdeal ) =!= ZZ) then error " nextLift() expects equationsIdeal in ZZ";
-	return nextLift(blackBoxIdeal(equationsIdeal), vanishingCoordinates);
+    return nextLift(blackBoxIdeal(equationsIdeal), vanishingCoordinates);
 )
 
 
@@ -517,7 +517,7 @@ liftPoint =method();
 liftPoint (Ideal, Matrix, ZZ)  := Matrix=> (equationsIdeal , vanishingCoordinates,numLiftDepth) ->
 (
         if  ((coefficientRing ring equationsIdeal ) =!= ZZ) then error " liftPoint() expects equationsIdeal in ZZ";
-	return liftPoint(blackBoxIdeal(equationsIdeal), vanishingCoordinates,numLiftDepth);
+    return liftPoint(blackBoxIdeal(equationsIdeal), vanishingCoordinates,numLiftDepth);
 )
 
 liftPoint (HashTable, Matrix, ZZ)  := Matrix=>  ( systemData,  vanishingCoordinates , numLiftDepth) -> (
@@ -547,7 +547,7 @@ doc ///
         liftPoint( B, P, liftPrecision)
     Inputs
         I: Ideal 
-	     ideal of system equations with integer coefficient ring (@TO ZZ@)
+         ideal of system equations with integer coefficient ring (@TO ZZ@)
         B: HashTable
              variety blackbox, see   @TO blackBoxIdeal@              
         P: Matrix
@@ -580,10 +580,10 @@ doc ///
            \break 4. check wether this is really a solution mod 11. 
         Example
             sub(IZZ, point)
-	Text
+    Text
            \break 5. check wether this is a smooth isolated solution mod 11. 
         Example
-	    JZZ = jacobian IZZ 
+        JZZ = jacobian IZZ 
             rank sub(JZZ, point)==1
         Text    
             \break 6. compute the padic approximation  mod p^{2^4}. 
@@ -1322,7 +1322,7 @@ testComputeSingleMinPolyEx=()->
 computeMinPolys = method (Options=>{"options"=>new LiftOptions});
 computeMinPolys (Ideal, Matrix, List) := opts->(equationsIdeal, solutionPoint, unknownList)->
 (
-	return computeMinPolys( blackBoxIdeal(equationsIdeal),solutionPoint,unknownList);
+    return computeMinPolys( blackBoxIdeal(equationsIdeal),solutionPoint,unknownList);
 )
 
 computeMinPolys (HashTable, Matrix, List) := opts->(systemData, solutionPoint, unknownList)->
