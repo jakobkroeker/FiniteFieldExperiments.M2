@@ -46,6 +46,7 @@ export {
 
 FiniteFieldExperimentsProtect = ()->
 (
+  protect bareIdeals;
   protect experiment;
   protect reset;
   protect setPointIterator;
@@ -120,6 +121,7 @@ FiniteFieldExperimentsProtect = ()->
 
 FiniteFieldExperimentsExport  = ()->
 (
+    exportMutable( bareIdeals );
   exportMutable(experiment);
   exportMutable(reset);
   exportMutable (setPointIterator);
@@ -197,35 +199,42 @@ FiniteFieldExperimentsExport  = ()->
 ) 
 
 undocumented {
-begin, 			--document in random point iterator, later.
-next, 			 --document in random point iterator, later.
-point, 			--document in random point iterator, later.
-reset, 			--iterator
-compatible, --internal
+estimateStratification2, -- deprecated
+propertyList,  --internal variable
+propertyName,  --internal variable
+countData,     --internal variable
+createExperimentData, --internal, only used for IO
+createIterator, --document in random point iterator, later.
+createRandomPointIterator, --document in random point iterator, later.
+begin,                         --document in random point iterator, later.
+next,                          --document in random point iterator, later.
+point,                         --document in random point iterator, later.
+reset,                         --iterator
+compatible,   --internal method
 createMap,
 estimateNumberOfComponents, --internal
-estimateCodim, --deprecated
+estimateCodim,   --deprecated
 ringCardinality, --internal
 experiment,      --internal
-experimentData, --internal
+experimentData,  --internal
 getExperimentData,
-isInteresting, --internal
+isInteresting,      --internal
 interpolatedIdeals, --internal
-isRandom, --internal
-jacobianAtKey, --document later, redesign
+isRandom,  --internal
+jacobianAtKey,  --document later, redesign
 usedJacobianAt, -- for user information, maybe improve and then document
-loadData,  --IO; in development
+loadData,   --IO; in development
 propertyAt, --unnecessary
-saveData, --IO; in development
+saveData,   --IO; in development
 savedExperimentData412398472398473923847, --IO; in development
 testDebug,
-update, --intern
-updateExperiment, -- newFeature not ready.
-FFELogger, -- internal for debug.
-recordProperties,    -- replace with watchProperties
-recordProperty,      -- replace with watchProperty
-recordedProperties,  -- replace with watchedProperties
-
+update,              --intern
+updateExperiment,    -- newFeature not ready.
+FFELogger,            -- internal for debug.
+recordProperties,     -- replace with watchProperties
+recordProperty,       -- replace with watchProperty
+recordedProperties,   -- replace with watchedProperties
+setRecordedProperties  -- replace with watchProperties
 }
 
 
@@ -784,6 +793,21 @@ estimateStratification =  (experiment) -> (
       ;
      print "--";
 )
+
+-- deprecated
+estimateStratification2 = (e) -> (
+     --count := e.countData();
+     trials := e.trials();
+     orderK := (e.coefficientRing()).order; -- this must be read from the experimentdata
+     print "--";
+     apply(e.countsByCount(),i->(
+           --print (net((log(trials)-log(i#0))/log(charK))|" <= "|net(i#1)));
+           print (net(round(1,(log(trials)-log(i#0))/log(orderK)))|" <= "|net(i#1)))
+           )
+      ;
+     print "--";
+)
+
 
 
    stratificationIntervalView := (stratificationData )->
@@ -1405,9 +1429,75 @@ TEST ///
 --           )
 --     )
 
+
+
 doc ///
    Key
         Experiment
+   Headline
+        an unified interface to an experiment
+   Description
+         Text
+            The {\tt  Experiment } objects implements the following interface    \break 
+
+            construction :\break
+            \,\, \bullet \, @TO "(NewFromMethod, Experiment, BlackBoxParameterSpace)" @ \break
+            \break \break
+
+            properties \break
+            \,\, \bullet \,{\tt coefficientRing}:  . \break
+            \,\, \bullet \,{\tt coefficientRingCardinality}:  . \break
+            \,\, \bullet \,{\tt collectedCount}: . \break
+            \,\, \bullet \,{\tt count}:  \break
+            \,\, \bullet \,{\tt countsByCount}: \break
+            \,\, \bullet \,{\tt membershipPrecision}:  \break
+            \,\, \bullet \,{\tt minPointsPerComponent}: \break
+            \,\, \bullet \,{\tt points}:  \break
+            \,\, \bullet \,{\tt pointKeys}: \break
+            \,\, \bullet \,{\tt pointLists}:  \break
+            \,\, \bullet \,{\tt pointsByKey}:  \break
+            \,\, \bullet \,{\tt trials}:  \break
+            \,\, \bullet \,{\tt watchedProperties}: \break
+            \,\, \bullet \,{\tt stratificationIntervalView}:  \break
+            \break \break
+
+            methods: \break
+            \,\, \bullet \,{\tt setIsInteresting}: set a filter for points to consider. \break
+            \,\, \bullet \,{\tt setMembershipPrecision}:  \break
+            \,\, \bullet \,{\tt setMinPointsPerComponent}:  \break
+            \,\, \bullet \,{\tt setPointGenerator}: \break
+            \,\, \bullet \,{\tt setPointIterator}:  \break
+            \,\, \bullet \,{\tt useJacobianAt}:  \break
+            \,\, \bullet \,{\tt watchProperties, watchProperty }:  \break
+            \,\, \bullet \,{\tt ignoreProperties,  ignoreProperty }:  \break
+            \,\, \bullet \,{\tt clearWatchedProperties}:  \break
+            \,\, \bullet \,{\tt run}: run the experiment : find interesting points \break
+            \,\, \bullet \,{\tt tryProperty}:  \break
+            \,\, \bullet \,{\tt clear}: \break
+           
+        Text
+            \break  For an example see ...    
+///
+
+
+doc ///
+   Key
+        InterpolatedImage
+   Headline
+        blabla
+   Description
+        Text
+                interpolatedIdealKeys 
+                InterpolationImage 
+                isOnComponent 
+                printInterpolatedIdeals 
+///
+
+doc ///
+   Key
+        "newExperiment"
+        (NewFromMethod, Experiment, BlackBoxParameterSpace)
+        (NewFromMethod, Experiment, Thing)
    Headline
         type to collect data from a finite field experiment
    Usage   
@@ -1422,7 +1512,7 @@ doc ///
             a blackBoxIdeal
    Description
         Text
-            Creates an experiment from a black box, see @TO BlackBoxIdeals@ . The experiment object will keep
+            Creates an experiment from a black box, see @TO BlackBoxIdeals@. The experiment object will keep
             track of all information created when the ideal is evaluated at random points.
             Here is a typical extremely simple minded application:
                 

@@ -987,6 +987,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
      --
      blackBox.pointProperty = method();
 
+     -- get a point property by name
      blackBox.pointProperty (String) := Function =>( prop ) ->
      (
         if not pointProperties#?prop then        
@@ -1463,6 +1464,9 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
    blackBox.type = BlackBoxParameterSpace;
 
    -- a user should not call this method...
+
+   -- return a blackbox {\tt bb } for which all recently registered properties 
+   -- are accessible using the point operator: e.g. if {\tt "bettiAt"} was registered, then it is then accessible as {\tt bb.bettiAt } 
    blackBox.getUpdatedBlackBox  = (bb1)->
    (
        
@@ -1851,7 +1855,7 @@ doc ///
             \,\, \bullet \,{\tt equations}: generators/equations of the original ideal/polynomial system \break
             
         Text
-            \break  For an example see @TO blackBoxIdealFromEvaluation@, @TO blackBoxIdeal @.
+            \break  For an example see @TO blackBoxIdealFromEvaluation@, @TO blackBoxIdeal @.         
 ///
 
 doc ///
@@ -2214,26 +2218,23 @@ doc ///
             \,\, \bullet \,{\tt coefficientRing }: the ring the parameter variables belong to (or embeddable to) \break
             
             Methods:\break 
-            \,\, \bullet \,{\tt knownPointProperties() }: returns a list of all known properties at a point for a blackbox \break
-            \,\, \bullet \,{\tt knownMethods() }: returns a list of all known methods of the blackbox \break 
-            \,\, \bullet \,{\tt knownAttributes() }: returns a list of all known attributes  \break 
-            \,\, \bullet  \,{\tt registerPointProperty(propertyName, propertyMethod) }: \break 
-            \,\, \, \, register a new point property for a BlackBox. \break
-            \,\, \, \, e.g. evaluation at a point. \break
+            \,\, \bullet \,  @TO knownPointProperties@() : returns a list of all known properties at a point for a blackbox \break
+            \,\, \bullet \,  @TO  knownMethods@() : returns a list of all known methods of the blackbox \break 
+            \,\, \bullet \,  @TO knownAttributes@() : returns a list of all known attributes  \break 
+            \,\, \bullet  \, @TO registerPointProperty@(propertyName, propertyMethod) : \break 
+            \,\, \, \, register a new point property for a BlackBox, e.g. evaluation at a point. \break
             \,\, \, \, expected Interface of {\tt propertyMethod} is: \break  
             \,\, \, \, \, (  {\tt blackBox }: @TO BlackBoxParameterSpace @,  {\tt point }: @TO Matrix@ )  \break 
             \break
-            \,\, \, \, There are several special property names: {\tt valuesAt, jacobianAt}. \ break 
+            \,\, \, \, There are several special property names:  @TO valuesAt@, @TO jacobianAt@. \break 
             \,\, \, \,  If one of this properties is registered or updated, it triggers update of dependent properties \break
-            \,\, \, \,  e.g. registering evaluation {\tt 'valuesAt'}  will implicitly \break 
-            \,\, \, \, construct  {\tt 'isZeroAt', 'numGenerators',  'jacobianAt', 'rankJacobianAt' } \break 
-            \,\, \, \,  registering evaluation {\tt 'jacobianAt'}  will implicitly \break 
-            \,\, \, \, construct  {\tt  'rankJacobianAt' } \break 
+            \,\, \, \,  e.g. registering evaluation @TO valuesAt@  will implicitly \break 
+            \,\, \, \, construct   @TO isZeroAt@, @TO numGenerators@,  @TO jacobianAt@, @TO rankJacobianAt@ \break 
+            \,\, \, \,  registering evaluation @TO jacobianAt@  will implicitly \break 
+            \,\, \, \, construct  @TO rankJacobianAt@ \break 
             \break
-            \,\, \bullet  \,{\tt updatePointProperty(propertyName, propertyMethod) }: update an existing point property for a BlackBox. \break
-            \,\, \bullet  \,{\tt pointProperty(propertyName) }: get a point property by name . \break 
-            \,\, \bullet  \,{\tt getUpdatedBlackBox() }: return a blackbox {\tt bb } for which all recently registered properties \break 
-            \,\, \, \, are accessible using the point operator: e.g. if {\tt "bettiAt"} was registered, then it is then accessible as {\tt bb.bettiAt }  \break \break  
+            \,\, \bullet  \, @TO updatePointProperty@(propertyName, propertyMethod) }: update an existing point property for a BlackBox. \break
+            \break \break  
 
             In addition, if the black box was created from an ideal () or an evaluation (), it has additional methods and attributes,
             see @TO BlackBoxIdeal @ 

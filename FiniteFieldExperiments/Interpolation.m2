@@ -2,13 +2,13 @@
 --needsPackage"BlackBoxIdeals"
 
 
--- Type Map contains a matrix and a function
+-- Type MapHelper contains a matrix and a function
 -- to evaluate this matrix on a point
 -- This is for example used when projecting onto a
 -- subspace (i.e elimination of variables)
-Map = new Type of HashTable;
+MapHelper = new Type of HashTable;
 
-createMap = (mapMatrix, imageRing) -> (
+createMapHelper = (mapMatrix, imageRing) -> (
     mapData := new MutableHashTable;
     
     mapData#"imageRing" = imageRing;
@@ -29,20 +29,25 @@ createMap = (mapMatrix, imageRing) -> (
            };
      );
    
-    return new Map from mapData
+    return new MapHelper from mapData
     )
 
---new Map from Matrix := (XXX, mapMatrix) -> (
---     sourceRing := ring mapMatrix;
---     K := coefficientRing sourceRing;
---     m := rank source mapMatrix;
---     imageRing := K[xxx_1..xxx_m]
+new MapHelper from Matrix := (XXX, mapMatrix) -> (
+     -- das hier ist irgendwie alles Quatsch...
+     --sourceRing := ring mapMatrix;
+     --K := coefficientRing sourceRing;
+     --m := rank source mapMatrix;
+     --xxx := symbol xxx;    -- todo: get symbol in user space?
+     --imageRing := K[xxx_1..xxx_m];
+	 imageRing := null; 
+     return createMapHelper(mapMatrix, imageRing);
+);
 
 
 TEST ///
 assert (
      R = QQ[x,y,z];
-     mm = createMap(matrix{{x^2,y^3}},QQ[a,b]);
+     mm = createMapHelper(matrix{{x^2,y^3}},QQ[a,b]);
      (mm#"valueAt")(matrix{{1,2,3}}) == matrix{{1,8}}
      )
 ///
@@ -140,7 +145,7 @@ TEST ///
 -- 
 -- this is the most basic simple minded implementation where only one very long jet is considered.
 interpolateBB = method();
-interpolateBB(ZZ,BlackBoxParameterSpace,Matrix,Map) := Ideal => 
+interpolateBB(ZZ,BlackBoxParameterSpace,Matrix,MapHelper) := Ideal => 
              (maxDegree,BB,point,mmap) -> 
      (
      R := mmap#"imageRing";
@@ -162,13 +167,13 @@ interpolateBB(ZZ,BlackBoxParameterSpace,Matrix,Map) := Ideal =>
 interpolateBB(ZZ,BlackBoxParameterSpace,Matrix,Matrix) := Ideal => 
              (maxDegree,BB,point,mmap) -> 
 (
-     interpolateBB(maxDegree,BB,point,new Map from mmap)
+     interpolateBB(maxDegree,BB,point,new MapHelper from mmap)
 )
 
 interpolateBB(ZZ,BlackBoxParameterSpace,Matrix) := Ideal => 
              (maxDegree,BB,point) -> 
 (
-     interpolateBB(maxDegree,BB,point,createMap(vars BB.ring,BB.ring))
+     interpolateBB(maxDegree,BB,point,createMapHelper(vars BB.ring,BB.ring))
 )
 
 TEST ///
@@ -186,7 +191,7 @@ doc ///
     Key
         interpolateBB
         (interpolateBB, ZZ, BlackBoxParameterSpace, Matrix)
-        (interpolateBB, ZZ, BlackBoxParameterSpace, Matrix, Map)
+        (interpolateBB, ZZ, BlackBoxParameterSpace, Matrix, MapHelper)
     Headline
         find polynomials containing a list of jets
     Usage   
@@ -198,7 +203,7 @@ doc ///
         BlackBox:BlackBoxIdeal
         point: Matrix
             a point where the Blackbox vanishes    
-        map: Map
+        map: MapHelper
             
     Description
         Text
@@ -276,7 +281,9 @@ TEST ///
 
 
 
-InterpolatedIdeal = new Type of MutableHashTable;
+--InterpolatedIdeal = new Type of MutableHashTable;
+
+InterpolatedIdeal = new Type of HashTable;
 
 new InterpolatedIdeal from MutableHashTable :=  (InterpolatedIdealAncestor,l)->
 (  
@@ -310,7 +317,10 @@ createInterpolatedIdeal (ZZ,BlackBoxIdeal,Matrix) := InterpolatedIdeal => (maxDe
    createInterpolatedIdealObj ( interpolateBB(maxDegree,BB,point), maxDegree, "" )
 )
 
-
+createInterpolatedIdeal (ZZ,BlackBoxIdeal,Matrix, String) := InterpolatedIdeal => (maxDegree, BB, point, name)->
+(
+   createInterpolatedIdealObj ( interpolateBB(maxDegree,BB,point), maxDegree, name )
+)
 
 InterpolatedImage = new Type of HashTable;
 
@@ -321,7 +331,7 @@ createInterpolatedImage = method();
 
 -- observer observable längst fällig!
 
-createInterpolatedImage(Experiment,Ring, Map) := HashTable => (experiment,imageRing, mapdata)->
+createInterpolatedImage(Experiment,Ring, MapHelper) := HashTable => (experiment,imageRing, mapdata)->
 (
     interpolation := new MutableHashTable;
 
@@ -342,6 +352,7 @@ createInterpolatedImage(Experiment,Ring, Map) := HashTable => (experiment,imageR
     interpolatedIdeals := {};
     interpolation.createAllInterpolatedIdeals  = (maxDegree, precisionOfSmoothnessTest) -> 
     ( 
+        idealCount := 0;
         localInterpolatedIdeals := {};
         for point in (interpolation.experiment()).points() do
         ( 
@@ -351,11 +362,11 @@ createInterpolatedImage(Experiment,Ring, Map) := HashTable => (experiment,imageR
              );
              -- check if point is already on one of the known components
              bIsOnComponent := false;
-             for interpolData in interpolatedIdeals do
+             for interpolData in localInterpolatedIdeals do
              (
-                 if  interpolation.isOnComponent (  interpolData.ideal, point, 0 ) then
+                 if  interpolation.isOnComponent (  interpolData#"ideal", point, 0 ) then
                  (
-                     if  interpolation.isOnComponent (  interpolData.ideal, point, precisionOfSmoothnessTest ) then
+                     if  interpolation.isOnComponent (  interpolData#"ideal", point, precisionOfSmoothnessTest ) then
                      (
                           bIsOnComponent = true; 
                           break;
@@ -367,8 +378,8 @@ createInterpolatedImage(Experiment,Ring, Map) := HashTable => (experiment,imageR
                  continue;
              );
 
-
-             localInterpolatedIdeals = localInterpolatedIdeals | { createInterpolatedIdeal (maxDegree, interpolation.blackBoxIdeal(), point)  };             
+             localInterpolatedIdeals = localInterpolatedIdeals | { createInterpolatedIdeal (maxDegree, interpolation.blackBoxIdeal(), point, ("ideal_" |toString idealCount ))  };             
+		     idealCount = idealCount +1 ;
 
         );
         interpolatedIdeals = new MutableHashTable from 
@@ -398,9 +409,9 @@ createInterpolatedImage(Experiment,Ring, Map) := HashTable => (experiment,imageR
 
         for key in keys interpolatedIdeals do
         (
-          if  interpolation.isOnComponent (  (interpolatedIdeals#key).ideal, point, 0,  ) then
+          if  interpolation.isOnComponent (  (interpolatedIdeals#key)#"ideal", point, 0,  ) then
           (
-              if  interpolation.isOnComponent (  (interpolatedIdeals#key).ideal, point, prec,  ) then
+              if  interpolation.isOnComponent (  (interpolatedIdeals#key)#"ideal", point, prec,  ) then
               (
                  numbers = numbers | {key};
               );
@@ -420,10 +431,20 @@ createInterpolatedImage(Experiment,Ring, Map) := HashTable => (experiment,imageR
    --(interpolation.blackBoxIdeal()).rpp("interpolatedIdealKeys", iik);
 
 
+   interpolation.interpolatedIdeals = ()->
+   ( 
+       ll := apply (keys interpolatedIdeals, key-> ( key=>new InterpolatedIdeal from interpolatedIdeals#key ));
+       return new HashTable from ll;
+   );
 
-    interpolation.printInterpolatedIdeals = ()->
+   interpolation.bareIdeals = ()->
    (
-         apply (keys interpolatedIdeals, key-> ( print (key=>new HashTable from interpolatedIdeals#key ) ) );
+         apply (keys interpolatedIdeals, key-> ( (interpolatedIdeals#key)#"ideal" ) )
+   );
+
+   interpolation.printInterpolatedIdeals = ()->
+   (
+         apply (keys interpolatedIdeals, key-> ( print (key=>new InterpolatedIdeal from interpolatedIdeals#key ) ) );
    );
 
     interpolation = newClass( InterpolatedImage, interpolation );
@@ -433,19 +454,20 @@ createInterpolatedImage(Experiment,Ring, Map) := HashTable => (experiment,imageR
 
 createInterpolatedImage(Experiment,Ring, Matrix) := HashTable => (experiment,imageRing, pmap)->
 (
-    mmap := new Map from pmap;
-  
-    
-    return createInterpolatedImage(experiment,imageRing,mmap);
+    error "this interface is currently broken";
+    mMapHelper := new MapHelper from pmap;
+     
+    return createInterpolatedImage(experiment, imageRing, mMapHelper);
     
 );
 
 createInterpolatedImage(Experiment) := HashTable => (experiment)->
 (
-    mmap := new Map from vars (experiment.blackBoxIdeal()).ring  ;
     rng := (experiment.blackBoxIdeal()).ring ;
-    
-    return createInterpolatedImage(experiment, rng, mmap);
+ 
+    mMapHelper  := new MapHelper from vars rng;
+
+    return createInterpolatedImage(experiment, rng, mMapHelper);
 );
 
 -- todo : new type for mapData. Also support dot access to mapData members.
