@@ -1267,12 +1267,12 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
        localPropertyMethod := propertyMethod;
 
         if acceptedNumParameters==2 then 
+        (
           localPropertyMethod = ( point )-> ( 
              return propertyMethod( blackBox,   point ); 
-        );
-  
-    
+            );
 
+        );
       
          if propertyName==="isZeroAt" then 
               return setIsZeroAt(localPropertyMethod); --probably not necessary
@@ -1306,6 +1306,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
    (
       if  (  pointProperties#?propertyName ) then
       (  
+           -- todo: question do it for all symbols or not
            propertySymbol := getPropertySymbol(propertyName);
            outerSetPointProperty( propertySymbol, propertyMethod );
       ) 
@@ -1441,7 +1442,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
            );
            localIsProbablySmoothWrapper  := (  point )  ->
            (
-               return isProbablySmoothAt( blackBox,  point, singularTestOptions.precision,  singularTestOptions.numTrials );
+               return not isCertainlySingularAt( blackBox,  point, singularTestOptions.precision,  singularTestOptions.numTrials );
            );
 
            if blackBox.hasPointProperty("isProbablySmoothAt") then 
@@ -3179,6 +3180,21 @@ doc ///
           isCertainlySingularAt
           isProbablySmoothAt
           jetAt
+///
+
+TEST ///
+  --test for issue #86
+  R = QQ[x,y]
+          I = ideal(x^5-y^7);
+          bbI = blackBoxIdeal I;
+          smoothPoint = matrix{{8,4_QQ}}
+          bbI.isProbablySmoothAt(smoothPoint)
+          origin = matrix{{0,0_QQ}}
+          bbI.isProbablySmoothAt(origin)
+          bbI.isCertainlySingularAt(origin)
+          bbI.setSingularityTestOptions(4,1)
+          bbI.isCertainlySingularAt(origin)
+          bbI.isProbablySmoothAt(origin)
 ///
 
 end
