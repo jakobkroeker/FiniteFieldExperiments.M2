@@ -24,6 +24,8 @@ newPackage(
 
 -- Map eigentlich Morphism
 export {
+  "FiniteFieldExperimentsExport",
+  "FiniteFieldExperimentsProtect",
   "estimateDecomposition", 
   "estimateStratification",
   "estimateCodim", 
@@ -108,18 +110,17 @@ FiniteFieldExperimentsProtect = ()->
   protect countsByCount;  --protect countsByCount;
 
  
-  protect  estimateStratification2;
+  --protect  estimateStratification2;
   protect experimentData; 
   protect isRandom;
   protect compatible;
   protect membershipPrecision;
   protect setMembershipPrecision;
-  --protect createMap";
-)
+);
 
  
 
-FiniteFieldExperimentsExport  = ()->
+FiniteFieldExperimentsExport = ()->
 (
     exportMutable( bareIdeals );
   exportMutable(experiment);
@@ -195,8 +196,8 @@ FiniteFieldExperimentsExport  = ()->
  exportMutable (  compatible );
  
  exportMutable (  createExperimentData );
- exportMutable (createMap);
-) 
+ exportMutable (createMapHelper);
+);
 
 undocumented {
 estimateStratification2, -- deprecated
@@ -211,7 +212,7 @@ next,                          --document in random point iterator, later.
 point,                         --document in random point iterator, later.
 reset,                         --iterator
 compatible,   --internal method
-createMap,
+createMapHelper,
 estimateNumberOfComponents, --internal
 estimateCodim,   --deprecated
 ringCardinality, --internal
@@ -276,8 +277,9 @@ poissonEstimate(ZZ) := HashTable => opts -> (numPoints) ->
 
 TEST ///
   loadPackage ("FiniteFieldExperiments",Reload=>true)
-  debug FiniteFieldExperiments
   FiniteFieldExperimentsProtect()
+  debug FiniteFieldExperiments
+
   assert ( (poissonEstimate(16,"confidence" => 2)).min == 8  );
   assert ( (poissonEstimate(16,"confidence" => 2)).max == 24 );
 ///
@@ -288,8 +290,9 @@ TEST ///
 
 TEST ///
   loadPackage ("FiniteFieldExperiments",Reload=>true)
-  debug FiniteFieldExperiments
   FiniteFieldExperimentsProtect()
+  debug FiniteFieldExperiments
+
   assert (poissonEstimate(16,"confidence"=>2) == new Interval from (8,24))
 ///
 
