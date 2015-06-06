@@ -32,16 +32,16 @@ needsPackage "M2Logging";
 export {
     --clearCoeffDenominators,
     "clearCoeffDenominators",
-    BlackBoxIdeal,
-    BlackBoxParameterSpace,
-    blackBoxParameterSpace,
-    blackBoxIdeal,
-    blackBoxIdealFromEvaluation,
-    BlackBoxLogger,
-    getEpsRing,
-    jetAt,
-    isCertainlySingularAt,
-    isProbablySmoothAt,
+    "BlackBoxIdeal",
+    "BlackBoxParameterSpace",
+    "blackBoxParameterSpace",
+    "blackBoxIdeal",
+    "blackBoxIdealFromEvaluation",
+    "BlackBoxLogger",
+    "getEpsRing",
+    "jetAt",
+    "isCertainlySingularAt",
+    "isProbablySmoothAt",
     "keysWithoutSymbols",
     "rebuildBlackBox",
     "guessAcceptedParameterNumber",
@@ -98,40 +98,40 @@ protect knownAttributes;
 
 idealBlackBoxesExport = ()->
 (
-    exportMutable( eps );
-    exportMutable( jacobianAt);
-    exportMutable( rankJacobianAt);
-    exportMutable( valuesAt);
-    exportMutable( unknownIsValid);                 
-    exportMutable( numVariables);  
-    exportMutable( numGenerators);
-    exportMutable( isZeroAt);      
-    exportMutable( pointProperties);  
-    exportMutable( registerPointProperty); 
-    exportMutable(rpp);
-   exportMutable(upp);
-    exportMutable( setPointProperty);
-    exportMutable( setValuesAt);    
-    exportMutable(  checkInputPoint);
-    exportMutable( deduceNumGenerators );
-    exportMutable( setIsZeroAt );
-   exportMutable( getUpdatedBlackBox );
-   exportMutable( type );
- exportMutable( unknowns );
- exportMutable( pointProperty );
- exportMutable( updatePointProperty );
- exportMutable( setJacobianAt );
- exportMutable( equations );
+    exportMutable( "eps" );
+    exportMutable( "jacobianAt");
+    exportMutable( "rankJacobianAt");
+    exportMutable( "valuesAt");
+    exportMutable( "unknownIsValid");                 
+    exportMutable( "numVariables");  
+    exportMutable( "numGenerators");
+    exportMutable( "isZeroAt");      
+    exportMutable( "pointProperties");  
+    exportMutable( "registerPointProperty"); 
+    exportMutable("rpp");
+    exportMutable("upp");
+    exportMutable( "setPointProperty");
+    exportMutable( "setValuesAt");    
+    exportMutable( "checkInputPoint" );
+    exportMutable( "deduceNumGenerators" );
+    exportMutable( "setIsZeroAt" );
+    exportMutable( "getUpdatedBlackBox" );
+    exportMutable( "type");
+    exportMutable( "unknowns" );
+    exportMutable( "pointProperty" );
+    exportMutable( "updatePointProperty" );
+    exportMutable( "setJacobianAt" );
+    exportMutable( "equations" );
 
- exportMutable( hasPointProperty );
-  exportMutable( knownPointProperties );
-  exportMutable (knownProperties);
-  exportMutable( knownPointPropertiesAsSymbols );
+    exportMutable( "hasPointProperty" );
+    exportMutable( "knownPointProperties" );
+    exportMutable ("knownProperties");
+    exportMutable( "knownPointPropertiesAsSymbols" );
 
-  exportMutable(knownMethods);
- exportMutable(knownAttributes);
-  exportMutable(numTrials);
- exportMutable(setSingularityTestOptions);
+    exportMutable("knownMethods");
+    exportMutable("knownAttributes");
+    exportMutable("numTrials");
+    exportMutable("setSingularityTestOptions");
 
 )
 

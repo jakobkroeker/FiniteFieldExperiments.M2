@@ -106,31 +106,31 @@ padicLiftProtect = ()->
 padicLiftExport = ()->
 (
   
-    export( GlobalInternalPadicLiftResultVariable);
-    exportMutable( unchanged);
-    exportMutable( normalized);
-    exportMutable( norms);
-    exportMutable( normalizedNorms);
-    exportMutable( initialLiftDepth);
-    exportMutable( maxLiftDepth);
-    exportMutable( initialLatticeDim);
-    exportMutable( latticeDimIncrementFkt);
-    exportMutable( maxLatticeDim);
-    exportMutable( verbose);
-    exportMutable( minColumnNormDistanceFactor);
-    exportMutable( foundMinPolynomialCandidate);
-    exportMutable( reducedLatticeBasis);
-    exportMutable( latticeBasisVectorNormsList);
-    exportMutable( currentLatticeDim);
-    exportMutable( liftInfo);
-    exportMutable( polynomial);
-    exportMutable( unknown);
-    exportMutable( maxLatticeDimension);
-    exportMutable( requiredLatticeDimension);
-    exportMutable( reductionOpts);
-    exportMutable( liftOptions);
-    exportMutable( tolerance);
-    exportMutable( decimalPrecision);     
+    export( "GlobalInternalPadicLiftResultVariable");
+    exportMutable( "unchanged");
+    exportMutable( "normalized");
+    exportMutable( "norms");
+    exportMutable( "normalizedNorms");
+    exportMutable( "initialLiftDepth");
+    exportMutable( "maxLiftDepth");
+    exportMutable( "initialLatticeDim");
+    exportMutable( "latticeDimIncrementFkt");
+    exportMutable( "maxLatticeDim");
+    exportMutable( "verbose");
+    exportMutable( "minColumnNormDistanceFactor");
+    exportMutable( "foundMinPolynomialCandidate");
+    exportMutable( "reducedLatticeBasis");
+    exportMutable( "latticeBasisVectorNormsList");
+    exportMutable( "currentLatticeDim");
+    exportMutable( "liftInfo");
+    exportMutable( "polynomial");
+    exportMutable( "unknown");
+    exportMutable( "maxLatticeDimension");
+    exportMutable( "requiredLatticeDimension");
+    exportMutable( "reductionOpts");
+    exportMutable( "liftOptions");
+    exportMutable( "tolerance");
+    exportMutable( "decimalPrecision");     
 )
 
 -- testing reusage of same symbols in different packages. It seems not to work .

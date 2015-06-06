@@ -27,7 +27,7 @@ IntervalProtect = ()->
 
 IntervalExport =()->
 (
- exportMutable( center);
+ exportMutable( "center");
 );
 
 IntervalExport();
