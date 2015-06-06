@@ -41,10 +41,10 @@ time interpolProjection.createAllInterpolatedIdeals(2,1)
 -- used 114.558 seconds (m=3)
 
 interpolProjection.printInterpolatedIdeals()
-interpolProjection.ideal_9
-interpolProjection.interpolatedIdealKeys("ideal_9")
-interpolProjection
 
+interpolProjection.interpolatedIdeals()
+
+interpolProjection.bareIdeals()
 
 
 P = (e.pointLists())#({2})
