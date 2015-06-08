@@ -472,6 +472,82 @@ createInterpolatedImage(Experiment) := HashTable => (experiment)->
 
 -- todo : new type for mapData. Also support dot access to mapData members.
 
+doc ///
+    Key
+        createAllInterpolatedIdeals
+    Headline
+        find components of a black box ideal
+    Usage   
+        i.createAllInterpolatedIdeals(maxDeg,prec)
+    Inputs  
+        i:InterpolatedImage 
+        maxDeg:ZZ
+            interpolate up to this degree
+        prec: ZZ
+            pecision of ideal membership test                
+    Description
+        Text
+           For each point found in an experiment find
+           all polynomials of degree at most maxDeg
+           that contain the component on which the point lies.
+
+           Lets consider a black box that describes
+           a conic and a plane intersecting at the origin:
+        Example      
+           K = ZZ/5
+           R = K[x,y,z]
+           I = ideal (x*z,(y^2-z)*z)
+           bb = blackBoxIdeal I;       
+        Text
+           Now we create an experiment to find points on 
+           all components
+        Example
+           e = new Experiment from bb;
+           e.run(500)
+           e.estimateDecomposition()
+        Text
+           The experiment reveals approximately 1 component of
+           codimension 1 and 2 respectively.           
+           \break
+           Now we want to find linear equations containing the respective
+           components on which the points lie. For this we need
+           to create an interpolatedImage object which will among
+           other things contain the experiment and (later) the equations
+           of each component
+        Example
+           i = createInterpolatedImage(e);
+        Text
+           Now do the interpolation looking only for linear polynomials
+        Example
+           i.createAllInterpolatedIdeals(1,1);
+           i.bareIdeals()
+        Text 
+           Only linear polynomials were found. This is remembered
+           behind the scenes:   
+        Example
+           i.printInterpolatedIdeals()   
+        Text
+           If we also want to find the quadratic polynomial,
+           we have to interpolate up to degree 2
+        Example
+           i.createAllInterpolatedIdeals(2,1);
+           i.bareIdeals()
+    Caveat
+        This function does not work with multigraded rings.
+        At the moment this has to be done by hand with @TO interpolate @. 
+      
+        At the moment the interpolation is done by producing one
+        jet of the appropriate length. Often one could interpolate
+        much faster if several shorter jets were used. (Most of the
+        time is used when producing the jets)
+    SeeAlso
+        interpolate
+        isOnComponent
+        createAllInterpolatedIdeals
+        createInterpolatedIdeal
+        interpolatedIdealKeys      
+///
+
 
 end
 ----
