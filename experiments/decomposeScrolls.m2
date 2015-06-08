@@ -40,7 +40,6 @@ time interpolProjection.createAllInterpolatedIdeals(2,1)
 -- used 41.6433 seconds (m=2)
 -- used 114.558 seconds (m=3)
 
-interpolProjection.printInterpolatedIdeals()
 
 interpolProjection.interpolatedIdeals()
 

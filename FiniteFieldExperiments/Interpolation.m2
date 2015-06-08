@@ -310,6 +310,7 @@ createInterpolatedIdealObj( Ideal,ZZ,String ) := InterpolatedIdeal =>
      return result;
 )
 
+
 createInterpolatedIdeal = method();
 --internal method
 createInterpolatedIdeal (ZZ,BlackBoxIdeal,Matrix) := InterpolatedIdeal => (maxDegree, BB, point)->
@@ -337,54 +338,85 @@ createInterpolatedImage(Experiment,Ring, MapHelper) := HashTable => (experiment,
 
     interpolation.experiment = () -> experiment;
 
+    bb := (interpolation.experiment()).blackBoxIdeal();
+
     interpolation.blackBoxIdeal = () -> (interpolation.experiment()).blackBoxIdeal();
-    
+   
+    jets := new MutableHashTable;
 
      -- duplicate code..(otherwise too many parameters...)
      interpolation.isOnComponent = method();
      interpolation.isOnComponent (HashTable,Matrix,ZZ) := Boolean =>  
-                         (interpolationIdeal,point,precisionOfSmoothnessTest) -> (
-         jetP := jetAt(interpolation.blackBoxIdeal() ,point,precisionOfSmoothnessTest,1);
+                         (interpolationIdeal,point,onComponentPrecision) -> (
+
+         if not (jets#?point) then
+         (        
+             --jetP := jetAt(interpolation.blackBoxIdeal() ,point,onComponentPrecision,1);
+             jets#point = jetAt( bb ,point,onComponentPrecision, 1);
+         );
+         jetP := jets#point;  
+
+         if jetP#"jetLength" < onComponentPrecision then 
+         (
+             jetP = jets#point;  
+             jets#point = jetAt( bb ,point,onComponentPrecision, 1);
+         );
+
          if jetP#"succeeded" then (
                0 == sub( interpolationIdeal, ((mapdata#"valueAtJet")(jetP))#"jet" )
           ) else error "point not smooth"
      );
     interpolatedIdeals := {};
-    interpolation.createAllInterpolatedIdeals  = (maxDegree, precisionOfSmoothnessTest) -> 
+    interpolation.createAllInterpolatedIdeals  = (maxDegree, onComponentPrecision) -> 
     ( 
         idealCount := 0;
         localInterpolatedIdeals := {};
+        bb := interpolation.blackBoxIdeal();
+        -- T := timing 
         for point in (interpolation.experiment()).points() do
         ( 
-             if (interpolation.blackBoxIdeal()).isCertainlySingularAt(point) then 
-             (
-                continue;
-             );
+             --time if bb.isCertainlySingularAt(point) then 
+             --(
+             --   continue;
+             --);
+             pointIsSingular := false;
+
              -- check if point is already on one of the known components
              bIsOnComponent := false;
              for interpolData in localInterpolatedIdeals do
              (
-                 if  interpolation.isOnComponent (  interpolData#"ideal", point, 0 ) then
-                 (
-                     if  interpolation.isOnComponent (  interpolData#"ideal", point, precisionOfSmoothnessTest ) then
-                     (
-                          bIsOnComponent = true; 
-                          break;
-                     );
-                 );
+                 try (  
+                        if  interpolation.isOnComponent (  interpolData#"ideal", point, 0 ) then
+                         (
+                             if  interpolation.isOnComponent (  interpolData#"ideal", point, onComponentPrecision ) then
+                             (
+                                  bIsOnComponent = true; 
+                                  break;
+                             );
+                         ); 
+                     )  
+                    else (
+                    pointIsSingular = true;
+                    break;
+                );
+                    
              );
-             if bIsOnComponent then 
+             if (bIsOnComponent or pointIsSingular) then 
              (
                  continue;
              );
 
+            try (
              localInterpolatedIdeals = localInterpolatedIdeals | { createInterpolatedIdeal (maxDegree, interpolation.blackBoxIdeal(), point, ("ideal_" |toString idealCount ))  };             
              idealCount = idealCount +1 ;
+            );
 
         );
+        -- print "timing for loop", T#0;
         interpolatedIdeals = new MutableHashTable from 
            apply ( #localInterpolatedIdeals, idx-> (("ideal_" |toString idx ) => localInterpolatedIdeals#idx ) ) ;
-       
+
+       return interpolation.interpolatedIdeals();
     );
 
     localMembershipPrecision := 10; -- does this belong to experimentData?
@@ -442,10 +474,6 @@ createInterpolatedImage(Experiment,Ring, MapHelper) := HashTable => (experiment,
          apply (keys interpolatedIdeals, key-> ( (interpolatedIdeals#key)#"ideal" ) )
    );
 
-   interpolation.printInterpolatedIdeals = ()->
-   (
-         apply (keys interpolatedIdeals, key-> ( print (key=>new InterpolatedIdeal from interpolatedIdeals#key ) ) );
-   );
 
     interpolation = newClass( InterpolatedImage, interpolation );
     return interpolation;
@@ -469,6 +497,18 @@ createInterpolatedImage(Experiment) := HashTable => (experiment)->
 
     return createInterpolatedImage(experiment, rng, mMapHelper);
 );
+
+interpolatedImage = method();
+
+interpolatedImage(Experiment) := InterpolatedImage => (e)->
+(
+   return createInterpolatedImage(e);
+)
+
+new InterpolatedImage from Experiment :=  (InterpolatedImage,e)->
+(
+    return createInterpolatedImage(e);
+)
 
 -- todo : new type for mapData. Also support dot access to mapData members.
 
@@ -520,12 +560,9 @@ doc ///
            Now do the interpolation looking only for linear polynomials
         Example
            i.createAllInterpolatedIdeals(1,1);
-           i.bareIdeals()
         Text 
            Only linear polynomials were found. This is remembered
-           behind the scenes:   
-        Example
-           i.printInterpolatedIdeals()   
+           behind the scenes.
         Text
            If we also want to find the quadratic polynomial,
            we have to interpolate up to degree 2
