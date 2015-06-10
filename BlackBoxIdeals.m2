@@ -731,7 +731,7 @@ jetAtSingleTrial( HashTable, Matrix, ZZ ) := MutableHashTable => ( blackBox,  po
     retVal := null;
     if not (blackBox.isZeroAt(point))  then
     (
-       retVal = new HashTable from { "succeeded" => false, "jet" => null, "failedJetLength" =>0 };
+       retVal = new HashTable from { "succeeded" => false, "jet" => null, "failedJetLength" =>0 , "jetLength" => jetLength};
        return retVal;
     );
 
@@ -802,7 +802,7 @@ jetAtSingleTrial( HashTable, Matrix, ZZ ) := MutableHashTable => ( blackBox,  po
     );
     -- todo: create a datatype or a hashTable for the return value.
 
-    retVal = new HashTable from { "succeeded" => not liftingFailed, "jet" => jet, "failedJetLength" =>failedJetLength };
+    retVal = new HashTable from { "succeeded" => not liftingFailed, "jet" => jet, "failedJetLength" =>failedJetLength , "jetLength" => jetLength };
     return retVal;
 )
 
@@ -834,7 +834,6 @@ jetAt( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox
             );
         );
     );
-    --return  new HashTable from { "succeeded" =>false, "lift" => null };
     return bestJet;
 )
 

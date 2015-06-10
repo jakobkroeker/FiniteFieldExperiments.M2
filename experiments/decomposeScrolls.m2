@@ -61,7 +61,6 @@ betti time (I:saturate (I,dIelim#0))
 
 -- used 31.2153 seconds (m=3, singularityPrc=10)
 
-interpolProjection.printInterpolatedIdeals()
 
 
 interpolProjection.interpolatedIdeals()

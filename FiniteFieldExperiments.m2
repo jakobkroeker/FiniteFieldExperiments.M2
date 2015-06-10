@@ -39,9 +39,11 @@ export {
   "Experiment",
   "RandomExperiment",
   "InterpolationImage",
+  "InterpolatedImage",
   "FFELogger",
   "ringCardinality",
-  "createInterpolatedImage"
+  "createInterpolatedImage",
+  "netEstimatedDecomposition"
 }
 
 FiniteFieldExperimentsProtect = ()->
@@ -57,6 +59,7 @@ FiniteFieldExperimentsProtect = ()->
   protect next;
   protect begin;
   protect count;
+  protect countinfo;
   protect point;
   protect collectedCount;
   protect pointKeys; 
@@ -133,6 +136,7 @@ FiniteFieldExperimentsExport  = ()->
   exportMutable(next);
   exportMutable(begin);
   exportMutable(count);
+  exportMutable(countinfo);
   exportMutable(point);
   exportMutable(collectedCount);
   exportMutable(pointKeys);
@@ -249,6 +253,7 @@ if FiniteFieldExperiments#Options#DebuggingMode then
 
 
 FFELogger = Logger("FiniteFieldExperiments");
+FFELogger.setLogLevel(2);
 
 ffelog := FFELogger;
 
@@ -368,7 +373,7 @@ createPointData =(pBlackBox, point)->
 
 --new ExperimentData from HashTable := (E,coeffRing) -> (
 new ExperimentData from Ring := (E,coeffRing) -> (
-     print (toString E);
+     ffelog.debug (toString E);
      e := new MutableHashTable;
      e.coefficientRing = coeffRing;
      e.points = new MutableHashTable;
@@ -411,7 +416,7 @@ createExperimentData = (coeffRing,points,countData, trials, propertyList,isRando
 )
 
 new ExperimentData from ExperimentData := (E,ed) -> (
-     print (toString E);
+     -- print (toString E);
      e := new MutableHashTable;
      e.coefficientRing = ed.coefficientRing;
      e.points = copy ed.points;
@@ -736,6 +741,41 @@ doc ///
 ///
 
 
+EstimatedDecomposition = new Type of HashTable;
+
+
+createEstimatedDecomposition := (bbi, estimate, watchedProperties)->
+(
+    ht :=   new HashTable from {  
+        "blackBox" =>bbi,
+        "estimate"=> estimate,
+        "watchedProperties" =>watchedProperties,
+    
+    };
+    return new EstimatedDecomposition from ht;
+)
+
+netEstimatedDecomposition = (ed)->
+(   
+   formatinfo :=  {
+                   -- net "-- format: ",
+                      net ("--(estimated codim, estimated number of components [confidence interval]) <= "
+                        | toString ed#"watchedProperties" | " )") 
+                  };
+   estimate := ed#"estimate";
+
+   sss := sort apply (estimate, entry ->  net( entry#0)  | " <= " | net (entry#1 ) );
+
+   sss = formatinfo |sss;
+   return stack sss;
+)
+
+net (EstimatedDecomposition) := Net =>(estimatedDecomposition)->
+(
+    return (net netEstimatedDecomposition(estimatedDecomposition));
+)
+
+
 
 estimateDecompositionOld := (experiment) -> (
        countData := experiment.count();
@@ -744,7 +784,7 @@ estimateDecompositionOld := (experiment) -> (
 
        cardinality := experiment.coefficientRingCardinality();
 
-       print "(estimated codim, estimated number of components [confidence interval] <= {watched Properties})";
+       print( "(estimated codim, estimated number of components [confidence interval] <= {watched Properties})");
        print "";
        apply(sort apply(keys countData,key->
          (net(
@@ -760,36 +800,69 @@ estimateDecompositionOld := (experiment) -> (
  
 
 estimateDecomposition =  (experiment) -> (
-        posRankJacobianAt := experiment.position( "rankJacobianAt" );
+       posRankJacobianAt := experiment.position( "rankJacobianAt" );
        if posRankJacobianAt === null then error("To estimate the decomposition, \"rankJacobianAt\" must be watched");
-       print "(estimated codim, estimated number of components [confidence interval] <= {watched Properties})";
-       print "";
-       apply(sort apply(keys experiment.count(),key->
-              net( key#posRankJacobianAt, estimateNumberOfComponents(experiment,key) )
-         |" <= " | net key),
-       print);
+
+       estimate := flatten apply(keys experiment.count(), key-> ( (key#posRankJacobianAt, estimateNumberOfComponents(experiment,key)), key) );
+        
+       return createEstimatedDecomposition(experiment.blackBoxIdeal(), estimate, experiment.watchedProperties() );
 )
 
 --needs to be documented
  
+EstimatedStratification = new Type of HashTable;
+
+createEstimatedStratification := (bbi, estimate, watchedProperties)->
+(
+    ht :=   new HashTable from {  
+        "blackBox" =>bbi,
+        "estimate"=> estimate,
+        "watchedProperties" =>watchedProperties,
+    
+    };
+    return new EstimatedStratification from ht;
+)
+
+netEstimatedStratification = (es)->
+(
+  
+   formatinfo :=  {
+                   -- net "-- format: ",
+                      net ("-- estimated codim <= "
+                        | toString es#"watchedProperties" | " )") 
+                  };
+
+   estimate := es#"estimate";
+
+   sss := sort apply (estimate, entry ->  net( entry#0)  | " <= " | net (entry#1) );
+
+   sss = formatinfo |sss;
+   return stack sss;
+)
+
+net (EstimatedStratification) := Net =>(es)->
+(
+    return (net netEstimatedStratification(es));
+)
 
  
 estimateStratification =  (experiment) -> (
      trials := experiment.trials();
      orderK := experiment.coefficientRingCardinality(); -- this must be read from the experimentdata
      -- (jk): need more advice. Did we want to use a different ring for search that the ideal coefficient ring? If so, 
-     print "--";
-     print "-- estimated codim <= {wachtched properties}";
-     print "--";
+
      countData := experiment.count();
+
      -- sort keys by number of occurence
-     sortKeysCount := apply(reverse sort apply(keys countData,k->(countData#k,k)),i->i#1);
-     apply(sortKeysCount,k->(
-           --print (net((log(trials)-log(i#0))/log(charK))|" <= "|net(i#1)));
-           print (net(round(1,(log(trials)-log(countData#k))/log(orderK)))|" <= "|net(k)))
-           )
-      ;
-     print "--";
+     sortedKeysByOccurence := apply(reverse sort apply(keys countData,k->(countData#k,k)), i->i#1);
+
+     --apply(sortedKeysByOccurence,k->(
+     --      --print (net((log(trials)-log(i#0))/log(charK))|" <= "|net(i#1)));
+     --      print (net(round(1,(log(trials)-log(countData#k))/log(orderK)))|" <= "|net(k)))
+     --      );
+
+     estimate := flatten apply(sortedKeysByOccurence,k->( (round(1,(log(trials)-log(countData#k))/log(orderK))), (k)) );
+     return  createEstimatedStratification(experiment.blackBoxIdeal(), estimate, experiment.watchedProperties() );
 )
 
 -- deprecated
@@ -797,13 +870,14 @@ estimateStratification2 = (e) -> (
      --count := e.countData();
      trials := e.trials();
      orderK := (e.coefficientRing()).order; -- this must be read from the experimentdata
-     print "--";
-     apply(e.countsByCount(),i->(
-           --print (net((log(trials)-log(i#0))/log(charK))|" <= "|net(i#1)));
-           print (net(round(1,(log(trials)-log(i#0))/log(orderK)))|" <= "|net(i#1)))
-           )
-      ;
-     print "--";
+     -- print "--";
+     -- apply(e.countsByCount(),i->(
+     --       --print (net((log(trials)-log(i#0))/log(charK))|" <= "|net(i#1)));
+     --       print (net(round(1,(log(trials)-log(i#0))/log(orderK)))|" <= "|net(i#1)))
+     --       )
+     --  ;
+     estimate := flatten apply(e.countsByCount(),k->( (round(1,(log(trials)-log(k#0))/log(orderK))), (k#1)) );
+     return  createEstimatedStratification(e.blackBoxIdeal(), estimate, e.watchedProperties() );
 )
 
 
@@ -820,12 +894,15 @@ estimateStratification2 = (e) -> (
 
 
 
-   --# fuer den Fall dass dich die Schlüssel nicht sortieren lassen.
+   --#??? fuer den Fall dass dich die Schlüssel nicht sortieren lassen.
+
+   -- countsByCount() sorts the statistic by Number
    countsByCount := (experimentData)->
    (
       counts := experimentData.countData;
       prerearrangedData := new MutableHashTable;
      
+      -- 1. use the count number as key and the values of corresponding watched properties as values.
       for key in keys counts do
       (
           if not  prerearrangedData#?(counts#key) then 
@@ -836,10 +913,13 @@ estimateStratification2 = (e) -> (
           );
 
       );
-      --bug fixed (unique missing) todo: test for this bug!
+      -- 2. now create a list of the point count and sort it
+      ---- bug fixed (unique missing) todo: test for this bug!
       toSort := unique apply( keys counts, key -> (counts#key));
       sorted := sort (toSort); 
       rearrangedData := {};
+
+      -- 3.  asseble the result
       for count in sorted do
       (
           for entry in prerearrangedData#count do
@@ -913,7 +993,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
    -- todo: maype return a (deep) copy 
    experiment.getExperimentData = ()->
    (
-      print(" warning : you got a reference to experiment data, do not modify! ");
+      ffelog.warning("-- warning : you got a reference to experiment data, do not modify! ");
       return experimentData;
    );
 
@@ -1106,7 +1186,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
         -- if ideal vanishes on the random point do something
         if experiment.isInteresting(point) then   
         (
-            countKey := propertiesAt(point);
+            countKey := propertiesAt(point); -- todo: countKey: better naming?
  
             -- countData number of found points for each rank and property
             experimentData.countData = experimentData.countData + tally {countKey};
@@ -1209,7 +1289,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
 
    experiment.setRecordedProperties = ( propertyStringList )->
    (  
-      if experiment.trials()=!=0 then error ("cannot change watched properties - experiment was already run! You could clear() the statistics and retry.");
+      if experiment.trials()=!=0 then error ("cannot change watched properties - experiment was already run! Clear statistics and retry.");
 
       setRecordedPropertiesInternal(propertyStringList);
       update(experimentData);
@@ -1308,6 +1388,12 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
       return new Tally from experimentData.countData;
    );
 
+   experiment.countinfo = ()->
+   (
+     strcountinfo := "-- count() structure: \n-- values of " |toString experimentData.propertyList  | " =>  number of random points ";
+     return strcountinfo;
+   );
+
 
    experiment.pointKeys = ()->
    (
@@ -1358,7 +1444,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
   -- or to make the internal experiment variable as an Experiment , too  - done with 'newClass'
 
     experiment.tryProperty = (tProp) -> (
-      print("-- ( " | toString experiment.watchedProperties() |" | " | tProp | " ) => count " );
+       ffelog.info("-- ( " | toString experiment.watchedProperties() |" | " | tProp | " ) => count " );
        pointLists = experiment.pointLists();
        tally flatten apply(keys pointLists, key->apply(pointLists#key, point->( key, (blackBoxIdeal.pointProperty(tProp))(point))) )
      );
@@ -1436,6 +1522,11 @@ doc ///
         an unified interface to an experiment
    Description
          Text
+            With an {\tt  Experiment } it is possible to check point properties of an @TO BlackBoxParameterSpace@ or @TO BlackBoxIdeal@ 
+            at random points and collect user-defined statistics. \break
+            If the black box from supports evaluation, then at each point the jacobian can be computed
+            and jets at smooth ones. From the collected statistics a heuristic decomposition can be estimated and finally performed using interpolation methods, see @TO "Experiment example"@
+            
             The {\tt  Experiment } objects implements the following interface    \break 
 
             construction :\break
@@ -1469,12 +1560,12 @@ doc ///
             \,\, \bullet \,{\tt watchProperties, watchProperty }:  \break
             \,\, \bullet \,{\tt ignoreProperties,  ignoreProperty }:  \break
             \,\, \bullet \,{\tt clearWatchedProperties}:  \break
-            \,\, \bullet \,{\tt run}: run the experiment : find interesting points \break
+            \,\, \bullet \,{\tt run}: find interesting points \break
             \,\, \bullet \,{\tt tryProperty}:  \break
             \,\, \bullet \,{\tt clear}: \break
            
         Text
-            \break  For an example see ...    
+            \break  For an example see @TO "Experiment example"@
 ///
 
 
@@ -1493,7 +1584,7 @@ doc ///
 
 doc ///
    Key
-        "newExperiment"
+        "new Experiment"
         (NewFromMethod, Experiment, BlackBoxParameterSpace)
         (NewFromMethod, Experiment, Thing)
    Headline
@@ -1510,22 +1601,162 @@ doc ///
             a blackBoxIdeal
    Description
         Text
-            Creates an experiment from a black box, see @TO BlackBoxIdeals@. The experiment object will keep
-            track of all information created when the ideal is evaluated at random points.
+            Creates an @TO Experiment@ from a black box, see @TO BlackBoxIdeals@.
+                
+            First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;       
+        Text
+           \break Now we are able to create the Experiment object
+       
+        Example
+           e = new Experiment from bb;
+   Caveat
+        does not check if the ideal ring is a quotient ring (not supported)
+   SeeAlso
+        "Experiment example"
+        "run Experiment"
+        estimateDecomposition
+        createAllInterpolatedIdeals        
+       
+///
+
+
+---    Outputs
+---        :HashTable
+---            observed point number for each value tuple of the watched properties
+
+doc ///
+   Key
+        "run Experiment"
+   Headline
+        run an experiment
+   Usage   
+        e.run(trials)
+   Inputs  
+        e:Experiment 
+            a finite field Experiment
+        trials:ZZ
+            number of evaluations at random points
+   Description
+        Text
+           To run an experiment we first create an BlackBoxIdeal or a BlackBoxParameterSpage  we want to analyse
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;       
+        Text
+           Now we create the experiment object
+        Example
+           e = new Experiment from bb;
+        Text
+           If a black box has a property "rankJacobianAt" it is
+           automatically watched:
+        Example
+           e.watchedProperties() 
+        Text
+           Now we run the experiment by evaluating at 1250 random points 
+        Example
+           time e.run(1250)    
+        Text
+           As return value we get the collected point number grouped by the values of the watched properties.
+           Later these statistics are acceccible via count() 
+        Example
+           e.count()            
+           e.countinfo()
+        Text
+            dfdf
+   SeeAlso
+        watchProperty
+        watchProperties
+        watchedProperties
+
+
+///
+
+doc ///
+    Key
+        FiniteFieldExperiments
+    Headline
+          heuristic decomposition of black box ideals
+    Description
+        Text
+            With an {\tt  Experiment } it is possible to check point properties of an @TO BlackBoxParameterSpace@ or @TO BlackBoxIdeal@ 
+            at random points and collect them. \break
+            From the collected statistics a heuristic decomposition can be estimated in case the black box supports the computation of the 
+            jacobian rank at a point.
+            \break
+            Finally a herustic decomposition can be computed using interpolation methods if the black box supports jet calculations.
+            \break \break
+            See @TO "Experiment example"@ for a tutorial.
+                        
+      
+    Caveat
+         The package development is at alpha status and the package is not threadsafe. 
+         The interpolation is not time-optimized.
+         The documentation is not finished.
+///
+
+
+doc ///
+   Key
+        "Experiment example"
+   Headline
+        typical finite field experiment example
+   Usage   
+        e = new Experiment from bb
+        e.run(trials)
+        e.count()
+        e.pointLists()
+        e.estimateStratification()
+        e.estimateDecomposition()
+   Inputs  
+        bb:HashTable 
+            a blackBoxIdeal
+   Description
+        Text
+            With an {\tt  Experiment } it is possible to check point properties of an @TO BlackBoxParameterSpace@ or @TO BlackBoxIdeal@ 
+            at random points and collect user-defined statistics.
+            If the black box supports evaluation, then at each point the jacobian can be computed
+            and jets at smooth ones. 
+            From the collected statistics a heuristic decomposition can be estimated and finally performed using interpolation methods.
+
             Here is a typical extremely simple minded application:
                 
             First we create an ideal we want to analyse and put it into a blackbox:
         Example      
-           K = ZZ/5
-           R = K[x,y,z]
-           I = ideal (x*z,y*z)
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
            bb = blackBoxIdeal I;       
         Text
-           \break The ideal describes a line and a plane intersecting at the origin.
-       
-           The experiment will evaluate the ideal at random points. If
-           the point is in the vanishing set of the ideal (i.e. either on the point
-           or on the line) it will calculate the rank of the jacobi matrix at that point.
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+        Text
+           Our black box constructed several default point properties, including @TO isZeroAt@.
+           The user may add new properties, see 
+           running the experiment will trigger evaluation the ideal at random points.
+        Example
+           bb.hasPointProperty("isZeroAt")
+           bb.isZeroAt(matrix{{0_K,0,1}})
+        Text 
+           If the point is in the vanishing set of the ideal (i.e. either on the point
+           or on the line), the point will be considered as insteresting, see @TO setIsInteresting@.
+           For all interesting points the experiment will compute the @TO watchedProperties@
+           and keep that statistics.
+        Text
+           \break If a black box has a property "rankJacobianAt" it is
+           automatically watched.
+        Example
+           e.watchedProperties() 
+        Text 
+           The experiment calculate the rank of the jacobi matrix at interesting points.
            (2 on the line, 1 on the plane, 0 in the origin). 
         Example
            bb.isZeroAt(matrix{{0_K,0,1}})
@@ -1533,18 +1764,15 @@ doc ///
            bb.rankJacobianAt(matrix{{1_K,2,0}})
            bb.rankJacobianAt(matrix{{0_K,0,0}}) 
         Text
-           \break Now we create the experiment:
-        Example
-           e = new Experiment from bb;
-        Text
-           \break If a black box has a property "rankJacobianAt" it is
-           automatically watched:
-        Example
-           e.watchedProperties() 
-        Text
            \break Now we run the experiment by evaluating at 1250 random points:  
         Example
            time e.run(1250)      
+        Text
+           As return value we get the collected point number grouped by the values of the watched properties.
+           Later these statistics are acceccible via count() :
+        Example
+           e.count()            
+           e.countinfo()
         Text
            There are 125 points in (F_5)^3 of which 25 are on the
            plane, 5 are on the line and 1 (the origin) is on the line and the plane.
@@ -1560,19 +1788,17 @@ doc ///
            codimension it is not useful to remember all of them. The experiment
            remembers by default only about 10 points per component:
         Example
+           e.minPointsPerComponent()
            e.collectedCount() 
         Text
+            Here we have not collected exactly 10 points per component since the experiment uses the upper end of the confidence interval for the number of components ( see @TO estimateNumberOfComponents@) as guide for the number of points to keep.
            The amount of stored points can be adjusted:
         Example
            e.setMinPointsPerComponent(20)
            -- collect about 20 points per component now:
            time e.run(1250);
            e.collectedCount() 
-        Text
-           Here we have not collected exactly 20 points per component since
-           the experiment uses the upper end of the confidence interval for the
-           number of components as guide for the number of points to keep. 
-           
+        Text          
            Lets now estimate the number and codimension of reduced components
            of the vanishing set:
         Example
@@ -1593,7 +1819,7 @@ doc ///
            time e.run(1250)
            e.estimateDecomposition()     
         Text
-           A doubeling of the number of experiments is expected to devide the
+           A doubling of the number of experiments is expected to divide the
            width of a confidence interval by the square root of 2.         
    Caveat
         does not check if the ideal ring is a quotient ring (not supported)
