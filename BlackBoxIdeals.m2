@@ -333,7 +333,7 @@ getEpsRing(Ring, ZZ) := Ring => (coeffring, epsDim)->
      (
         polRing:=coeffring[leps];
         leps=(gens(polRing))#0;
-        savedEpsRings#(coeffring,epsDim) = polRing/leps^(epsDim+1);    
+        savedEpsRings#(coeffring,epsDim) = polRing/(leps^(epsDim+1));    
         epsRng = savedEpsRings#(coeffring, epsDim);
         eps = (gens epsRng)#0;
         for symb in getPropertySymbols("eps") do 
