@@ -91,6 +91,7 @@ FiniteFieldExperimentsProtect = ()->
   protect propertyList;
   protect clear;
   protect jacobianAtKey;
+  protect rankJacobianAtKey;
   protect watchProperty;
   protect watchProperties;
   protect recordProperties;
@@ -104,6 +105,10 @@ FiniteFieldExperimentsProtect = ()->
   protect watchedProperties;
   protect useJacobianAt;
   protect usedJacobianAt;
+
+  protect useRankJacobianAt;
+  protect usedRankJacobianAt;
+
 
   protect minPointsPerComponent;
   protect setMinPointsPerComponent;
@@ -170,6 +175,7 @@ FiniteFieldExperimentsExport  = ()->
  exportMutable(propertyList);
  exportMutable(clear);
  exportMutable(jacobianAtKey);
+ exportMutable(rankJacobianAtKey);
  exportMutable(watchProperties);
  exportMutable(watchProperty);
  exportMutable(recordProperties);
@@ -182,6 +188,9 @@ FiniteFieldExperimentsExport  = ()->
  exportMutable(watchedProperties);
  exportMutable(useJacobianAt);
  exportMutable(usedJacobianAt);
+
+ exportMutable(useRankJacobianAt);
+ exportMutable(usedRankJacobianAt);
  
 
   exportMutable(minPointsPerComponent);
@@ -1001,6 +1010,10 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
    minPointsPerComponent := 10;
    jacobianAtKey := null;
    jacobianAt := null;
+
+   rankJacobianAtKey := null;
+   rankJacobianAt := null;
+
    propertiesAt := (point)->{};
    isInteresting := (point)->true;
 
@@ -1135,8 +1148,8 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
 
        if jacobianAtName===null then
        (
-         jacobianAtKey = jacobianAtName;
-         jacobianAt = jacobianAtName ;
+         jacobianAtKey = null;
+         jacobianAt = null ;
          return;
        );
        if blackBoxIdeal.hasPointProperty(jacobianAtName) then 
@@ -1146,6 +1159,26 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
        ) 
        else  error ("blackBoxIdeal seems not to have property" | propertyName );
    );
+
+   experiment.useRankJacobianAt = (rankJacobianAtName)->
+   ( 
+       if experiment.trials()=!=0 then error ("cannot change rankJacobianAt  - experiment was already run! You could clear() the statistics and retry. ");
+
+       if rankJacobianAtName===null then
+       (
+         rankJacobianAtKey = null;
+         rankJacobianAt = null ;
+         return;
+       );
+       if blackBoxIdeal.hasPointProperty(rankJacobianAtName) then 
+       (
+          rankJacobianAtKey = rankJacobianAtName;
+          rankJacobianAt = blackBoxIdeal.pointProperty(rankJacobianAtName) ;
+       ) 
+       else  error ("blackBoxIdeal seems not to have property" | propertyName );
+   );
+
+
 
 
    experiment.position =(property)->
@@ -1176,6 +1209,16 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
        return jacobianAtKey;
    );
  
+   experiment.rankJacobianAtKey = ()->
+   (
+       return rankJacobianAtKey;
+   );
+
+  experiment.usedRankJacobianAt = ()->
+   (
+       return rankJacobianAtKey;
+   );
+
 
     runExperimentOnce(ExperimentData, Matrix,ZZ ) := Tally => (experimentData, point, wantedPoints) -> 
     (  
@@ -1192,10 +1235,10 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
             experimentData.countData = experimentData.countData + tally {countKey};
 
           
-            if  jacobianAt =!= null then 
+            if  rankJacobianAt =!= null then 
             (
                 FFELogger.debug( "update wanted points" );
-                rankJacobian := rank  jacobianAt(point); 
+                rankJacobian := rankJacobianAt(point);  
                 upperEstimate := (estimateNumberOfComponents(experiment,countKey)).max;
                 ffelog.debug ("upper estimate number of components:  " | toString upperEstimate );
                 --upperEstimate := ((estimateDecompositionOld( experimentData ))#countKey).max;
@@ -1426,14 +1469,22 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
           jacobianAt =  blackBoxIdeal.pointProperty("jacobianAt");
           if  not blackBoxIdeal.hasPointProperty("isZeroAt") then 
               error(" when for a balck box the property 'jacobianAt' is available, it is also expected that the black box has the point property 'isZeroAt' ");  
+          --experiment.watchProperties( {"isZeroAt","rankJacobianAt"} );
+          assert ( blackBoxIdeal.hasPointProperty("rankJacobianAt") );
        );
 
- 
-       if blackBoxIdeal.hasPointProperty("rankJacobianAt") then
-       ( 
-            --experiment.watchProperties( {"isZeroAt","rankJacobianAt"} );
+       if blackBoxIdeal.hasPointProperty("rankJacobianAt") then 
+       (
+          assert ( blackBoxIdeal.hasPointProperty("rankJacobianAt") );
+          rankJacobianAtKey = "rankJacobianAt";
+          rankJacobianAt =  blackBoxIdeal.pointProperty("rankJacobianAt");
+
+
             experiment.watchProperties( {"rankJacobianAt"} );
+
        );
+
+
 
    --end init:
 
