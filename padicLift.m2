@@ -107,30 +107,30 @@ padicLiftExport = ()->
 (
   
     export( "GlobalInternalPadicLiftResultVariable");
-    exportMutable( "unchanged");
-    exportMutable( "normalized");
-    exportMutable( "norms");
-    exportMutable( "normalizedNorms");
-    exportMutable( "initialLiftDepth");
-    exportMutable( "maxLiftDepth");
-    exportMutable( "initialLatticeDim");
-    exportMutable( "latticeDimIncrementFkt");
-    exportMutable( "maxLatticeDim");
-    exportMutable( "verbose");
-    exportMutable( "minColumnNormDistanceFactor");
-    exportMutable( "foundMinPolynomialCandidate");
-    exportMutable( "reducedLatticeBasis");
-    exportMutable( "latticeBasisVectorNormsList");
-    exportMutable( "currentLatticeDim");
-    exportMutable( "liftInfo");
-    exportMutable( "polynomial");
-    exportMutable( "unknown");
-    exportMutable( "maxLatticeDimension");
-    exportMutable( "requiredLatticeDimension");
-    exportMutable( "reductionOpts");
-    exportMutable( "liftOptions");
-    exportMutable( "tolerance");
-    exportMutable( "decimalPrecision");     
+    exportMutable( unchanged);
+    exportMutable( normalized);
+    exportMutable( norms);
+    exportMutable( normalizedNorms);
+    exportMutable( initialLiftDepth);
+    exportMutable( maxLiftDepth);
+    exportMutable( initialLatticeDim);
+    exportMutable( latticeDimIncrementFkt);
+    exportMutable( maxLatticeDim);
+    exportMutable( verbose);
+    exportMutable( minColumnNormDistanceFactor);
+    exportMutable( foundMinPolynomialCandidate);
+    exportMutable( reducedLatticeBasis);
+    exportMutable( latticeBasisVectorNormsList);
+    exportMutable( currentLatticeDim);
+    exportMutable( liftInfo);
+    exportMutable( polynomial);
+    exportMutable( unknown);
+    exportMutable( maxLatticeDimension);
+    exportMutable( requiredLatticeDimension);
+    exportMutable( reductionOpts);
+    exportMutable( liftOptions);
+    exportMutable( tolerance);
+    exportMutable( decimalPrecision);     
 )
 
 -- testing reusage of same symbols in different packages. It seems not to work .
@@ -580,19 +580,19 @@ doc ///
            \break 4. check wether this is really a solution mod 11. 
         Example
             sub(IZZ, point)
-    Text
+        Text
            \break 5. check wether this is a smooth isolated solution mod 11. 
         Example
-        JZZ = jacobian IZZ 
+        	JZZ = jacobian IZZ 
             rank sub(JZZ, point)==1
         Text    
             \break 6. compute the padic approximation  mod p^{2^4}. 
         Example
-                liftPrecision := 4;
-                liftResult = liftPoint( blackBoxIdeal(IZZ), point, liftPrecision )
-                sub (IZZ, liftResult)                
+            liftPrecision := 4;
+            liftResult = liftPoint( blackBoxIdeal(IZZ), point, liftPrecision )
+            sub (IZZ, liftResult)                
 ///
-
+	
 
 testLiftPoint = ()->
 (
