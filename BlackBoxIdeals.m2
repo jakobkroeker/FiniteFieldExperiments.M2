@@ -322,6 +322,34 @@ geps := getSymbol "eps";
 
 getEpsRing = method();
 
+-- todo: remove duplicate code...
+getEpsRing(Ring, InfiniteNumber) := Ring => (coeffring, epsDim)->
+(
+    leps := geps;
+   
+    epsRng := null;
+    if not (savedEpsRings#?(coeffring,epsDim) ) then 
+     (
+        polRing:=coeffring[leps];
+        leps=(gens(polRing))#0;
+        if epsDim===infinity then 
+            savedEpsRings#(coeffring,epsDim) = polRing            
+        else
+            error "epsDim not supported";
+        epsRng = savedEpsRings#(coeffring, epsDim);
+        eps = (gens epsRng)#0;
+        for symb in getPropertySymbols("eps") do 
+        (
+           assert(symb=!=null);
+           (savedEpsRings#(coeffring,epsDim))#symb  = eps;
+        )
+    ); 
+    epsRng = savedEpsRings#(coeffring, epsDim);
+    eps = (gens epsRng)#0;
+    return epsRng
+)
+
+
 getEpsRing(Ring, ZZ) := Ring => (coeffring, epsDim)->
 (
     leps := geps;
@@ -333,7 +361,10 @@ getEpsRing(Ring, ZZ) := Ring => (coeffring, epsDim)->
      (
         polRing:=coeffring[leps];
         leps=(gens(polRing))#0;
-        savedEpsRings#(coeffring,epsDim) = polRing/ leps^(epsDim+1);    
+        if epsDim===infinity then 
+            savedEpsRings#(coeffring,epsDim) = polRing            
+        else
+            savedEpsRings#(coeffring,epsDim) = polRing/ leps^(epsDim+1);    
         epsRng = savedEpsRings#(coeffring, epsDim);
         eps = (gens epsRng)#0;
         for symb in getPropertySymbols("eps") do 
@@ -775,7 +806,9 @@ jetAtSingleTrial( HashTable, Matrix, ZZ ) := MutableHashTable => ( blackBox,  po
          epsRng = getEpsRing( coeffRng, epsPrecision);
         eps = (gens epsRng)#0;
   
-        valuesAtJet := blackBox.valuesAt( sub(jet,epsRng) );
+        jet =  sub(jet,epsRng);
+
+        valuesAtJet := blackBox.valuesAt(jet );
 
         rightHandSide := matrix mutableMatrix( coeffRng, numColumns valuesAtJet ,1 );
         
@@ -1622,7 +1655,12 @@ blackBoxIdealInternal := ( equationsIdeal)->
 
 
     -- registering ValuesAt generates 'isZeroAt' and 'jacobianAt', too !  
-    blackBox.registerPointProperty("valuesAt",( bb, point)->  (    return  gens sub( equationsIdeal , point);   ));
+    blackBox.registerPointProperty("valuesAt",( bb, point)->  
+         (
+            result :=  gens sub( equationsIdeal , point);
+            return  result;
+         )
+    );
 
 
     -- maybe blackBox.addProperty( jacobian, jacobian gens  equationsIdeal )
