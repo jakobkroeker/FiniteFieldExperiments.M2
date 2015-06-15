@@ -1,0 +1,24 @@
+loadPackage"M2Logging"
+uninstallPackage"M2Logging"
+installPackage"M2Logging"
+check M2Logging
+
+loadPackage"IntervalPkg"
+uninstallPackage"IntervalPkg"
+installPackage"IntervalPkg"
+check IntervalPkg
+
+loadPackage"BlackBoxIdeals"
+uninstallPackage"BlackBoxIdeals"
+installPackage"BlackBoxIdeals"
+check BlackBoxIdeals
+
+loadPackage"FiniteFieldExperiments"
+uninstallPackage"FiniteFieldExperiments"
+installPackage"FiniteFieldExperiments"
+check FiniteFieldExperiments
+
+loadPackage"padicLift"
+uninstallPackage"padicLift"
+installPackage"padicLift"
+check padicLift

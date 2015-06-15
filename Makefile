@@ -61,7 +61,9 @@ test: check
 
 # will not work on mac (or at all? should consider auxiliary files!)
 install:
-	M2 --script installPackage.m2
+	echo "path = append(path,\""`pwd`"/\")" >installPackages.m2
+	cat installPackages.template >> installPackages.m2
+	M2 < installPackages.m2
 
 uninstall:
 	M2 --script uninstallPackage.m2
