@@ -35,8 +35,8 @@ check FiniteFieldExperiments;
      )
 
 
-    e.useJacobianAt("rankMat");
-    e.useJacobianAt(null);
+    e.useRankJacobianAt("rankMat");
+    e.useRankJacobianAt(null);
     e.pointKeys()
     e.countsByCount()
     points := e.points();
