@@ -852,6 +852,32 @@ net (EstimatedStratification) := Net =>(es)->
     return (net netEstimatedStratification(es));
 )
 
+possibleCodimComponents = (found,trials,orderK) -> (
+     estimate := 1/trials*poissonEstimate(found);
+     possibleAnswers := flatten apply(10,c->apply(4,d->(c,d+1,c-log(d+1)/log(orderK))));
+     apply(
+          select(possibleAnswers,a->((-log(estimate.min)/log(orderK)>a#2) and (-log(estimate.max)/log(orderK)<a#2))),
+          a->(a#0,a#1)
+          )
+     )
+
+-- round a real number to one decimal place
+-- and add a zero before and after the decimal point
+-- if necessary (works only for positive numbers)
+round1withZeros = (rr) -> (
+     if rr<0 then error;
+     if rr==0 then return "0.0";
+     if rr<1 then return "0"|toString(round(1,rr));
+     if round(1,rr) == round(0,rr) then return toString(round(1,rr))|".0";
+     return toString(round(1,rr))
+     )
+
+roundCodim = (trials,found,orderK) -> (
+     estimate := 1/trials*poissonEstimate(found);
+     if (log(estimate.max)/log(orderK) - log(estimate.min)/log(orderK))<0.8 
+     then return round1withZeros((log(trials)-log(found))/log(orderK))
+     else return "..."
+     )
  
 estimateStratification =  (experiment) -> (
      trials := experiment.trials();
@@ -868,7 +894,9 @@ estimateStratification =  (experiment) -> (
      --      print (net(round(1,(log(trials)-log(countData#k))/log(orderK)))|" <= "|net(k)))
      --      );
 
-     estimate := flatten apply(sortedKeysByOccurence,k->( (round(1,(log(trials)-log(countData#k))/log(orderK))), (k)) );
+     --estimate := flatten apply(sortedKeysByOccurence,k->( (round(1,(log(trials)-log(countData#k))/log(orderK))), (k)) );
+     estimate := flatten apply(sortedKeysByOccurence,k->( (round1withZeros((log(trials)-log(countData#k))/log(orderK))), (k)) );
+     --estimate := flatten apply(sortedKeysByOccurence,k->( (roundCodim(trials,countData#k,orderK))), (k)) );
      return  createEstimatedStratification(experiment.blackBoxIdeal(), estimate, experiment.watchedProperties() );
 )
 
@@ -883,7 +911,7 @@ estimateStratification2 = (e) -> (
      --       print (net(round(1,(log(trials)-log(i#0))/log(orderK)))|" <= "|net(i#1)))
      --       )
      --  ;
-     estimate := flatten apply(e.countsByCount(),k->( (round(1,(log(trials)-log(k#0))/log(orderK))), (k#1)) );
+     estimate := flatten apply(e.countsByCount(),k->( round1withZeros((log(trials)-log(k#0))/log(orderK)), (k#1)) );
      return  createEstimatedStratification(e.blackBoxIdeal(), estimate, e.watchedProperties() );
 )
 
