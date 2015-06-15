@@ -407,8 +407,11 @@ createInterpolatedImage(Experiment,Ring, MapHelper) := HashTable => (experiment,
              );
 
             try (
-             localInterpolatedIdeals = localInterpolatedIdeals | { createInterpolatedIdeal (maxDegree, interpolation.blackBoxIdeal(), point, ("ideal_" |toString idealCount ))  };             
-             idealCount = idealCount +1 ;
+              localInterpolatedIdeals = localInterpolatedIdeals | { createInterpolatedIdeal (maxDegree, interpolation.blackBoxIdeal(), point, ("ideal_" |toString idealCount ))  };             
+              idealCount = idealCount +1 ;
+            ) 
+            else (
+                FFELogger.debug("createInterpolatedIdeal: point"| toString point| " was singular");
             );
 
         );
