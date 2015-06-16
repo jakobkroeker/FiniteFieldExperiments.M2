@@ -852,20 +852,19 @@ jetAt( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox
 (
     assert( numTrials>=1 );
     bestJet := jetAtSingleTrial ( blackBox,  point, jetLength);
+
+    if (bestJet#"succeeded") then (   return bestJet;   );
+
     for i in 2..numTrials do
     (
-        if (bestJet#"succeeded") then 
-        (
-            return bestJet;
-        )
-        else
-        (
-            jetTrialResult := jetAtSingleTrial ( blackBox,  point, jetLength);
-            if ( bestJet#"failedJetLength"< jetTrialResult#"failedJetLength" ) then
-            ( 
-                bestJet = jetTrialResult;
-            );
-        );
+        jetTrialResult := jetAtSingleTrial ( blackBox,  point, jetLength);
+
+        if (jetTrialResult#"succeeded") then ( return jetTrialResult;   );
+
+        if ( bestJet#"failedJetLength"< jetTrialResult#"failedJetLength" ) then
+        ( 
+            bestJet = jetTrialResult;
+        );       
     );
     return bestJet;
 )
