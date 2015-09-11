@@ -851,7 +851,7 @@ jetAt = method();
 
 jetAt( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials )  ->
 (
-    assert( numTrials>=1 );
+    if ( numTrials<1 ) then error "jetAt: expected numTrials >=1 ";
     bestJet := jetAtSingleTrial ( blackBox,  point, jetLength);
 
     if (bestJet#"succeeded") then (   return bestJet;   );
@@ -884,8 +884,8 @@ isCertainlySingularAt = method();
 --isCertainlySingularAt( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials ) ->
 isCertainlySingularAt( HashTable, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials ) ->
 (
-    assert( numTrials>=1 );
-
+   if ( numTrials<1 ) then error "isCertainlySingularAt: expected numTrials >=1 ";
+  
     for i in 1..numTrials do
     (
         worstJet := jetAtSingleTrial ( blackBox,  point, jetLength);
@@ -1446,7 +1446,9 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
     
     blackBox.setSingularityTestOptions = (prec, numTrials)->
     (
-       assert( prec >= 0 and numTrials>0 );
+       if (prec <0) then error "setSingularityTestOptions: expected prec >= 0";
+       if (numTrials <=0) then error "setSingularityTestOptions: expected numTrials > 0";
+
        singularTestOptions.precision = prec;
        singularTestOptions.numTrials = numTrials;
        if blackBox.hasPointProperty("valuesAt") then
