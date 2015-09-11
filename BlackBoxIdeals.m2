@@ -87,7 +87,7 @@ protect setJacobianAt;
 protect equations;
 
 protect hasPointProperty;
-protect knownProperties;
+--protect knownProperties;
 protect knownPointProperties;
 protect knownPointPropertiesAsSymbols;
 protect knownMethods;
@@ -125,7 +125,6 @@ idealBlackBoxesExport = ()->
 
     exportMutable(hasPointProperty);
     exportMutable(knownPointProperties);
-    exportMutable(knownProperties);
     exportMutable(knownPointPropertiesAsSymbols);
 
     exportMutable(knownMethods);
@@ -310,7 +309,7 @@ getPropertySymbols := method ();
       -- todo question: should the symbol in the users private dictionary always be created?
       try  (  propertySymbols = propertySymbols | { getGlobalSymbol propertyName} ) else 
        ( 
-              propertySymbols =  propertySymbols | { getGlobalSymbol( User#"private dictionary" propertyName); }
+              propertySymbols =  propertySymbols | { getGlobalSymbol( User#"private dictionary", propertyName); }
         );
       return propertySymbols;
    );
@@ -660,6 +659,7 @@ deduceJacobianAt = ( blackBox, point )->
          (
             coordinateValue := last coefficients (valueVec_(0,equationIdx), Monomials=>{1 , eps } );
             if ( not (coordinateValue)_(0,0) ==0) then error("error in jacobianAt. please contact the developers");
+               
             jacobianMatrixAt_(unknownIdx,equationIdx) = sub( (coordinateValue)_(1,0) , rngPoint  )  ;
          );
     );
@@ -791,7 +791,8 @@ jetAtSingleTrial( HashTable, Matrix, ZZ ) := MutableHashTable => ( blackBox,  po
             rnd = random( coeffRng^(numColumns(jacobianKernel)), coeffRng^1 );
         );
     );
-    
+
+
     lengthOneLift := sub(point,epsRng) + transpose(sub( jacobianKernel*rnd, epsRng) *eps);
 
     jet = lengthOneLift;
@@ -1417,31 +1418,23 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
    );
   
   
-  blackBox.knownProperties = ()->
-   (  
-      properties := {};
-      if ( blackBox#?"valuesAt" ) then
-      (
-          properties = properties | { getGlobalSymbol( BlackBoxIdeals.Dictionary, "numGenerators" ) };
-      );
-      return properties;
-  );
-
    -- 'knownAttributes' returns a list of known Attributes. 
    -- (computed as 'keys blackBox which are not Functions' \ {knownPointPropertiesAsSymbols() }
    blackBox.knownAttributes = ()->
    (
          all :=  keysWithoutSymbols blackBox;
          all = select (all, (foo)->(not instance(blackBox#foo,Function)));   
-         kM := kP := kPP := kPS := {};
+         kM := kPP := kPS := {};
          -- kM =  blackBox.knownMethods();
-         -- kP =  blackBox.knownProperties();
          -- kPP =  blackBox.knownPointProperties();
          kPS  =  blackBox.knownPointPropertiesAsSymbols();
-         toRemove := kM |  kP | kPP |kPS;
+         toRemove := kM | kPP |kPS;
          for symb in toRemove do
-           all = delete(symb,all);
-
+            all = delete(symb,all);
+         if ( blackBox#?"valuesAt" ) then
+         (
+             all = all | { getGlobalSymbol( BlackBoxIdeals.Dictionary, "numGenerators" ) };
+         );
          sortedAttributes := sort apply(all, i-> ( toString i, i ));
          sortedAttributes = apply(sortedAttributes, i->(i_1));
          return sortedAttributes;  
