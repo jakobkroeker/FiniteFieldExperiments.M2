@@ -1311,6 +1311,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
 
   experiment.clearWatchedProperties = (   )->
   (
+      experiment.clear(); 
       setRecordedPropertiesInternal({});
   );
 
@@ -1906,9 +1907,171 @@ TEST ///
 
 ///
 
+doc ///
+   Key
+        "clear"
+   Headline
+        deletes data of an experiment to start from a clean slate
+   Usage   
+        e.clear()
+   Inputs  
+        e:Experiment 
+            an Experiment
+   Description
+        Text
+            Sometimes one wants to restart an experiment from a clean slate,
+            for example if one has changed some properties or has implemented
+            new properties one wants to watch. 
+            
+            This can be done with clear. 
+            
+            More precisely clear erases the collected points, the statistics.
+            The number of trials is set to zero. If a iterator is used to 
+            generate the points, this is also reset to the starting point.
+            This is useful if the iterator is 
+            used to enumerate a given set of non random points (e.g all points
+            in IP^n). 
+            
+            The black box itself and the list of watched properties
+            are not changed.
+            
+            Lets see how this works in an example.                
+            First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.run(100)          
+           e.trials()
+           e.count()
+           e.pointLists()
+           e.watchedProperties()
+        Text
+           \break Now we clear the statistics and point lists:
+        Example
+           e.clear()
+           e.trials()
+           e.count()
+           e.pointLists()
+           e.watchedProperties()
+///
+
+doc ///
+   Key
+        "clearWatchedProperties"
+   Headline
+        deletes the list of watched properties
+   Usage   
+        e.clearWatchedProperties()
+   Inputs  
+        e:Experiment 
+            an Experiment
+   Description
+        Text
+            This is the same as  @TO2{clear,"e.clear()"}@ with the additional effect that
+            the watched property list is erased.
+          
+            The black box itself is not changed.
+            
+            It is not usesful to erase only the watched property list
+            without setting the statistics to zero, since the statistics
+            count the number of times a particular property has occured.
+            
+            Lets see how this works in an example.                
+            First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.run(100)          
+           e.trials()
+           e.count()
+           e.pointLists()
+           e.watchedProperties()
+        Text
+           \break Now we clear the statistics, the point lists and the watched properties.
+        Example
+           e.clearWatchedProperties()
+           e.trials()
+           e.count()
+           e.pointLists()
+           e.watchedProperties()
+///
+
+doc ///
+   Key
+        "collectedCount"
+   Headline
+        counts the number of collected points
+   Usage   
+        e.collectedCount()
+   Inputs  
+        e:Experiment 
+            an Experiment
+   Description
+        Text
+            An experiment collects a limited number of points
+            for each combination of properies it encounters. 
+            
+            This is useful if one wants to inspect
+            points with special properties in more detail. If the 
+            points are on a moduli space one can create the
+            corresponding object and study it in detail.
+            
+            On stata of low codimension many points are found. To
+            avoid memory problems only a small number of points
+            are collected (see setMinPointsPerComponent). Therefore
+            the number of collected points is usually smaller than
+            the number of found points. 
+            
+            collectedCount() returns an HashTable containing
+            the number of collected points
+            for each combination of properties.
+
+            Lets see how this works in an example.                
+            First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.run(100)          
+           e.collectedCount()
+           e.pointLists()
+           e.minPointsPerComponent()
+        Text
+           Notice that the number of collected points can be larger than
+           the number minPointsPerComponent() since the experiment
+           tries to estimate the number of components for each combination
+           of properties. In the beginning where only a few points have
+           been found the statistics might be so errorprone that some extra
+           points are collected.   
+///
 
 end
 ---
+
+
+quit -- F11 F11 F12
+
+path = append(path,"/Users/bothmer/Desktop/projekte/strudel/Jakob2010/GitHub/padicLiftM2/")
 
 uninstallPackage"FiniteFieldExperiments"
 installPackage"FiniteFieldExperiments"
