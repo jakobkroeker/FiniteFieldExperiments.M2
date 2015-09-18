@@ -2057,13 +2057,159 @@ doc ///
            e.pointLists()
            e.minPointsPerComponent()
         Text
-           Notice that the number of collected points can be larger than
+           \break Notice that the number of collected points can be larger than
            the number minPointsPerComponent() since the experiment
            tries to estimate the number of components for each combination
            of properties. In the beginning where only a few points have
            been found the statistics might be so errorprone that some extra
            points are collected.   
 ///
+
+doc ///
+   Key
+        "count"
+   Headline
+        shows how often points with particular properties were found by an experiment
+   Usage   
+        e.count()
+   Inputs  
+        e:Experiment 
+            an Experiment
+   Description
+        Text
+            Returns a Tally with the number of points that
+            an experiment has found so far for each combination
+            of wached properties.
+
+            This gives a rough overview over which properties 
+            occur in large/small strata. For an estimation of the
+            codimension and number of components for each such stratum
+            (see estimateDecomposition).
+            
+            e.count() is called automatically when e.run is finished.
+            
+            Lets see how this works in an example.                
+            First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.run(125) 
+           e.count()
+        Text
+           \break There are 125 point over F_5 in A^3. Of these 25 lie on 
+           the plane and 5 on the line. As one can see this is also about
+           the number found by a random search.  
+        Example
+           e.estimateDecomposition()
+        Text
+           The expected fraction of points on a codim c component is 
+           1/p^c. This is used by estimateDecomposition to guess the 
+           number of components in each codimension. We see that up to 
+           a margin of error this gives the correct answer of 1 component
+           in codimension 1 and 2 each.       
+///
+
+doc ///
+   Key
+        "estimateDecomposition"
+   Headline
+        shows how often points with particular properties were found by an experiment
+   Usage   
+        e.estimateDecomposition()
+   Inputs  
+        e:Experiment 
+            an Experiment
+   Description
+        Text
+           Returns a HashTable with an estimate of the number of components 
+           in each codimension for all combinations of properties found. 
+ 
+           This is done by assuming that for each component of codimension 
+           c the fraction of points found is the expected 1/p^c and 
+           by further assuming that the components are smooth at most 
+           of there rational points P. In this case
+           c is equal to the rank of the jacobi matrix at this point.
+                        
+           Lets see how this works in an example.                
+           First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.run(500) 
+           e.estimateDecomposition()
+        Text
+           We see that up to 
+           a margin of error this gives the correct answer of 1 component
+           in codimension 1 and 2 each and no component of codimension 0.
+           
+           (the point where the line and the plane intersect has
+           rankJacobiMatrix equal to 0. Fortunately there are not enough
+           such points to fool the algorithm.)
+           
+           estimateDecomposition works only if the black box used in this experiment
+           provides a property rankJacobianAt and this property is
+           watched by the experiment. As explained above,
+           this function uses the rank of 
+           the jacobi matrix at each point as an estimate for the codimension
+           of the component the point lies on. In effect assuming that
+           the point lies in the smooth part of the component.      
+///
+
+doc ///
+   Key
+        "countsByCount"
+   Headline
+        sorts the statistics by number of points found
+   Usage   
+        e.countsByCount()
+   Inputs  
+        e:Experiment 
+            an Experiment
+   Description
+        Text
+            Returns a Tally with the number of points that
+            an experiment has found so far for each combination
+            of wached properties sorted by the number of points found.
+            (not by alpha numeric sort of the properties)
+
+            This gives a rough overview over which properties 
+            occur in large/small strata. 
+            
+            This is particularily usefull when working with an
+            black box parameter space that provides no propery
+            rankJacobianAt and therefore no direct estimation of
+            the codimension of each component.
+                   
+            Lets see how this works in an example.                
+            First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.run(500) 
+           e.countsByCount()
+///
+
 
 end
 ---
@@ -2077,6 +2223,7 @@ uninstallPackage"FiniteFieldExperiments"
 installPackage"FiniteFieldExperiments"
 
 viewHelp FiniteFieldExperiments
+viewHelp BlackBoxIdeals
 
 restart
 
