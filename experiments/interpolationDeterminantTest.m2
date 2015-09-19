@@ -35,19 +35,40 @@ M = random(R^{m:0},R^{m:-d})
 detM = point -> matrix{{det sub(M,point)}}
 -- !!!result must be a matrix!!!
 
+S=K[y_{0,0}..y_{m-1,m-1}]
+RS = R**S
 
-time detM(matrix{{1,2,4_K}})
+point = matrix{{1,5,1_K}}
+
+-- jacobianAt for Matrices
+quickCoRankJacobianAt = (point) -> (
+     r = numcols M - rank sub(M,point);
+     MY = ideal (sub(M,RS)*sub(genericMatrix(S,m,r),RS));
+     pointY = point|flatten syz sub(M,point)|matrix{{m*(m-r):0_K}};
+     assert (0==sub(MY,pointY));
+     print"kjhgkjhgkj";
+     m-rank sub((jacobian(MY))^{0..m-1},pointY)
+     )
 
 
 -- make a black box from the evaluation function
 bb = blackBoxIdealFromEvaluation(R,detM);
 bb.knownPointProperties()
+-- register quick Jacobian
+bb = bb.upp("rankJacobianAt",quickCoRankJacobianAt);
+bb.knownPointProperties()
+
 
 -- find points on the determinant
 e = new Experiment from bb;
+e.watchedProperties()
+
 time e.run(10)
 -- !!! manchmal sehr langsam !!!
 -- used 48.6921 seconds (for 10)
+
+point = (e.points())#0
+bb.rankJacobianAt(point)
 
 e.watchedProperties()
 e.count()
