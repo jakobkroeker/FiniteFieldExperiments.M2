@@ -298,19 +298,36 @@ TEST ///
 
 savedEpsRings := new MutableHashTable;
 
+
+-- getPropertySymbols() returns all relevant symbols (propertySymbols) from different M2 scopes corresponding to a given method name (propertyName).
+-- Background: suppose the user registered a point property with name 'PP' in a black box 'bb' and want to access it using the  '.' operator.
+-- To achieve that, internally we have to add in the HashTable 'bb' an entry with 'symbol(PP)' as a key 
+-- and the point property function as a value.
+-- Now in Macaulay2  symbols are bound to scopes and thus in different scopes symbols with same name may coexist.
+-- So it may happen that the registered key symbol 'PP' differes from the to the user visible symbol 'PP' at the top level
+-- and the access 'bb.PP' leads to 'error: key not found in hash table'
+-- The workaround is to register the same property at least twice using the symbol  getGlobalSymbol( 'PP' ) as a key.
+-- I'm not sure, but for some situations it was also necessary to use the symbol from 'User#"private dictionary"'
+-- via getGlobalSymbol( User#"private dictionary",'PP')
+-- and the symbol from the package dictionary "BlackBoxIdeals.Dictionary"
+-- see also https://github.com/jakobkroeker/FiniteFieldExperiments.M2/issues/116
+-- 
+-- question: what happens in case the user loads a package which defines the same symbol?
+
+-- artificial example:  
+-- restart
+-- loadPackage "BlackBoxIdeals"
+-- fragileHT = new HashTable from {
+--   getGlobalSymbol(User#"private dictionary", "valuesAt") => 5
+-- }
+-- fragileHT.valuesAt -- error: key not found in hash table
+-- 
+
 getPropertySymbols := method ();
-   getPropertySymbols(String) := List => (propertyName)->
+getPropertySymbols(String) := List => (propertyName)->
    (
-      --
-      propertySymbols := {} ;
-      --
-      try  (  propertySymbols = propertySymbols | { getGlobalSymbol(BlackBoxIdeals.Dictionary, propertyName)} );
-      
-      -- todo question: should the symbol in the users private dictionary always be created?
-      try  (  propertySymbols = propertySymbols | { getGlobalSymbol propertyName} ) else 
-       ( 
-              propertySymbols =  propertySymbols | { getGlobalSymbol( User#"private dictionary", propertyName); }
-        );
+      propertySymbols := {} ;  
+      try  (  propertySymbols = propertySymbols | { getGlobalSymbol propertyName} ) else        (    );
       return propertySymbols;
    );
 
@@ -1075,7 +1092,6 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
               propertySymbol = getGlobalSymbol( User#"private dictionary", propertyName); 
        );
       -- todo first question : is the behaviour above same as for 'global 'symbol'? 
-      -- second question: should 
       return propertySymbol;
    );
 
@@ -1113,7 +1129,6 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
 
      bblog.debug(" called setPointProperty ") ;
 
-      -- propertySymbol := getGlobalSymbol propertyName;
       propertyName := toString propertySymbol;
 
       assert(propertyName=!=null); 
