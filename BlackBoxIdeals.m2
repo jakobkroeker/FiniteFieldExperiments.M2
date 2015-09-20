@@ -331,8 +331,14 @@ savedEpsRings := new MutableHashTable;
 getPropertySymbols := method ();
 getPropertySymbols(String) := List => (propertyName)->
    (
-      propertySymbols := {} ;  
-      try  (  propertySymbols = propertySymbols | { getGlobalSymbol propertyName} ) else        (    );
+      propertySymbols := {} ;
+      try  (  propertySymbols = propertySymbols | { getGlobalSymbol(BlackBoxIdeals.Dictionary, propertyName)} );
+
+      -- todo question: should the symbol in the users private dictionary always be created?
+      try  (  propertySymbols = propertySymbols | { getGlobalSymbol propertyName} ) else 
+       ( 
+              propertySymbols =  propertySymbols | { getGlobalSymbol( User#"private dictionary", propertyName); }
+        );
       return propertySymbols;
    );
 
@@ -1095,7 +1101,6 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
       try  (  propertySymbol = getGlobalSymbol propertyName; ) else ( 
               propertySymbol = getGlobalSymbol( User#"private dictionary", propertyName); 
        );
-      -- todo first question : is the behaviour above same as for 'global 'symbol'? 
       return propertySymbol;
    );
 
@@ -1159,7 +1164,9 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
      -- pointProperties#propertySymbol = pointProperties#propertyName;
   
      if packageSymbol=!=null then 
+     (
        pointProperties#packageSymbol = pointProperties#propertyName;
+     );
 
   
   
@@ -1399,6 +1406,8 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
       (  
            -- todo: question do it for all symbols or not
            propertySymbol := getPropertySymbol(propertyName);
+           assert(propertySymbol=!=null);
+           
            outerSetPointProperty( propertySymbol, propertyMethod );
       ) 
       else ( error ("point property "| toString propertyName | " does not exist.") );
@@ -1552,7 +1561,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
 
        for  property in blackBox.knownPointProperties() do
        (
-          propkeys := getPropertySymbols( property ) | {toString property};
+          propkeys := unique sort {( property )} | {toString property};
 
           for key in propkeys  do
           (
