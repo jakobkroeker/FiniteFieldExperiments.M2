@@ -73,6 +73,7 @@ protect rpp;
 protect numTrials;
 protect setSingularityTestOptions;
 protect singularityTestOptions;
+protect updateSingularityTest;
  
 protect setPointProperty;
 protect setValuesAt;
@@ -132,6 +133,7 @@ idealBlackBoxesExport = ()->
     exportMutable(knownAttributes);
     exportMutable(numTrials);
     exportMutable(setSingularityTestOptions);
+    exportMutable(updateSingularityTest);
     exportMutable(singularityTestOptions);
 
 )
@@ -157,7 +159,8 @@ undocumented {
     unknowns,
     numTrials,
     pointProperty, -- internal function
-    guessAcceptedParameterNumber -- internal function
+    guessAcceptedParameterNumber, -- internal function
+    updateSingularityTest --internal function
 } 
 
 
@@ -676,9 +679,8 @@ deduceJacobianAt = ( blackBox, point )->
          valueVec := blackBox.valuesAt( matrix newpoint );  
          for equationIdx in 0..numColumns valueVec-1 do
          (
-            coordinateValue := last coefficients (valueVec_(0,equationIdx), Monomials=>{1 , eps } );
+            coordinateValue := last coefficients (valueVec_(0,equationIdx), Monomials=>{1  , eps } );
             if ( not (coordinateValue)_(0,0) ==0) then error("error in jacobianAt. please contact the developers");
-               
             jacobianMatrixAt_(unknownIdx,equationIdx) = sub( (coordinateValue)_(1,0) , rngPoint  )  ;
          );
     );
@@ -1252,6 +1254,44 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
       setPointProperty( "rankJacobianAt" , localRankJacobianAt );
    );
 
+    updateSingularityTest := ()->
+    (
+       if blackBox.hasPointProperty("valuesAt") then
+       (
+           localIsCertainlySingularWrapper  := (  point )  ->
+           (
+               return isCertainlySingularAt( blackBox,  point, singularTestOptions.precision,  singularTestOptions.numTrials );
+           );
+
+           if blackBox.hasPointProperty("isCertainlySingularAt") then 
+           (
+               blackBox.updatePointProperty("isCertainlySingularAt", localIsCertainlySingularWrapper)
+           )
+           else
+           (
+               blackBox.registerPointProperty("isCertainlySingularAt", localIsCertainlySingularWrapper);
+           );
+           localIsProbablySmoothWrapper  := (  point )  ->
+           (
+               return not isCertainlySingularAt( blackBox,  point, singularTestOptions.precision,  singularTestOptions.numTrials );
+           );
+
+           if blackBox.hasPointProperty("isProbablySmoothAt") then 
+           (
+               blackBox.updatePointProperty("isProbablySmoothAt", localIsProbablySmoothWrapper)
+           )
+           else
+           (
+               blackBox.registerPointProperty("isProbablySmoothAt", localIsProbablySmoothWrapper);
+           );
+
+
+      );
+      return;
+    );
+    
+
+
 
    -- setValuesAt:
    --    set a method to compute the values of the generators/equations at a given point.
@@ -1269,8 +1309,8 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
        -- when using valuesAt instead of localValuesAt we get the wrong  (symbol valuesAt) (local valuesAt)
 
        setPointProperty( "valuesAt"  ,  localValuesAt );
-       
-        localNumGenerators =  deduceNumGenerators(blackBox)  ; --depends on valuesAt.
+     
+       localNumGenerators =  deduceNumGenerators(blackBox)  ; --depends on valuesAt.
 
        blackBox.numGenerators = ()->(return localNumGenerators);
 
@@ -1286,6 +1326,8 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
        ----- jacobian at:
        localMethod :=  (point)->deduceJacobianAt( blackBox, point );
        setJacobianAt ( localMethod );  
+
+       updateSingularityTest();
    );
  
 
@@ -1461,47 +1503,28 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
     
     blackBox.singularityTestOptions = ()->
     (
-        return new HashTable from singularTestOptions;
+       if not blackBox.hasPointProperty("valuesAt") then
+       ( 
+            error "no singularity test options: valuesAt-property not available";
+       );
+       return new HashTable from singularTestOptions;
     );
+
+
 
     blackBox.setSingularityTestOptions = (prec, numTrials)->
     (
+       if not blackBox.hasPointProperty("valuesAt") then
+       ( 
+            error "cannot set singularity test options: valuesAt-property not available";
+       );
+
        if (prec <0) then error "setSingularityTestOptions: expected prec >= 0";
        if (numTrials <=0) then error "setSingularityTestOptions: expected numTrials > 0";
 
        singularTestOptions.precision = prec;
        singularTestOptions.numTrials = numTrials;
-       if blackBox.hasPointProperty("valuesAt") then
-       (
-           localIsCertainlySingularWrapper  := (  point )  ->
-           (
-               return isCertainlySingularAt( blackBox,  point, singularTestOptions.precision,  singularTestOptions.numTrials );
-           );
-
-           if blackBox.hasPointProperty("isCertainlySingularAt") then 
-           (
-               blackBox.updatePointProperty("isCertainlySingularAt", localIsCertainlySingularWrapper)
-           )
-           else
-           (
-               blackBox.registerPointProperty("isCertainlySingularAt", localIsCertainlySingularWrapper);
-           );
-           localIsProbablySmoothWrapper  := (  point )  ->
-           (
-               return not isCertainlySingularAt( blackBox,  point, singularTestOptions.precision,  singularTestOptions.numTrials );
-           );
-
-           if blackBox.hasPointProperty("isProbablySmoothAt") then 
-           (
-               blackBox.updatePointProperty("isProbablySmoothAt", localIsProbablySmoothWrapper)
-           )
-           else
-           (
-               blackBox.registerPointProperty("isProbablySmoothAt", localIsProbablySmoothWrapper);
-           );
-
-
-      );
+       updateSingularityTest();
 
     );
 
@@ -3293,6 +3316,25 @@ doc ///
           isCertainlySingularAt
           isProbablySmoothAt
           jetAt
+///
+
+TEST ///
+  --test for issue #111
+coeffRing := ZZ/3;
+numVariables := 2;
+bb = blackBoxParameterSpace( numVariables , coeffRing );
+
+try (bb.setSingularityTestOptions(5,5);) then (error "should fail";) else();
+
+try (bb.singularityTestOptions();) then (error "should fail";) else();
+
+valuesAt := (blackBox, point)-> matrix {{5}};
+bb = bb.rpp("valuesAt",valuesAt);
+bb.singularityTestOptions()
+bb.setSingularityTestOptions(5,5);
+point = matrix{{0_coeffRing, 1_coeffRing}}
+bb.isCertainlySingularAt(point)
+bb.isProbablySmoothAt(point)
 ///
 
 TEST ///
