@@ -679,7 +679,7 @@ deduceJacobianAt = ( blackBox, point )->
          valueVec := blackBox.valuesAt( matrix newpoint );  
          for equationIdx in 0..numColumns valueVec-1 do
          (
-            coordinateValue := last coefficients (valueVec_(0,equationIdx), Monomials=>{1  , eps } );
+            coordinateValue := last coefficients (sub(valueVec_(0,equationIdx), epsRng ), Monomials=>{1  , eps } );
             if ( not (coordinateValue)_(0,0) ==0) then error("error in jacobianAt. please contact the developers");
             jacobianMatrixAt_(unknownIdx,equationIdx) = sub( (coordinateValue)_(1,0) , rngPoint  )  ;
          );
@@ -3316,6 +3316,23 @@ doc ///
           isCertainlySingularAt
           isProbablySmoothAt
           jetAt
+///
+
+TEST ///
+  --test for issue #117
+coeffRing := ZZ/3;
+numVariables := 2;
+R = coeffRing[x,y];
+
+bb = blackBoxParameterSpace( numVariables , coeffRing );
+
+P = matrix{{0_coeffRing, 0_coeffRing}}
+valuesAt := (blackBox, point)-> matrix {{0_coeffRing }};
+bb = bb.rpp("valuesAt",valuesAt);
+
+bb.valuesAt(P)
+bb.isZeroAt(P)
+jetAt(bb,P,1,1)
 ///
 
 TEST ///
