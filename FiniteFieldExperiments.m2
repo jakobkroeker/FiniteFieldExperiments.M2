@@ -102,8 +102,6 @@ FiniteFieldExperimentsProtect = ()->
 
   protect recordedProperties;
   protect watchedProperties;
-  protect useJacobianAt;
-  protect usedJacobianAt;
 
   protect useRankJacobianAt;
   protect usedRankJacobianAt;
@@ -184,8 +182,6 @@ FiniteFieldExperimentsExport  = ()->
 
  exportMutable(recordedProperties);
  exportMutable(watchedProperties);
- exportMutable(useJacobianAt);
- exportMutable(usedJacobianAt);
 
  exportMutable(useRankJacobianAt);
  exportMutable(usedRankJacobianAt);
@@ -231,7 +227,6 @@ isInteresting,      --internal
 interpolatedIdeals, --internal
 isRandom,           --internal
 rankJacobianAtKey,      --document later, redesign
-usedJacobianAt,     -- for user information, maybe improve and then document
 loadData,           --IO; in development
 propertyAt,         --unnecessary/deprecated
 saveData,           --IO; in development
