@@ -2220,6 +2220,20 @@ doc ///
 ///
 
 
+TEST ///
+-- test issue #57
+prime = 11
+K = ZZ/prime
+R = K[x,y,z,w]
+betti res (I = minors(2,random(R^{2:0},R^{3:-1})))
+projI = eliminate(w,I)
+
+bb = blackBoxIdeal I;
+e = new Experiment from bb;
+f = new Experiment from bb;
+///
+
+
 end
 ---
 
