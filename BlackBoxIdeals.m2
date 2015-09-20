@@ -187,7 +187,7 @@ if BlackBoxIdeals#Options#DebuggingMode then
 
 bblog := BlackBoxLogger;
 
--- why did I need comparison between a string and a symbol ? (jk)
+-- why did I need comparison between a string and a symbol ? (jk) - if I recall correctly, it was related for intervals...
 
 String ? Symbol := (str,symb)->
 (
@@ -200,7 +200,7 @@ Symbol ? String := (str,symb)->
 );
 
 
--- find out for a function, how many parameters it does accept.
+-- guessAcceptedParameterNumber(): find out for a function, how many parameters it does accept.
 -- if a function accepts variable number of parameters, returns null
 -- if it did not find 'numparms:' in the disasseble string, returns null.
 guessAcceptedParameterNumber = method();
