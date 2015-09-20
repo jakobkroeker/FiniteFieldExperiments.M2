@@ -72,6 +72,7 @@ protect registerPointProperty;
 protect rpp;
 protect numTrials;
 protect setSingularityTestOptions;
+protect singularityTestOptions;
  
 protect setPointProperty;
 protect setValuesAt;
@@ -131,6 +132,7 @@ idealBlackBoxesExport = ()->
     exportMutable(knownAttributes);
     exportMutable(numTrials);
     exportMutable(setSingularityTestOptions);
+    exportMutable(singularityTestOptions);
 
 )
 
@@ -1457,8 +1459,11 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
 
 
     
-    
-    
+    blackBox.singularityTestOptions = ()->
+    (
+        return new HashTable from singularTestOptions;
+    );
+
     blackBox.setSingularityTestOptions = (prec, numTrials)->
     (
        if (prec <0) then error "setSingularityTestOptions: expected prec >= 0";
@@ -2508,6 +2513,49 @@ doc ///
           in general. 
 ///
 
+
+doc ///
+    Key
+        singularityTestOptions
+    Headline
+        show current parameters for singularity test
+    Usage   
+        bb.singularityTestOptions()
+    Inputs  
+        bb: BlackBoxIdeal
+             an black box ideal
+    Outputs
+        : HashTable
+            with  keys { \tt precision } (the required length of the computed jets)
+            and { \tt numTrials } ( the number of required jet computations )
+    Description
+        Text
+            Show currently used parameters for @TO2{isCertainlySingularAt,"point singularity test"}@
+            There are two parameters, the required length of the computed jets ( { \tt precision } )
+            and  the number of required jet computations ({ \tt numTrials }). If one of the jet computations fails,
+            the point is certainly not smooth.
+
+            Let us construct a black box
+        Example
+            R = QQ[x,y]
+            bbI = blackBoxIdeal ideal(x^2-y^3);
+        Text
+            Now we may look at the default singularity test parameters:
+        Example
+            bbI.singularityTestOptions()
+        Text
+            The test parameters may be modified by the user with @TO{setSingularityTestOptions}@
+        Example
+            jetLength = 3;
+            numTrials = 5;
+            bbI.setSingularityTestOptions(jetLength, numTrials);
+            bbI.singularityTestOptions()
+    SeeAlso
+        setSingularityTestOptions
+        isProbablySmoothAt
+        isCertainlySingularAt
+///
+
 doc ///
     Key
         isProbablySmoothAt
@@ -2528,7 +2576,8 @@ doc ///
         Text
           Checks for smoothness of a point on the
           vanishing set of the black box ideal, by
-          trying to find a jet starting at the point.
+          trying to find a @TO2{jetAt,"jet"}@ starting at the point
+          using 
           If the point is smooth on the vanishing
           set of the black box ideal, arbitray jets
           can always be found. If one or more jets are found
@@ -2546,6 +2595,14 @@ doc ///
           origin = matrix{{0,0_QQ}}
           bbI.isCertainlySingularAt(origin)
         Text
+          For the tests the length is taken by the precision of 
+          @TO{singularityTestOptions}@ and the required number of successful trials  
+          is given by 'numTrials'
+        Example    
+          bbI.singularityTestOptions()
+        Text
+          The default singularityTestOptions can be changed with
+          @TO{setSingularityTestOptions}@
           Consider a point on the cuspidal cubic different from the origin:
         Example
           otherPoint = matrix{{8,4_QQ}}
@@ -2568,6 +2625,9 @@ doc ///
           bbI.isZeroAt(pointNotOnCurve)
           bbI.isCertainlySingularAt(pointNotOnCurve)
           jetAt(bbI,pointNotOnCurve,1,1)
+    SeeAlso
+       setSingularityTestOptions
+       jetAt
       
 ///
 
@@ -2632,6 +2692,9 @@ doc ///
           of the branches at the origin):
         Example        
             jetAt(bbI,origin,3,200) 
+    SeeAlso
+        isProbablySmoothAt
+        isCertainlySingularAt
 ///
 
 
@@ -3189,12 +3252,14 @@ doc ///
         Text
           To test wether a given point P on a variety given by
           a black box ideal is smooth, the package tries to construct
+          several jets of certain length. The number of required trials and jetlengths
+          is given by @TO{singularityTestOptions}@ and the default is to compute
           2 jets of length 10 starting at P. If the
           variety is smooth at P such jets always exists. If the variety is
           singular at P a generic jet can not be extended to arbitrary length.
           If the required number of jets can not be found the point property 
           isCertainlySingular has the value true. If the required number 
-          of jets can be found the point property isProbablySmooth has the
+          of jets can be found the point property @TO{isProbablySmoothAt}@ has the
           value true.
         Example
           R = QQ[x,y]
@@ -3213,6 +3278,7 @@ doc ///
           the singularity can not be detected.
         Example
           bbI.setSingularityTestOptions(4,1)
+          bbI.singularityTestOptions()
           bbI.isCertainlySingularAt(origin)
         Text
           The construction of jets is time intensive. For many applications
@@ -3223,6 +3289,7 @@ doc ///
           that can calculate the derivative of the equations at a given point
           (jacobianAt). This is needed to construct jets iteratively.
     SeeAlso
+          singularityTestOptions
           isCertainlySingularAt
           isProbablySmoothAt
           jetAt
