@@ -606,7 +606,7 @@ deduceNumGenerators := (blackBox)->
            
           currTrial = currTrial+1;
     );
-    if not computed then error "error: failed to deduce number of generators/equations; please report the problem to the package developers";
+    if not computed then error " failed to deduce number of generators/equations";
     return numGenerators;
 );
 
@@ -1322,7 +1322,11 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
      
        localNumGenerators =  deduceNumGenerators(blackBox)  ; --depends on valuesAt.
 
-       blackBox.numGenerators = ()->(return localNumGenerators);
+       blackBox.numGenerators = ()->(
+        
+            -- if (localNumGenerators===null) then ( error "failed to deduce number of generating equations" );
+            return localNumGenerators;
+    );
 
 
        bblog.info( "updated blackBox.numGenerators to " | toString blackBox.numGenerators() );   
@@ -3407,6 +3411,56 @@ TEST ///
           bbI.setSingularityTestOptions(4,1)
           bbI.isCertainlySingularAt(origin)
           bbI.isProbablySmoothAt(origin)
+///
+
+
+TEST ///
+    -- test issue #21
+    
+    coeffRing := ZZ/3;
+    numVariables := 2;
+    bb = blackBoxParameterSpace( numVariables , coeffRing );
+
+    R = coeffRing[x,y];
+    valuesAt := (bb, point)-> matrix {{sub(  x^2, point )}};
+    bb = bb.rpp("valuesAt",valuesAt);
+    P = matrix{{0_coeffRing, 0_coeffRing}}
+    bb.jacobianAt(P)
+    P = matrix{{1_coeffRing, 1_coeffRing}}
+    valuesAt(bb,P);
+    try ( bb.jacobianAt(P) ) then (error " bb.jacobianAt(point) should gove an error , becaues the point is not on the variety"  ) else ( );
+
+    valuesAt = ( point)-> matrix {{sub(  x^2, point )}};
+    valuesAt(P);
+    bbE = blackBoxIdealFromEvaluation (R , valuesAt );
+
+    P = matrix{{0_coeffRing, 0_coeffRing}}
+    bbE.jacobianAt(P)
+    P = matrix{{1_coeffRing, 1_coeffRing}}
+    try ( bbE.jacobianAt(P) ) then (error " bbE.jacobianAt(point) should gove an error , becaues the point is not on the variety"  ) else ( );
+
+    C = QQ;
+    R = QQ[x];
+    bbI = new BlackBoxIdeal from ideal x;
+    point = matrix{{1_QQ}};
+    try ( bbI.jacobianAt(point) ) then (error " bbI.jacobianAt(point) should gove an error , becaues the point is not on the variety"  ) else ( );
+
+///
+
+
+TEST ///
+    -- test issue #35
+    C = QQ;
+    R = QQ[x];
+    bbI = new BlackBoxIdeal from ideal x;
+    point = matrix{{1_QQ}};
+
+    jet =  jetAt(bbI,point,1,10)
+    assert(jet#"succeeded" == false)
+    jet =  jetAt(bbI,point,1,1)
+    assert(jet#"succeeded" == false)
+    jet =  jetAt(bbI,point,0,1)
+    assert(jet#"succeeded" == false)
 ///
 
 end

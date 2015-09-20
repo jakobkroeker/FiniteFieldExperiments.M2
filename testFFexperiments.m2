@@ -68,14 +68,12 @@ bbI.jacobian
 
 apply(bbI.knownAttributes(),attribute->print (bbI#attribute))
 
-apply(bbI.knownProperties(),property->print (bbI#property()))
-
 
 assert (2== bbI.rankJacobianAt(matrix{{0,0,1_K}}))
 assert (1== bbI.rankJacobianAt(matrix{{1,2,0_K}}))
 assert (0== bbI.rankJacobianAt(matrix{{0,0,0_K}}))
 -- this is a point where the ideal does not vanish.
-assert (2==bbI.rankJacobianAt(matrix{{1,1,1_K}}))
+try (bbI.rankJacobianAt(matrix{{1,1,1_K}})) then (error "should fail") else();
 
 assert (bbI.isZeroAt(matrix{{0,0,1_K}}))
 assert (bbI.isZeroAt(matrix{{1,2,0_K}}))
