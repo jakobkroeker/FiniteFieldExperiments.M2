@@ -1619,6 +1619,31 @@ blackBoxParameterSpaceInternal(Ring) := HashTable => ( pRing ) ->
    return blackBox;
 )
 
+listToStack := (L)->
+(
+    return ( apply(L, i -> ("--   " | toString i)));
+)
+
+--net (BlackBoxParameterSpace) := Net =>(bb)->
+--(
+--    return net toString bb.type;
+--);
+
+net (BlackBoxParameterSpace) := Net =>(bb)->
+(
+    L := {"--" | toString bb.type};
+    L = L | {"--"};
+    L = L | {"-- attributes:"};
+    L = L | {"-- "} | listToStack bb.knownAttributes();
+    L = L | {"--"};
+    L = L | {"-- methods:"};
+    L = L | {"-- "} | listToStack  bb.knownMethods();
+    L = L | {"--"};
+    L = L | {"-- point properties:"};
+    L = L | {"-- "} | listToStack  bb.knownPointProperties();
+
+    return stack L;
+);
 
 
 blackBoxIdeal = method();
