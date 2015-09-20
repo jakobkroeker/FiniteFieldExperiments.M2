@@ -670,7 +670,10 @@ deduceJacobianAt = ( blackBox, point )->
 
     rngPoint := ring point;
     numVariables := blackBox.numVariables ;      
+
+    -- attention, duplicate code!!!
     if (not ( blackBox.valuesAt( point )==0))  then  error("point does not belong to the ideal ! ");
+    -- attention, duplicate code!!!
     
     epsRng := getEpsRing(rngPoint, 1);
     eps := (gens epsRng)#0;
@@ -1539,7 +1542,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
 
 
    
-
+   -- store the current type of the black box
    blackBox.type = BlackBoxParameterSpace;
 
    -- a user should not call this method...
@@ -1744,7 +1747,10 @@ blackBoxIdealInternal := ( equationsIdeal)->
     blackBox.updatePointProperty( "jacobianAt",
 
        ( bb, point )->
-       (   
+       (  
+          -- attention, duplicate code!!!
+          if (not ( blackBox.valuesAt( point )==0))  then  error("point does not belong to the ideal ! ");
+          -- attention, duplicate code!!!
           jacobianM2MatrixAt := sub( blackBox.jacobian , point);
           return jacobianM2MatrixAt;
        )
