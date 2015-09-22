@@ -2340,6 +2340,8 @@ doc ///
            e.ignoreProperty("isProbablySmoothAt")
            e.watchedProperties()
            e.run(250)  
+   SeeAlso
+      ignoreProperties  
 ///
 
 doc ///
@@ -2348,7 +2350,7 @@ doc ///
    Headline
         deletes a property from the list of watched properties
    Usage   
-        e.ignoreProperty(L)
+        e.ignoreProperties(L)
    Inputs  
         e:Experiment 
             an Experiment
@@ -2356,7 +2358,7 @@ doc ///
             a list of property names. 
    Description
         Text
-           This removes several property from the list of watched properties.
+           This removes several properties from the list of watched properties.
            This works only if the experiment has been reset with e.clear()
            since otherwise the statistics would be inconsistent.
                                  
@@ -2395,6 +2397,8 @@ doc ///
            e.ignoreProperties({"isProbablySmoothAt","valuesAt"})
            e.watchedProperties()
            e.run(250)  
+   SeeAlso
+      ignoreProperty  
 ///
 
 doc ///
