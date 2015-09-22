@@ -107,8 +107,8 @@ FiniteFieldExperimentsProtect = ()->
   protect usedRankJacobianAt;
 
 
-  protect minPointsPerComponent;
-  protect setMinPointsPerComponent;
+  protect pointsPerComponent;
+  protect setPointsPerComponent;
   protect stratificationIntervalView;
   protect countsByCount;  --protect countsByCount;
 
@@ -187,8 +187,8 @@ FiniteFieldExperimentsExport  = ()->
  exportMutable(usedRankJacobianAt);
  
 
-  exportMutable(minPointsPerComponent);
-  exportMutable(setMinPointsPerComponent);
+  exportMutable(pointsPerComponent);
+  exportMutable(setPointsPerComponent);
   exportMutable(stratificationIntervalView);
 
  
@@ -1025,7 +1025,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
    );
 
    -- some of the  following values initialized at end ( e.g. propertiesAt initialization depends presence of some functions defined later)
-   minPointsPerComponent := 10;
+   pointsPerComponent := 10;
 
    rankJacobianAtKey := null;
    rankJacobianAt := null;
@@ -1059,7 +1059,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
         bb1 := experiment.blackBoxIdeal();
         bb2 := re2.blackBoxIdeal();
 
-     return (  experiment.minPointsPerComponent() ==  re2.minPointsPerComponent() and
+     return (  experiment.pointsPerComponent() ==  re2.pointsPerComponent() and
                experiment.coefficientRing()       === re2.coefficientRing() and
                experiment.watchedProperties()     ==  re2.watchedProperties() and
                experiment.rankJacobianAtKey()         ==  re2.rankJacobianAtKey() and
@@ -1139,15 +1139,15 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
 
 
 
-   experiment.setMinPointsPerComponent = (numPointsPerComponent)->
+   experiment.setPointsPerComponent = (numPointsPerComponent)->
    ( 
-     minPointsPerComponent = numPointsPerComponent;
+     pointsPerComponent = numPointsPerComponent;
    );
 
 
-   experiment.minPointsPerComponent = ()->
+   experiment.pointsPerComponent = ()->
    ( 
-     return minPointsPerComponent ;
+     return pointsPerComponent ;
    );
 
 
@@ -1275,7 +1275,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
        for i in 1..newTrials do
        (
            assert( pPointIterator.next() );
-           runExperimentOnce( experimentData, pPointIterator.point(), minPointsPerComponent );
+           runExperimentOnce( experimentData, pPointIterator.point(), pointsPerComponent );
            experimentData.trials =  experiment.trials();
        );
      );
@@ -1291,7 +1291,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
 
         while ( pointIterator.next() ) do
         (
-            runExperimentOnce( experimentData, pointIterator.point(), minPointsPerComponent );
+            runExperimentOnce( experimentData, pointIterator.point(), pointsPerComponent );
         );
      );
 
@@ -1376,17 +1376,29 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
         if (not experiment.propertyIsWatched(propertyName)) then error ("given property '" |propertyName| "' is not watched !");
    );
 
-   experiment.ignoreProperty=(propertyName)->
+   assertIgnorePropertyAllowed := (propertyName) ->
+   (
+        if (propertyName == "rankJacobianAt") then
+        (
+            if (blackBoxIdeal.type===BlackBoxIdeal) then
+            (
+                 error (" removing 'rankJacobianAt' from watched properties for a " | toString blackBoxIdeal.type | " not allowed !")
+            );
+        );
+   );
+
+
+   experiment.ignoreProperty = (propertyName)->
    (
        if experiment.trials()=!=0 then error (UpdateRecordedPropertiesError);
 
        assertPropertyIsWatched(propertyName);
-      
+       assertIgnorePropertyAllowed(propertyName);
 
-      experimentData.propertyList = delete(propertyName, experimentData.propertyList ) ;
-      setWatchedPropertiesInternal( experimentData.propertyList );   
+       experimentData.propertyList = delete(propertyName, experimentData.propertyList ) ;
+       setWatchedPropertiesInternal( experimentData.propertyList );   
         
-      update(experimentData);
+       update(experimentData);
    );
 
 
@@ -1396,6 +1408,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
       for propertyName in ignorePropertyStringList do
       (
           assertPropertyIsWatched(propertyName);
+          assertIgnorePropertyAllowed(propertyName);
       );
 
       apply( ignorePropertyStringList, propToIgnore-> ( experimentData.propertyList = delete(propToIgnore, experimentData.propertyList ); ));
@@ -1622,7 +1635,7 @@ doc ///
             \,\, \bullet \,{\tt count}:  \break
             \,\, \bullet \,{\tt countsByCount}: \break
             \,\, \bullet \,{\tt membershipPrecision}:  \break
-            \,\, \bullet \,{\tt minPointsPerComponent}: \break
+            \,\, \bullet \,{\tt pointsPerComponent}: \break
             \,\, \bullet \,{\tt points}:  \break
             \,\, \bullet \,{\tt pointKeys}: \break
             \,\, \bullet \,{\tt pointLists}:  \break
@@ -1635,7 +1648,7 @@ doc ///
             methods: \break
             \,\, \bullet \,{\tt setIsInteresting}: set a filter for points to consider. \break
             \,\, \bullet \,{\tt setMembershipPrecision}:  \break
-            \,\, \bullet \,{\tt setMinPointsPerComponent}:  \break
+            \,\, \bullet \,{\tt setPointsPerComponent}:  \break
             \,\, \bullet \,{\tt setPointGenerator}: \break
             \,\, \bullet \,{\tt setPointIterator}:  \break
             \,\, \bullet \,{\tt useJacobianAt}:  \break
@@ -1875,13 +1888,13 @@ doc ///
            codimension it is not useful to remember all of them. The experiment
            remembers by default only about 10 points per component:
         Example
-           e.minPointsPerComponent()
+           e.pointsPerComponent()
            e.collectedCount() 
         Text
            Here we have not collected exactly 10 points per component since the experiment uses the upper end of the confidence interval for the number of components ( see @TO estimateNumberOfComponents@) as guide for the number of points to keep.
            The amount of stored points can be adjusted:
         Example
-           e.setMinPointsPerComponent(20)
+           e.setPointsPerComponent(20)
            -- collect about 20 points per component now:
            time e.run(1250);
            e.collectedCount() 
@@ -1933,8 +1946,8 @@ TEST ///
     e = new Experiment from bbRankM
     assert (e.coefficientRing()===coeffRing);
 
-    e.setMinPointsPerComponent(20);
-    assert( e.minPointsPerComponent()==20);
+    e.setPointsPerComponent(20);
+    assert( e.pointsPerComponent()==20);
     FFELogger.setLogLevel(4);
     e.watchProperties {"rankJacobianAt"};
     e.watchedProperties()
@@ -2090,7 +2103,7 @@ doc ///
             
             On strata of low codimension many points are found. To
             avoid memory problems only a small number of points
-            are collected (see setMinPointsPerComponent). Therefore
+            are collected (see setPointsPerComponent). Therefore
             the number of collected points is usually smaller than
             the number of found points. 
             
@@ -2114,10 +2127,10 @@ doc ///
            e.collectedCount()
            e.pointLists()
            e.pointsByKey({2})
-           e.minPointsPerComponent()
+           e.pointsPerComponent()
         Text
            \break Notice that the number of collected points can be larger than
-           the number minPointsPerComponent() since the experiment
+           the number pointsPerComponent() since the experiment
            tries to estimate the number of components for each combination
            of properties. In the beginning where only a few points have
            been found the statistics might be so errorprone that some extra
@@ -2125,8 +2138,8 @@ doc ///
    SeeAlso
           pointLists
           pointsByKey
-          minPointsPerComponent
-          setMinPointsPerComponent             
+          pointsPerComponent
+          setPointsPerComponent             
 ///
 
 doc ///
@@ -2403,11 +2416,11 @@ doc ///
 
 doc ///
    Key
-        "minPointsPerComponent"
+        "pointsPerComponent"
    Headline
         the number of points an experiment tries to collect on each component.
    Usage   
-        e.minPointsPerComponent()
+        e.pointsPerComponent()
    Inputs  
         e:Experiment 
             an Experiment
@@ -2447,7 +2460,7 @@ doc ///
         Text
            \break The number of points the experiment tries to collect per component:
         Example
-           e.minPointsPerComponent()
+           e.pointsPerComponent()
         Text 
            \break The number of point the experiment has collected
         Example      
@@ -2457,14 +2470,14 @@ doc ///
         Text
            \break Lets now increase the number of points we want to collect
         Example
-           e.setMinPointsPerComponent(20)
-           e.minPointsPerComponent()    
+           e.setPointsPerComponent(20)
+           e.pointsPerComponent()    
            e.run(100)
            e.collectedCount()
            e.run(100)
            e.collectedCount()
    SeeAlso
-        setMinPointsPerComponent
+        setPointsPerComponent
         collectedCount
         pointLists
         pointsByKey
@@ -2528,8 +2541,8 @@ doc ///
         Example
            e.pointsByKey({2})
    SeeAlso
-        minPointsPerComponent
-        setMinPointsPerComponent
+        pointsPerComponent
+        setPointsPerComponent
         collectedCount        
         pointsByKey
 ///        
@@ -2589,8 +2602,8 @@ doc ///
         Example
            e.pointsByKey({2})
    SeeAlso
-        minPointsPerComponent
-        setMinPointsPerComponent
+        pointsPerComponent
+        setPointsPerComponent
         collectedCount        
         pointLists
         pointKeys
@@ -2598,11 +2611,11 @@ doc ///
 
 doc ///
    Key
-        "setMinPointsPerComponent"
+        "setPointsPerComponent"
    Headline
         change the number of points an experiment tries to collect on each component.
    Usage   
-        e.setMinPointsPerComponent(num)
+        e.setPointsPerComponent(num)
    Inputs  
         e:Experiment 
             an Experiment
@@ -2646,7 +2659,7 @@ doc ///
         Text
            \break The number of points the experiment tries to collect per component:
         Example
-           e.minPointsPerComponent()
+           e.pointsPerComponent()
         Text 
            \break The number of point the experiment has collected
         Example      
@@ -2656,14 +2669,14 @@ doc ///
         Text
            \break Lets now increase the number of points we want to collect
         Example
-           e.setMinPointsPerComponent(20)
-           e.minPointsPerComponent()    
+           e.setPointsPerComponent(20)
+           e.pointsPerComponent()    
            e.run(100)
            e.collectedCount()
            e.run(100)
            e.collectedCount()
    SeeAlso
-        minPointsPerComponent
+        pointsPerComponent
         collectedCount
         pointLists
         pointsByKey
@@ -2759,8 +2772,8 @@ doc ///
         pointLists
         pointsByKey
         collectedCount
-        minPointsPerComponent
-        setMinPointsPerComponent
+        pointsPerComponent
+        setPointsPerComponent
 ///
 
 
