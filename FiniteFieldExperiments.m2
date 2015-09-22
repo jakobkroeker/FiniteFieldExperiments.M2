@@ -1822,6 +1822,11 @@ doc ///
         Example
            e.pointLists()
         Text
+           Points with a particular set of properties can be selected
+           like this:
+        Example
+           e.pointsByKey({2})
+        Text
            Since one always finds many points found on components of low
            codimension it is not useful to remember all of them. The experiment
            remembers by default only about 10 points per component:
@@ -1829,7 +1834,7 @@ doc ///
            e.minPointsPerComponent()
            e.collectedCount() 
         Text
-            Here we have not collected exactly 10 points per component since the experiment uses the upper end of the confidence interval for the number of components ( see @TO estimateNumberOfComponents@) as guide for the number of points to keep.
+           Here we have not collected exactly 10 points per component since the experiment uses the upper end of the confidence interval for the number of components ( see @TO estimateNumberOfComponents@) as guide for the number of points to keep.
            The amount of stored points can be adjusted:
         Example
            e.setMinPointsPerComponent(20)
@@ -2039,7 +2044,7 @@ doc ///
             points are on a moduli space one can create the
             corresponding object and study it in detail.
             
-            On stata of low codimension many points are found. To
+            On strata of low codimension many points are found. To
             avoid memory problems only a small number of points
             are collected (see setMinPointsPerComponent). Therefore
             the number of collected points is usually smaller than
@@ -2064,6 +2069,7 @@ doc ///
            e.run(100)          
            e.collectedCount()
            e.pointLists()
+           e.pointsByKey({2})
            e.minPointsPerComponent()
         Text
            \break Notice that the number of collected points can be larger than
@@ -2071,7 +2077,12 @@ doc ///
            tries to estimate the number of components for each combination
            of properties. In the beginning where only a few points have
            been found the statistics might be so errorprone that some extra
-           points are collected.   
+           points are collected. 
+   SeeAlso
+          pointLists
+          pointsByKey
+          minPointsPerComponent
+          setMinPointsPerComponent             
 ///
 
 doc ///
@@ -2234,6 +2245,645 @@ f = new Experiment from bb;
 ///
 
 
+
+doc ///
+   Key
+        "ignoreProperty"
+   Headline
+        deletes a property from the list of watched properties
+   Usage   
+        e.ignoreProperty(propertyName)
+   Inputs  
+        e:Experiment 
+            an Experiment
+        propertyName: String
+            the name of a property
+   Description
+        Text
+           This removes a property from the list of watched properties.
+           This works only if the experiment has been reset with e.clear()
+           since otherwise the statistics would be inconsistent.
+                                 
+           Lets see how this works in an example.                
+           First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.watchedProperties()
+        Text
+           \break Lets not only watch the codimension of the tangentspace
+           at a random point, but also whether the point is probably smooth
+        Example
+           e.watchProperty("isProbablySmoothAt")
+           e.watchedProperties()
+           e.run(250)
+        Text
+           \break Lets assume that from the last experiment we conclude,
+           that the smoothness of a point does not yield any interesting 
+           information for us.
+           In this case we would cease to watch this property in 
+           follow up experiments. Before we can do that, we have to
+           clear the statistics.
+        Example
+           e.clear()
+           e.ignoreProperty("isProbablySmoothAt")
+           e.watchedProperties()
+           e.run(250)  
+///
+
+doc ///
+   Key
+        "ignoreProperties"
+   Headline
+        deletes a property from the list of watched properties
+   Usage   
+        e.ignoreProperty(L)
+   Inputs  
+        e:Experiment 
+            an Experiment
+        L:List
+            a list of property names. 
+   Description
+        Text
+           This removes several property from the list of watched properties.
+           This works only if the experiment has been reset with e.clear()
+           since otherwise the statistics would be inconsistent.
+                                 
+           Lets see how this works in an artificial but instructive example.                
+           First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.watchedProperties()
+        Text
+           \break Lets not only watch the codimension of the tangentspace
+           at a random point, but also whether the point is probably smooth
+           and what the values at the random points are.
+        Example
+           e.watchProperty("isProbablySmoothAt")
+           e.watchProperty("valuesAt")
+           e.watchedProperties()
+           e.run(250)
+        Text
+           \break Lets assume that from the last experiment we conclude,
+           that the smoothness of a point and the value of
+           the polynomial at the point does not yield any interesting 
+           information for us.
+           In this case we would cease to watch these properties in 
+           follow up experiments. Before we can do that, we have to
+           clear the statistics.
+        Example
+           e.clear()
+           e.ignoreProperties({"isProbablySmoothAt","valuesAt"})
+           e.watchedProperties()
+           e.run(250)  
+///
+
+doc ///
+   Key
+        "minPointsPerComponent"
+   Headline
+        the number of points an experiment tries to collect on each component.
+   Usage   
+        e.minPointsPerComponent()
+   Inputs  
+        e:Experiment 
+            an Experiment
+   Description
+        Text
+            An experiment collects a limited number of points
+            for each combination of properies it encounters. 
+            
+            This is useful if one wants to inspect
+            points with special properties in more detail. If the 
+            points are on a moduli space one can create the
+            corresponding object and study it in detail.
+            
+            On strata of low codimension many points are found. To
+            avoid memory problems only a small number of points
+            are collected.
+            
+            This function returns the number of points that an
+            experiment tries to collect on each component. Since
+            the number of components is estimated heuristically, the 
+            number of points collected is often different from the
+            goal given by this function. 
+ 
+            Lets see how this works in an example.                
+            First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.run(100)   
+        Text
+           \break The number of points the experiment tries to collect per component:
+        Example
+           e.minPointsPerComponent()
+        Text 
+           \break The number of point the experiment has collected
+        Example      
+           e.collectedCount()
+           e.run(100)
+           e.collectedCount()
+        Text
+           \break Lets now increase the number of points we want to collect
+        Example
+           e.setMinPointsPerComponent(20)
+           e.minPointsPerComponent()    
+           e.run(100)
+           e.collectedCount()
+           e.run(100)
+           e.collectedCount()
+   SeeAlso
+        setMinPointsPerComponent
+        collectedCount
+        pointLists
+        pointsByKey
+///
+
+doc ///
+   Key
+        "pointLists"
+   Headline
+        the points an experiment has collected for closer inspection
+   Usage   
+        e.pointLists()
+   Inputs  
+        e:Experiment 
+            an Experiment
+   Description
+        Text
+            An experiment collects a limited number of points
+            for each combination of properies it encounters. 
+            
+            This is useful if one wants to inspect
+            points with special properties in more detail. If the 
+            points are on a moduli space one can create the
+            corresponding object and study it in detail.
+            
+            On strata of low codimension many points are found. To
+            avoid memory problems only a small number of points
+            are collected.
+            
+            This function returns a hashTable containing a list
+            of collected points for each combination of properties.
+  
+            Lets see how this works in an example.                
+            First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.run(100)   
+        Text
+            \break The number of points the experiment has collected:
+        Example      
+           e.collectedCount()
+        Text
+           \break The points themselves:
+        Example
+           e.pointLists()
+        Text
+           \break The points for a particular set of properites:
+        Example   
+           (e.pointLists())#{2}
+        Text
+           The brackets used in this example are NOT redundant. Better
+           readable is the following syntax
+        Example
+           e.pointsByKey({2})
+   SeeAlso
+        minPointsPerComponent
+        setMinPointsPerComponent
+        collectedCount        
+        pointsByKey
+///        
+
+doc ///
+   Key
+        "pointsByKey"
+   Headline
+        the points an experiment has collected for a particular set of properties
+   Usage   
+        e.pointsByKey(key)
+   Inputs  
+        e:Experiment 
+            an Experiment
+        key: List
+            of property values
+   Description
+        Text
+            An experiment collects a limited number of points
+            for each combination of properies it encounters. 
+            
+            This is useful if one wants to inspect
+            points with special properties in more detail. If the 
+            points are on a moduli space one can create the
+            corresponding object and study it in detail.
+            
+            On strata of low codimension many points are found. To
+            avoid memory problems only a small number of points
+            are collected.
+            
+            This function returns a List 
+            of collected points for a given combination of properties.
+  
+            Lets see how this works in an example.                
+            First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.run(100)   
+        Text
+            \break The number of points the experiment has collected:
+        Example      
+           e.collectedCount()
+        Text
+           \break The points themselves:
+        Example
+           e.pointLists()
+        Text
+           \break The points for a particular set of properites:
+        Example
+           e.pointsByKey({2})
+   SeeAlso
+        minPointsPerComponent
+        setMinPointsPerComponent
+        collectedCount        
+        pointLists
+        pointKeys
+///        
+
+doc ///
+   Key
+        "setMinPointsPerComponent"
+   Headline
+        change the number of points an experiment tries to collect on each component.
+   Usage   
+        e.setMinPointsPerComponent(num)
+   Inputs  
+        e:Experiment 
+            an Experiment
+        num: ZZ
+            the number of points an experiment should try to collect on
+            each component.
+   Description
+        Text
+            An experiment collects a limited number of points
+            for each combination of properies it encounters. 
+            
+            This is useful if one wants to inspect
+            points with special properties in more detail. If the 
+            points are on a moduli space one can create the
+            corresponding object and study it in detail.
+            
+            On strata of low codimension many points are found. To
+            avoid memory problems only a small number of points
+            are collected.
+            
+            This function changes the number of points that an
+            experiment tries to collect on each component. Since
+            the number of components is estimated heuristically, the 
+            number of points collected is in the end often different from 
+            (but close to) the
+            goal given by this function. 
+ 
+            Lets see how this works in an example.                
+            First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.run(100)   
+        Text
+           \break The number of points the experiment tries to collect per component:
+        Example
+           e.minPointsPerComponent()
+        Text 
+           \break The number of point the experiment has collected
+        Example      
+           e.collectedCount()
+           e.run(100)
+           e.collectedCount()
+        Text
+           \break Lets now increase the number of points we want to collect
+        Example
+           e.setMinPointsPerComponent(20)
+           e.minPointsPerComponent()    
+           e.run(100)
+           e.collectedCount()
+           e.run(100)
+           e.collectedCount()
+   SeeAlso
+        minPointsPerComponent
+        collectedCount
+        pointLists
+        pointsByKey
+///
+
+doc ///
+   Key
+        "pointKeys"
+   Headline
+        a list of property combinations found by an experiment
+   Usage   
+        e.pointKeys()
+   Inputs  
+        e:Experiment 
+            an Experiment
+        num: ZZ
+            the number of points an experiment should try to collect on
+            each component.
+   Description
+        Text
+            An experiment collects a limited number of points
+            for each combination of properies it encounters. 
+            
+            This is useful if one wants to inspect
+            points with special properties in more detail. If the 
+            points are on a moduli space one can create the
+            corresponding object and study it in detail.
+            
+            
+            This function returns a list of those property combinations
+            that it has encountered. This is sometimes useful if
+            each property is very long or difficult to enter.
+            
+            Lets see how this works in an example. Here we look
+            for matrices with special syzygies
+                           
+            First we create a black box that makes random matrices of quadrics.
+        Example      
+           K = ZZ/2;
+           R = K[x,y,z,w];
+        Text
+           We want to study the parameter space of 2x3 matrices
+           with quadratic entries. Such matrices are defined by
+           60 coefficients.
+        Example   
+           bb = blackBoxParameterSpace(80,K);
+        Text
+           We start by making quadrics from 10 coefficiets
+        Example
+           mons2 = matrix entries transpose super basis(2,R)
+           quadricAt = (point10) -> (point10*mons2)_0_0;
+           quadricAt(matrix{{1,0,0,0,1,0,0,1,0,1}})
+        Text
+           Now we make a 2x3 matrix of quadrics from 80 coefficients
+        Example
+           matrixAt = (point80) -> matrix apply(2,i->
+                apply(4,j->(
+                          quadricAt(point80_{i*10+j..i*10+j+9})
+                          )
+                     )
+                )          
+           matrixAt(random(K^1,K^80))
+        Text
+           For later use we register this function in the 
+           black box parameter space
+        Example
+           bb = bb.registerPointProperty("matrixAt",matrixAt);
+        Text
+           Now we look at the syzygies of such a matrix
+        Example
+           bettiAt = (point80) -> betti res coker matrixAt(point80)
+           bettiAt(random(K^1,K^80))
+           bb = bb.rpp("bettiAt",bettiAt);
+        Text
+           Now we 
+           make an experiment to study this parameter space
+        Example   
+           e = new Experiment from bb;
+        Text
+           We are interested in the betti tableau ot the minimal free resolution.
+        Example   
+           e.watchProperty("bettiAt")
+           e.run(100)
+           e.countsByCount()
+        Text
+           We now want to look at the collected point with special
+           betti tableaus
+        Example
+           e.pointKeys()
+           (e.pointKeys())#0
+           e.pointsByKey((e.pointKeys())#0)
+   SeeAlso
+        pointLists
+        pointsByKey
+        collectedCount
+        minPointsPerComponent
+        setMinPointsPerComponent
+///
+
+
+doc ///
+   Key
+        "e.run"
+   Headline
+        runs an experiment for a given number of trials
+   Usage   
+        e.run(trials)
+   Inputs  
+        e:Experiment 
+            an Experiment
+        trials: ZZ
+            the number of random point the experiment shall try out
+   Description
+        Text
+           This is the central function of this package that does all 
+           the work. It 
+           starts an experiment to evaluate the watched properties
+           at a given number of random points. The experiment then
+           counts the number of times a particular property is encontered.
+        
+           If the experiment is made from a black box ideal, only points
+           on which the generators of the ideal vanish are counted. If
+           the experiment is made form a black box parameter space, all
+           points are counted.
+        
+           Also the experiment stores some points for later inspection. 
+           For documentationa about how this works see collectedCount
+        
+           Lets see how this works in an example.                
+        
+           First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.watchedProperties()
+           e.run(100)
+        Text
+           \break The experiment has evaluated the black box ideal at 
+           100 random points and for each point where the ideal vanished it calculated
+           the rank of the jacobi matrix at this point. Then the
+           number of points for each rank are counted.
+       
+           If one wants better statistics one can run the experiment for more
+           trials
+        Example
+           e.trials()   
+           e.run(100)
+           e.trials()
+        Text
+           The experiment has autmatically collected some points
+           for each combination of properties
+        Example
+           e.pointLists()
+           e.pointsByKey({2})
+           e.collectedCount()
+        Text
+           Notice that the experiment has not collected all points it
+           found. This is done to save memory space.
+   SeeAlso
+       trials
+       watchedProperties
+       pointLists
+       pointsByKey
+       collectedCount
+///                 
+         
+doc ///
+   Key
+        "trials"
+   Headline
+        the number of trials an experiment has been run so far
+   Usage   
+        e.trials()
+   Inputs  
+        e:Experiment 
+            an Experiment
+   Description
+        Text
+           Returns the number of trials an experment has been run so far.
+           This might be important to interpret the statistics of 
+           the experiment. It is used for example in estimateStratification
+           and estimateDecomposition.  
+             
+           Lets see how this works in an example.                
+        
+           First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.watchedProperties()
+           e.run(100)
+           e.trials()   
+           e.run(100)
+           e.trials()
+///                 
+ 
+doc ///
+   Key
+        "tryProperty"
+   Headline
+        evaluate a new property on the collected points.
+   Usage   
+        e.tryProperty(name)
+   Inputs  
+        e:Experiment 
+            an Experiment
+        name:String
+            the name of a property.
+   Description
+        Text
+           Evaluates a given property on all collected points.
+           
+           This is useful if in the course of experimenting one thinks
+           of a new property that might help in the analysis of 
+           the problem at hand. Before running the complete experiment
+           again an watching the new property it is much faster to
+           begin by evaluating the new property on the collected points.
+           Since the experiment collects points on all interesting strata
+           this gives a good first overview of what the new property
+           will do.
+             
+           Lets see how this works in an example.                
+        
+           First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.watchedProperties()
+           e.run(250)
+           e.collectedCount()
+        Text 
+           \break Perhaps we are wondering is points with a certain
+           rank of the Jacobi matrix are allways singular:
+        Example
+           e.tryProperty("isCertainlySingularAt")
+        Text
+           It seems that all points with rank 0 are singular. Indeed
+           this is true in this example since rank 0 only occurs at
+           the intersection point of the line and plane.
+           
+           For a more realistic example see (Singularities of cubic surfaces)
+   SeeAlso
+       watchedProperties
+       watchProperty
+       watchProperties
+///                 
+ 
 end
 ---
 
