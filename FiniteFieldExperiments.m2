@@ -51,6 +51,7 @@ FiniteFieldExperimentsProtect = ()->
   protect bareIdeals;
   protect experiment;
   protect reset;
+  protect pointKey;
   protect setPointIterator;
   protect setPointGenerator;
   protect printInterpolatedIdeals;
@@ -77,8 +78,6 @@ FiniteFieldExperimentsProtect = ()->
   protect interpolatedIdeals;
 
   protect getExperimentData;
-  protect setRecordedProperties;
-  protect recordProperty;
   protect ignoreProperty;
   protect ignoreProperties;
 
@@ -93,7 +92,7 @@ FiniteFieldExperimentsProtect = ()->
   protect rankJacobianAtKey;
   protect watchProperty;
   protect watchProperties;
-  protect recordProperties;
+  protect setWatchedProperties;
 
   protect propertyName;
   protect propertyAt;
@@ -127,6 +126,7 @@ FiniteFieldExperimentsExport  = ()->
     exportMutable(bareIdeals);
   exportMutable(experiment);
   exportMutable(reset);
+  exportMutable(pointKey);
   exportMutable(setPointIterator);
   exportMutable(setPointGenerator);
   exportMutable(printInterpolatedIdeals);
@@ -158,8 +158,6 @@ FiniteFieldExperimentsExport  = ()->
   exportMutable(isInteresting);
 
   exportMutable(getExperimentData);
-  exportMutable(setRecordedProperties);
-  exportMutable(recordProperty);
   exportMutable(ignoreProperty);
   exportMutable(ignoreProperties);
 
@@ -174,7 +172,6 @@ FiniteFieldExperimentsExport  = ()->
  exportMutable(rankJacobianAtKey);
  exportMutable(watchProperties);
  exportMutable(watchProperty);
- exportMutable(recordProperties);
  exportMutable(propertyName);
  exportMutable(propertyAt);
 
@@ -182,6 +179,7 @@ FiniteFieldExperimentsExport  = ()->
 
  exportMutable(recordedProperties);
  exportMutable(watchedProperties);
+ exportMutable(setWatchedProperties);
 
  exportMutable(useRankJacobianAt);
  exportMutable(usedRankJacobianAt);
@@ -235,10 +233,7 @@ testDebug,
 update,              --intern
 updateExperiment,    -- newFeature not ready.
 FFELogger,            -- internal for debug.
-recordProperties,     -- replace with watchProperties
-recordProperty,       -- replace with watchProperty
 recordedProperties,   -- replace with watchedProperties
-setRecordedProperties  -- replace with watchProperties
 }
 
 
@@ -1301,7 +1296,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
 
 
 
-   setRecordedPropertiesInternal := (propListToObserve)->
+   setWatchedPropertiesInternal := (propListToObserve)->
    ( 
       for propertyName in propListToObserve do
       (
@@ -1318,7 +1313,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
   experiment.clearWatchedProperties = (   )->
   (
       experiment.clear(); 
-      setRecordedPropertiesInternal({});
+      setWatchedPropertiesInternal({});
   );
 
   experiment.reset = (   )->
@@ -1328,18 +1323,18 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
       clearWatchedProperties();
   );
 
-   experiment.setRecordedProperties = ( propertyStringList )->
+   experiment.setWatchedProperties = ( propertyStringList )->
    (  
       if experiment.trials()=!=0 then error ("cannot change watched properties - experiment was already run! Clear statistics and retry.");
 
-      setRecordedPropertiesInternal(propertyStringList);
+      setWatchedPropertiesInternal(propertyStringList);
       update(experimentData);
    );
 
    UpdateRecordedPropertiesError := "cannot change watched properties - experiment was already run! You could clear() the statistics and retry.";
   
 
-   experiment.watchProperties = experiment.setRecordedProperties;
+
 
    experiment.watchProperty=(propertyName)->
    (
@@ -1349,18 +1344,27 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
               error ("blackBoxIdeal seems not to have property" | propertyName );
 
       experimentData.propertyList = unique (experimentData.propertyList | { propertyName }) ;
-      setRecordedPropertiesInternal( experimentData.propertyList );   
+      setWatchedPropertiesInternal( experimentData.propertyList );   
       update(experimentData);
    );
 
-   experiment.recordProperty=experiment.watchProperty;
+   experiment.watchProperties = (propertyNameList)->
+   (
+       if experiment.trials()=!=0 then error (UpdateRecordedPropertiesError);
+
+       for propertyName in propertyNameList do
+       (
+           experiment.watchProperty(propertyName);
+       );
+   );
+
 
    experiment.ignoreProperty=(propertyName)->
    (
        if experiment.trials()=!=0 then error (UpdateRecordedPropertiesError);
 
       experimentData.propertyList = delete(propertyName, experimentData.propertyList ) ;
-      setRecordedPropertiesInternal( experimentData.propertyList );   
+      setWatchedPropertiesInternal( experimentData.propertyList );   
         
       update(experimentData);
    );
@@ -1371,7 +1375,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
        if experiment.trials()=!=0 then error (UpdateRecordedPropertiesError);
 
       apply( ignorePropertyStringList, propToIgnore-> ( experimentData.propertyList = delete(propToIgnore, experimentData.propertyList ); ));
-      setRecordedPropertiesInternal( experimentData.propertyList );    
+      setWatchedPropertiesInternal( experimentData.propertyList );    
       update(experimentData);
    );
 
@@ -1440,6 +1444,16 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
    (
       return keys experimentData.points;
    );
+
+   experiment.pointKey = method();
+   experiment.pointKey(ZZ) := Thing => (index)->
+   (
+      pointkeys := experiment.pointKeys();
+
+      if ( (index<0) or (index>= #pointkeys) ) then error "invalid point key position ";
+      return pointkeys#index;
+   );
+
 
    experiment.collectedCount = ()->
    (
@@ -2711,8 +2725,8 @@ doc ///
            betti tableaus
         Example
            e.pointKeys()
-           (e.pointKeys())#0
-           e.pointsByKey((e.pointKeys())#0)
+           e.pointKey(0)
+           e.pointsByKey e.pointKey(0)
    SeeAlso
         pointLists
         pointsByKey
