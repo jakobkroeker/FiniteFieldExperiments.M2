@@ -79,6 +79,7 @@ FiniteFieldExperimentsProtect = ()->
 
   protect getExperimentData;
   protect ignoreProperty;
+  protect propertyIsWatched;
   protect ignoreProperties;
 
   protect update;
@@ -159,6 +160,7 @@ FiniteFieldExperimentsExport  = ()->
 
   exportMutable(getExperimentData);
   exportMutable(ignoreProperty);
+  exportMutable(propertyIsWatched);
   exportMutable(ignoreProperties);
 
 
@@ -1358,10 +1360,28 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
        );
    );
 
+    experiment.propertyIsWatched = method();
+   experiment.propertyIsWatched (String) := Boolean => (propertyName)->
+   (
+ 
+      if ( #(select( experiment.watchedProperties(), (prop)->propertyName==prop)) >0 ) then
+      ( 
+         return true;
+      );
+      return false;
+   );
+
+   assertPropertyIsWatched := (propertyName) ->
+   (
+        if (not experiment.propertyIsWatched(propertyName)) then error ("given property '" |propertyName| "' is not watched !");
+   );
 
    experiment.ignoreProperty=(propertyName)->
    (
        if experiment.trials()=!=0 then error (UpdateRecordedPropertiesError);
+
+       assertPropertyIsWatched(propertyName);
+      
 
       experimentData.propertyList = delete(propertyName, experimentData.propertyList ) ;
       setWatchedPropertiesInternal( experimentData.propertyList );   
@@ -1372,7 +1392,11 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
 
    experiment.ignoreProperties = (ignorePropertyStringList)->
    (
-       if experiment.trials()=!=0 then error (UpdateRecordedPropertiesError);
+      if experiment.trials()=!=0 then error (UpdateRecordedPropertiesError);
+      for propertyName in ignorePropertyStringList do
+      (
+          assertPropertyIsWatched(propertyName);
+      );
 
       apply( ignorePropertyStringList, propToIgnore-> ( experimentData.propertyList = delete(propToIgnore, experimentData.propertyList ); ));
       setWatchedPropertiesInternal( experimentData.propertyList );    
