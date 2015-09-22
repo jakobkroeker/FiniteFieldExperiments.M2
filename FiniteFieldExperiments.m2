@@ -1321,6 +1321,12 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
       setRecordedPropertiesInternal({});
   );
 
+  experiment.reset = (   )->
+  (
+      --redundant: experiment.clear(); 
+      experiment.clear(); 
+      clearWatchedProperties();
+  );
 
    experiment.setRecordedProperties = ( propertyStringList )->
    (  
