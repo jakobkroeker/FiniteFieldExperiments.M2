@@ -187,6 +187,8 @@ if BlackBoxIdeals#Options#DebuggingMode then
 
 bblog := BlackBoxLogger;
 
+-- bblog.setLogLevel(LogLevel.DEBUG);
+
 -- why did I need comparison between a string and a symbol ? (jk) - if I recall correctly, it was related for intervals...
 
 String ? Symbol := (str,symb)->
@@ -1139,7 +1141,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
    setPointProperty ( Symbol, Function ) := Thing => ( propertySymbol, propertyMethod )->
    (
 
-     bblog.debug(" called setPointProperty ") ;
+     bblog.debug(" called setPointProperty for " | toString propertySymbol ) ;
 
       propertyName := toString propertySymbol;
 
@@ -1176,6 +1178,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
      -- step 5
      if mutable blackBox then 
      (
+          bblog.debug(" mutable blackBox ") ;
          blackBox#propertySymbol        = (point)->( (blackBox.pointProperty(propertyName))(point) );
          blackBox#propertyName          = (point)->( (blackBox.pointProperty(propertyName))(point) );
 

@@ -125,7 +125,7 @@ bbI.rankJacobianAtDup(matrix{{0,0,1_K}})
 -- Experiment tries to collect a fixed number of points per component
 -- this is useful since in an random experiment many more points are found
 -- on big components. Not all of them need to be saved.
-e.setMinPointsPerComponent(20)
+e.setPointsPerComponent(20)
 
 
 -- look at 1000 random points

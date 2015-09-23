@@ -1159,24 +1159,6 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
    -- then, what should happen if a user requests to watch property xy ?
    
 
-   experiment.useRankJacobianAt = (rankJacobianAtName)->
-   ( 
-       if experiment.trials()=!=0 then error ("cannot change rankJacobianAt  - experiment was already run! You could clear() the statistics and retry. ");
-
-       if rankJacobianAtName===null then
-       (
-         rankJacobianAtKey = null;
-         rankJacobianAt = null ;
-         return;
-       );
-       if blackBoxIdeal.hasPointProperty(rankJacobianAtName) then 
-       (
-          rankJacobianAtKey = rankJacobianAtName;
-          rankJacobianAt = blackBoxIdeal.pointProperty(rankJacobianAtName) ;
-       ) 
-       else  error ("blackBoxIdeal seems not to have property" | propertyName );
-   );
-
 
 
 
@@ -1312,6 +1294,37 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
       );   
    );
 
+   experiment.useRankJacobianAt = (rankJacobianAtName)->
+   ( 
+       if experiment.trials()=!=0 then error ("cannot change rankJacobianAt  - experiment was already run! You could clear() the statistics and retry. ");
+
+       if rankJacobianAtName===null then
+       (
+         rankJacobianAtKey = null;
+         rankJacobianAt = null ;
+         return;
+       );
+
+       if (not blackBoxIdeal.hasPointProperty(rankJacobianAtName)) then 
+            error ("blackBoxIdeal seems not to have property " | rankJacobianAtName );
+ 
+       if (rankJacobianAtKey=!=null) then
+       (
+            if (experiment.propertyIsWatched(rankJacobianAtKey)) then
+            (
+                   experimentData.propertyList = delete(rankJacobianAtKey, experimentData.propertyList ) ;
+                   setWatchedPropertiesInternal( experimentData.propertyList );   
+            );
+       );
+
+      rankJacobianAtKey = rankJacobianAtName;
+      rankJacobianAt = blackBoxIdeal.pointProperty(rankJacobianAtName) ;
+      experiment.watchProperty(rankJacobianAtKey);
+ 
+   );
+
+
+
   experiment.clearWatchedProperties = (   )->
   (
       experiment.clear(); 
@@ -1415,6 +1428,8 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
       setWatchedPropertiesInternal( experimentData.propertyList );    
       update(experimentData);
    );
+
+ 
 
 
    -- maybe observed Properties is not a good name - is 'recordedProperties' better ?
@@ -1651,7 +1666,7 @@ doc ///
             \,\, \bullet \,{\tt setPointsPerComponent}:  \break
             \,\, \bullet \,{\tt setPointGenerator}: \break
             \,\, \bullet \,{\tt setPointIterator}:  \break
-            \,\, \bullet \,{\tt useJacobianAt}:  \break
+            \,\, \bullet \,{\tt useRankJacobianAt}:  \break
             \,\, \bullet \,{\tt watchProperties, watchProperty }:  \break
             \,\, \bullet \,{\tt ignoreProperties,  ignoreProperty }:  \break
             \,\, \bullet \,{\tt clearWatchedProperties}:  \break
@@ -1955,7 +1970,7 @@ TEST ///
                        (prop)->(prop=="rankJacobianAt") ) 
      )
     e.useRankJacobianAt("rankJacobianAt");
-    e.useRankJacobianAt(null);
+    --e.useRankJacobianAt(null);
    
     e.countsByCount()
     points := e.points();
@@ -3083,6 +3098,29 @@ doc ///
       usedRankJacobianAt
 ///                 
  
+TEST ///
+    -- test watching user defined rankJacobianAt
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+ 
+           rankAllways5At = (point) -> 5;
+           bb = bb.rpp("rankAllways5At",rankAllways5At);
+          
+           assert(bb.hasPointProperty("rankAllways5At"));
+           e = new Experiment from bb;
+ 
+           e.run(100)
+
+           e.clear()
+           e.useRankJacobianAt("rankAllways5At")
+           assert(e.propertyIsWatched( "rankAllways5At"));
+           assert(1 == #(e.watchedProperties()) );
+           e.run(100)
+           assert( 1 == #( e.collectedCount() ) );
+///
+
 end
 ---
 
