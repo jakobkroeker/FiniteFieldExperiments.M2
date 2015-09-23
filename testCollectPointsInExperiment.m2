@@ -18,6 +18,6 @@ e.collectedCount()
 -- OK. Experiment collected twice the number of points in codim 1
 -- since there are 2 components in codim 1.
 
-assert(2.0 <= ((e.collectedCount())#{1}/e.minPointsPerComponent())*1.0)
-assert(3.0 >= ((e.collectedCount())#{1}/e.minPointsPerComponent())*1.0)
+assert(2.0 <= ((e.collectedCount())#{1}/e.pointsPerComponent())*1.0)
+assert(3.0 >= ((e.collectedCount())#{1}/e.pointsPerComponent())*1.0)
 

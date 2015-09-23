@@ -81,8 +81,8 @@ bbRankM.rankJacobianAt --ok
 
 e = new Experiment from bbRankM
 keys e
-e.setMinPointsPerComponent(20);
-e.minPointsPerComponent() --20
+e.setPointsPerComponent(20);
+e.pointsPerComponent() --20
 e.watchProperties {"rankJacobianAt"};
 e.watchedProperties()  -- {rankJAcobianAt}
 

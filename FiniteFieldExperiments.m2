@@ -392,7 +392,7 @@ new ExperimentData from Ring := (E,coeffRing) -> (
 estimateNumberOfComponents(Experiment,List) := HashTable => opts->    (experiment,key) -> 
 (
       countData := experiment.count();
-      posRankJacobianAt := experiment.position( "rankJacobianAt" );
+      posRankJacobianAt := experiment.position( experiment.usedRankJacobianAt() );
      if posRankJacobianAt === null then error("To estimate number of components, \"rankJacobianAt\" must be watched");
     
      cardinality := experiment.coefficientRingCardinality();
@@ -778,7 +778,7 @@ net (EstimatedDecomposition) := Net =>(estimatedDecomposition)->
 
 estimateDecompositionOld := (experiment) -> (
        countData := experiment.count();
-       posRankJacobianAt := experiment.position( "rankJacobianAt" );
+       posRankJacobianAt := experiment.position(  experiment.usedRankJacobianAt() );
        if posRankJacobianAt === null then error("To estimate the decomposition, \"rankJacobianAt\" must be watched");
 
        cardinality := experiment.coefficientRingCardinality();
@@ -799,7 +799,7 @@ estimateDecompositionOld := (experiment) -> (
  
 
 estimateDecomposition =  (experiment) -> (
-       posRankJacobianAt := experiment.position( "rankJacobianAt" );
+       posRankJacobianAt := experiment.position(  experiment.usedRankJacobianAt() );
        if posRankJacobianAt === null then error("To estimate the decomposition, \"rankJacobianAt\" must be watched");
 
        estimate := flatten apply(keys experiment.count(), key-> ( (key#posRankJacobianAt, estimateNumberOfComponents(experiment,key)), key) );
@@ -1159,24 +1159,6 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
    -- then, what should happen if a user requests to watch property xy ?
    
 
-   experiment.useRankJacobianAt = (rankJacobianAtName)->
-   ( 
-       if experiment.trials()=!=0 then error ("cannot change rankJacobianAt  - experiment was already run! You could clear() the statistics and retry. ");
-
-       if rankJacobianAtName===null then
-       (
-         rankJacobianAtKey = null;
-         rankJacobianAt = null ;
-         return;
-       );
-       if blackBoxIdeal.hasPointProperty(rankJacobianAtName) then 
-       (
-          rankJacobianAtKey = rankJacobianAtName;
-          rankJacobianAt = blackBoxIdeal.pointProperty(rankJacobianAtName) ;
-       ) 
-       else  error ("blackBoxIdeal seems not to have property" | propertyName );
-   );
-
 
 
 
@@ -1319,6 +1301,37 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
       );   
    );
 
+   experiment.useRankJacobianAt = (rankJacobianAtName)->
+   ( 
+       if experiment.trials()=!=0 then error ("cannot change rankJacobianAt  - experiment was already run! You could clear() the statistics and retry. ");
+
+       if rankJacobianAtName===null then
+       (
+         rankJacobianAtKey = null;
+         rankJacobianAt = null ;
+         return;
+       );
+
+       if (not blackBoxIdeal.hasPointProperty(rankJacobianAtName)) then 
+            error ("blackBoxIdeal seems not to have property " | rankJacobianAtName );
+ 
+       if (rankJacobianAtKey=!=null) then
+       (
+            if (experiment.propertyIsWatched(rankJacobianAtKey)) then
+            (
+                   experimentData.propertyList = delete(rankJacobianAtKey, experimentData.propertyList ) ;
+                   setWatchedPropertiesInternal( experimentData.propertyList );   
+            );
+       );
+
+      rankJacobianAtKey = rankJacobianAtName;
+      rankJacobianAt = blackBoxIdeal.pointProperty(rankJacobianAtName) ;
+      experiment.watchProperty(rankJacobianAtKey);
+ 
+   );
+
+
+
   experiment.clearWatchedProperties = (   )->
   (
       experiment.clear(); 
@@ -1422,6 +1435,8 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
       setWatchedPropertiesInternal( experimentData.propertyList );    
       update(experimentData);
    );
+
+ 
 
 
    -- maybe observed Properties is not a good name - is 'recordedProperties' better ?
@@ -1658,7 +1673,7 @@ doc ///
             \,\, \bullet \,{\tt setPointsPerComponent}:  \break
             \,\, \bullet \,{\tt setPointGenerator}: \break
             \,\, \bullet \,{\tt setPointIterator}:  \break
-            \,\, \bullet \,{\tt useJacobianAt}:  \break
+            \,\, \bullet \,{\tt useRankJacobianAt}:  \break
             \,\, \bullet \,{\tt watchProperties, watchProperty }:  \break
             \,\, \bullet \,{\tt ignoreProperties,  ignoreProperty }:  \break
             \,\, \bullet \,{\tt clearWatchedProperties}:  \break
@@ -1962,7 +1977,7 @@ TEST ///
                        (prop)->(prop=="rankJacobianAt") ) 
      )
     e.useRankJacobianAt("rankJacobianAt");
-    e.useRankJacobianAt(null);
+    --e.useRankJacobianAt(null);
    
     e.countsByCount()
     points := e.points();
@@ -2951,7 +2966,168 @@ doc ///
        watchProperty
        watchProperties
 ///                 
+
+doc ///
+   Key
+        "usedRankJacobianAt"
+   Headline
+        the name of the black box property used to calculate the codimension of the tangent space at a point.
+   Usage   
+        e.usedRankJacobianAt()
+   Inputs  
+        e:Experiment 
+            an Experiment
+   Description
+        Text
+           Sometimes it is useful to implement a custom method for
+           calculating the codimension of the tangent space at a point.
+
+           This method must be first be registered as a property of the black box 
+           used in the experiment. Then one tells the experiment to
+           use this new property for caculating tangent spaces.
+           
+           This function documented here can then be used to see which property
+           is currently used for calculating the codimension of a tangent
+           space at a point.
+            
+           Lets see how this works in an example.                
+        
+           First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break We now create (in this case stupid) new property:
+        Example
+           rankAllways5At = (point) -> 5;
+           bb = bb.rpp("rankAllways5At",rankAllways5At);
+           bb.knownPointProperties()
+        Text
+           \break Now make an experiment from the blackbox:
+        Example        
+           e = new Experiment from bb;
+           e.usedRankJacobianAt()
+           e.run(100)
+        Text 
+           \break Now we change the method for calculating the
+           rank of jacobi matrices. Before doing this we must
+           clear the statistics.
+        Example
+           e.clear()
+           e.useRankJacobianAt("rankAllways5At")
+           e.usedRankJacobianAt()
+           e.run(100)
+        Text
+           A more realistic application is for example the case
+           where the equations of our ideal can be written 
+           as A*B = 0 with A and B matrices with polynomial entries.
+           We can then use the product rule 
+           (A*B)' = A'*B + A*B' to differentiate. This is often faster.
+           
+           An other case where this might be used is when we have a morphism
+           X -> Y and look at random points in X but are interested in the
+           tangent space after projecting to Y.
+   SeeAlso
+      useRankJacobianAt
+///                 
+
+doc ///
+   Key
+        "useRankJacobianAt"
+   Headline
+       change the black box property used to calculate the codimension of the tangent space at a point.
+   Usage   
+        e.useRankJacobianAt(name)
+   Inputs  
+        e:Experiment 
+            an Experiment
+        name: String
+            name of the new property to be used
+   Description
+        Text
+           Sometimes it is useful to implement a custom method for
+           calculating the codimension of the tangent space at a point.
+
+           This method must be first be registered as a property of the black box 
+           used in the experiment. Then one uses the function
+           documented here to tell the experiment to
+           use this new property for caculating tangent spaces.
+           
+           It is important to tell the experiment explicitly which property
+           calculates the codimension of the tangenspace at a point since
+           this is used in calculating estimates of decompositions. 
+            
+           Lets see how this works in an example.                
+        
+           First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break We now create (in this case stupid) new property:
+        Example
+           rankAllways5At = (point) -> 5;
+           bb = bb.rpp("rankAllways5At",rankAllways5At);
+           bb.knownPointProperties()
+        Text
+           \break Now make an experiment from the blackbox:
+        Example        
+           e = new Experiment from bb;
+           e.usedRankJacobianAt()
+           e.run(100)
+           e.estimateDecomposition()
+        Text 
+           \break Now we change the method for calculating the
+           rank of jacobi matrices. Before doing this we must
+           clear the statistics.
+        Example
+           e.clear()
+           e.useRankJacobianAt("rankAllways5At")
+           e.watchProperty("rankAllways5At")
+           e.usedRankJacobianAt()
+           e.run(100)
+           e.estimateDecomposition()
+        Text
+           A more realistic application is for example the case
+           where the equations of our ideal can be written 
+           as A*B = 0 with A and B matrices with polynomial entries.
+           We can then use the product rule 
+           (A*B)' = A'*B + A*B' to differentiate. This is often faster.
+           
+           An other case where this might be used is when we have a morphism
+           X -> Y and look at random points in X but are interested in the
+           tangent space after projecting to Y.
+   SeeAlso
+      usedRankJacobianAt
+///                 
  
+TEST ///
+    -- test watching user defined rankJacobianAt
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+ 
+           rankAllways5At = (point) -> 5;
+           bb = bb.rpp("rankAllways5At",rankAllways5At);
+          
+           assert(bb.hasPointProperty("rankAllways5At"));
+           e = new Experiment from bb;
+ 
+           e.run(100)
+
+           e.clear()
+           e.useRankJacobianAt("rankAllways5At")
+           assert(e.propertyIsWatched( "rankAllways5At"));
+           assert(1 == #(e.watchedProperties()) );
+           e.run(100)
+           assert( 1 == #( e.collectedCount() ) );
+///
+
 end
 ---
 
