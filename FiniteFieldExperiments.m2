@@ -1280,7 +1280,14 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
        );
      );
 
+     
  
+     projectionUpdate := method();
+     projectionUpdate(ExperimentData) := Tally => opts -> (experimentData) -> 
+     ( 
+          experimentData.propertyList 
+          
+     );
 
      update := method();
      update(ExperimentData) := Tally => opts -> (experimentData) -> 
