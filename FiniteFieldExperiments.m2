@@ -392,7 +392,7 @@ new ExperimentData from Ring := (E,coeffRing) -> (
 estimateNumberOfComponents(Experiment,List) := HashTable => opts->    (experiment,key) -> 
 (
       countData := experiment.count();
-      posRankJacobianAt := experiment.position( "rankJacobianAt" );
+      posRankJacobianAt := experiment.position( experiment.usedRankJacobianAt() );
      if posRankJacobianAt === null then error("To estimate number of components, \"rankJacobianAt\" must be watched");
     
      cardinality := experiment.coefficientRingCardinality();
@@ -778,7 +778,7 @@ net (EstimatedDecomposition) := Net =>(estimatedDecomposition)->
 
 estimateDecompositionOld := (experiment) -> (
        countData := experiment.count();
-       posRankJacobianAt := experiment.position( "rankJacobianAt" );
+       posRankJacobianAt := experiment.position(  experiment.usedRankJacobianAt() );
        if posRankJacobianAt === null then error("To estimate the decomposition, \"rankJacobianAt\" must be watched");
 
        cardinality := experiment.coefficientRingCardinality();
@@ -799,7 +799,7 @@ estimateDecompositionOld := (experiment) -> (
  
 
 estimateDecomposition =  (experiment) -> (
-       posRankJacobianAt := experiment.position( "rankJacobianAt" );
+       posRankJacobianAt := experiment.position(  experiment.usedRankJacobianAt() );
        if posRankJacobianAt === null then error("To estimate the decomposition, \"rankJacobianAt\" must be watched");
 
        estimate := flatten apply(keys experiment.count(), key-> ( (key#posRankJacobianAt, estimateNumberOfComponents(experiment,key)), key) );
