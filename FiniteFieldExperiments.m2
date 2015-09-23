@@ -2944,6 +2944,144 @@ doc ///
        watchProperty
        watchProperties
 ///                 
+
+doc ///
+   Key
+        "usedRankJacobianAt"
+   Headline
+        the name of the black box property used to calculate the codimension of the tangent space at a point.
+   Usage   
+        e.usedRankJacobianAt()
+   Inputs  
+        e:Experiment 
+            an Experiment
+   Description
+        Text
+           Sometimes it is useful to implement a custom method for
+           calculating the codimension of the tangent space at a point.
+
+           This method must be first be registered as a property of the black box 
+           used in the experiment. Then one tells the experiment to
+           use this new property for caculating tangent spaces.
+           
+           This function documented here can then be used to see which property
+           is currently used for calculating the codimension of a tangent
+           space at a point.
+            
+           Lets see how this works in an example.                
+        
+           First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break We now create (in this case stupid) new property:
+        Example
+           rankAllways5At = (point) -> 5;
+           bb = bb.rpp("rankAllways5At",rankAllways5At);
+           bb.knownPointProperties()
+        Text
+           \break Now make an experiment from the blackbox:
+        Example        
+           e = new Experiment from bb;
+           e.usedRankJacobianAt()
+           e.run(100)
+        Text 
+           \break Now we change the method for calculating the
+           rank of jacobi matrices. Before doing this we must
+           clear the statistics.
+        Example
+           e.clear()
+           e.useRankJacobianAt("rankAllways5At")
+           e.usedRankJacobianAt()
+           e.run(100)
+        Text
+           A more realistic application is for example the case
+           where the equations of our ideal can be written 
+           as A*B = 0 with A and B matrices with polynomial entries.
+           We can then use the product rule 
+           (A*B)' = A'*B + A*B' to differentiate. This is often faster.
+           
+           An other case where this might be used is when we have a morphism
+           X -> Y and look at random points in X but are interested in the
+           tangent space after projecting to Y.
+   SeeAlso
+      useRankJacobianAt
+///                 
+
+doc ///
+   Key
+        "useRankJacobianAt"
+   Headline
+       change the black box property used to calculate the codimension of the tangent space at a point.
+   Usage   
+        e.useRankJacobianAt(name)
+   Inputs  
+        e:Experiment 
+            an Experiment
+        name: String
+            name of the new property to be used
+   Description
+        Text
+           Sometimes it is useful to implement a custom method for
+           calculating the codimension of the tangent space at a point.
+
+           This method must be first be registered as a property of the black box 
+           used in the experiment. Then one uses the function
+           documented here to tell the experiment to
+           use this new property for caculating tangent spaces.
+           
+           It is important to tell the experiment explicitly which property
+           calculates the codimension of the tangenspace at a point since
+           this is used in calculating estimates of decompositions. 
+            
+           Lets see how this works in an example.                
+        
+           First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break We now create (in this case stupid) new property:
+        Example
+           rankAllways5At = (point) -> 5;
+           bb = bb.rpp("rankAllways5At",rankAllways5At);
+           bb.knownPointProperties()
+        Text
+           \break Now make an experiment from the blackbox:
+        Example        
+           e = new Experiment from bb;
+           e.usedRankJacobianAt()
+           e.run(100)
+           e.estimateDecomposition()
+        Text 
+           \break Now we change the method for calculating the
+           rank of jacobi matrices. Before doing this we must
+           clear the statistics.
+        Example
+           e.clear()
+           e.useRankJacobianAt("rankAllways5At")
+           e.watchProperty("rankAllways5At")
+           e.usedRankJacobianAt()
+           e.run(100)
+           e.estimateDecomposition()
+        Text
+           A more realistic application is for example the case
+           where the equations of our ideal can be written 
+           as A*B = 0 with A and B matrices with polynomial entries.
+           We can then use the product rule 
+           (A*B)' = A'*B + A*B' to differentiate. This is often faster.
+           
+           An other case where this might be used is when we have a morphism
+           X -> Y and look at random points in X but are interested in the
+           tangent space after projecting to Y.
+   SeeAlso
+      usedRankJacobianAt
+///                 
  
 end
 ---
