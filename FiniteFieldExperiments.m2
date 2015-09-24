@@ -211,9 +211,12 @@ countData,                 --internal variable
 createExperimentData,      --internal, only used for IO
 createIterator,            --document in random point iterator, later.
 createRandomPointIterator, --document in random point iterator, later.
-begin,                         --document in random point iterator, later.
-next,                          --document in random point iterator, later.
-point,                         --document in random point iterator, later.
+begin,                     --document in random point iterator, later.
+next,                      --document in random point iterator, later.
+point,                     --document in random point iterator, later.
+points,                        --a list of all points not sorted into list. 
+                               --not used anymore since tryProperty has
+                               --been implemented
 reset,                         --iterator
 compatible,           --internal method
 createMapHelper,
@@ -2443,7 +2446,10 @@ doc ///
            e.watchedProperties()
            e.run(250)  
    SeeAlso
-      ignoreProperties  
+      ignoreProperties
+      watchProperty
+      watchProperties
+      watchedProperties  
 ///
 
 doc ///
@@ -2500,7 +2506,10 @@ doc ///
            e.watchedProperties()
            e.run(250)  
    SeeAlso
-      ignoreProperty  
+      ignoreProperty
+      watchProperty
+      watchProperties
+      watchedProperties   
 ///
 
 doc ///
@@ -3172,6 +3181,280 @@ doc ///
       usedRankJacobianAt
 ///                 
  
+
+doc ///
+   Key
+        "watchProperty"
+   Headline
+        add a property the list of watched properties
+   Usage   
+        e.watchProperty(name)
+   Inputs  
+        e:Experiment 
+            an Experiment
+        name:String
+            the name of the black box property to be added. 
+   Description
+        Text
+           This add a property to the list of watched properties.
+           This works only if the experiment has been reset with e.clear()
+           since otherwise the statistics would be inconsistent.
+                                 
+           Lets see how this works in an artificial but instructive example.                
+           First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.watchedProperties()
+        Text
+           \break Lets not only watch the codimension of the tangentspace
+           at a random point, but also whether the point is probably smooth.
+        Example
+           e.watchProperty("isProbablySmoothAt")
+           e.watchedProperties()
+           e.run(500)
+   SeeAlso
+      ignoreProperty
+      ignoreProperties
+      watchProperties
+      watchedProperties   
+///
+ 
+doc ///
+   Key
+        "watchProperties"
+   Headline
+        add a list of properties the list of watched properties
+   Usage   
+        e.watchProperties(L)
+   Inputs  
+        e:Experiment 
+            an Experiment
+        L:String
+            of name of property to be added. 
+   Description
+        Text
+           This add several properties to the list of watched properties.
+           This works only if the experiment has been reset with e.clear()
+           since otherwise the statistics would be inconsistent.
+                                 
+           Lets see how this works in an artificial but instructive example.                
+           First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.watchedProperties()
+        Text
+           \break Lets not only watch the codimension of the tangentspace
+           at a random point, but also whether the point is probably smooth.
+        Example
+           e.watchProperties({"isProbablySmoothAt","isCertainlySingularAt"})
+           e.watchedProperties()
+           e.run(300)
+   SeeAlso
+      ignoreProperty
+      ignoreProperties
+      watchProperty
+      watchedProperties   
+///
+ 
+doc ///
+   Key
+        "watchedProperties"
+   Headline
+        returns the list of properties that are watched by an experiment
+   Usage   
+        e.watchedProperties()
+   Inputs  
+        e:Experiment 
+            an Experiment
+   Description
+        Text
+           During an experiment a black box is evaluated in random points.
+           The experiment automatically looks at certain properties 
+           associated to the point. This could be the codimension of 
+           the tangent space at this point or wether the variety considered
+           is singular or smooth.
+           
+           More interesting applications are possible if the variety
+           considered is a parameter space of certain algebraic objects 
+           (curves, matrices, etc). In this case the object parametrized
+           by a point can have interestering properties wich we want to 
+           study (eg. number of singularities in the case of curve or
+           betti numbers of their kernels in the case of matrices).
+      
+           The experiment keeps automatically counts the number of
+           times each combination of properties was encountered
+           during the experiment so far. This gives some heuristic
+           information about the size of the strata in which these occur.
+           
+           The function documented shows which properties are currently
+           watched.
+           
+           Lets see how this works in an artificial but instructive example.                
+           First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.watchedProperties()
+        Text
+           \break rankJacobianAt is automatically watched since the rank of
+           the Jacobi matrix is the codimension of the tangent space to
+           the variety at this point. This gives an upper bound to the
+           codimension of the component of the variety on which the 
+           point lies. This is used in the heuristic estimates given
+           by this package. 
+        Example
+           e.run(200)
+           e.estimateDecomposition()
+        Text   
+           \break Lets now also watch whether the points considered
+           are probably smooth. For this the statitics have to be cleared
+           first:
+        Example
+           e.clear()
+           e.watchProperty("isProbablySmoothAt")
+           e.watchedProperties()
+           e.run(300)
+   SeeAlso
+      ignoreProperty
+      ignoreProperties
+      watchProperty
+      watchProperties
+///
+
+doc ///
+   Key
+        "setPointIterator"
+   Headline
+        changes the way random points are chosen
+   Usage   
+        e.setPointIterator(iterator)
+   Inputs  
+        e:Experiment 
+            an Experiment
+        itearator: HashTable
+            defining a point iterator            
+   Description
+        Text
+           Sometimes it is usefull to change the way random points of an 
+           experiment are chosen. 
+           
+           Lets look at a typical but somewhat artificial example:           
+        Example
+           K = ZZ/11;
+           R = K[a,b,c,x,y,z];
+           I = ideal (a*x^2+b*y^2+c*z^2,a*x+b*y+c*z);
+           bb = blackBoxIdeal I;
+        Text     
+           Notice that the equations of the ideal are linear in a,b,c.
+           Therefore to find a point in the vanishing set, 
+           we can choose x,y,z randomly first and solve the resulting
+           linear equations for a,b,c later:
+        Example
+           pointX = random(K^1,K^3)
+        Text    
+           We substitute these values into the equations of the
+           ideal to get linear equations for a,b,c:
+        Example
+           gensA = matrix{{a,b,c}}
+           IA = sub(I,gensA|pointX)
+        Text
+           We now extract the coefficients of these linear equations
+        Example
+           coefficientsLinearEquation = transpose sub(diff(transpose gensA,gens IA),K)
+        Text
+           and look at a basis of the linear subspace defined by these equations
+        Example
+           basisOfLinearSpace = syz coefficientsLinearEquation
+        Text
+           Notice that this space can sometimes be more than 1 dimensional
+           if the coefficient vectors are linearly dependent.
+           
+           Now we choose a random point inside the linear space by
+           taking a random linear combination of the basis vectors
+        Example
+           pointA = transpose (basisOfLinearSpace * random(source basisOfLinearSpace,K^1))
+        Text
+           The values for a,b,c and for x,y,z give our random point
+        Example
+           point = pointA|pointX
+        Text
+           indeed it lies in the vanishing set of our ideal:
+        Example
+           sub(I,point)
+        Text
+           Lets put this into a function:
+        Example
+           smartRandomPoint = () -> (
+                -- choose x,y,z randomly
+                pointX = random(K^1,K^3);
+                -- substituting these values we get linear equations for a,b,c
+                IA = sub(I,gensA|pointX);
+                -- we now extract the coefficients of these linear equations
+                coefficientsLinearEquation = transpose sub(diff(transpose gensA,gens IA),K);
+                -- and look at a basis of the linear subspace defined by these equations
+                basisOfLinearSpace = syz coefficientsLinearEquation;
+                -- now choose a random point inside this linear space
+                pointA = transpose (basisOfLinearSpace * random(source basisOfLinearSpace,K^1));
+                point = pointA|pointX
+                );
+        Text
+           Indeed this gives points in the vanishing set of I:
+        Example
+           sub(I,smartRandomPoint())
+        Text
+           We now want to use this function to choose random points
+           in an experiment. For this we frist have to create an 
+           iterator from it:
+        Example
+           smartIterator = createRandomPointIterator(smartRandomPoint);
+        Text
+           Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.run(200)
+        Text
+           running the experiment with the usual random generator
+           finds only a few points on the variety. (about 200/11^2 = 8 since
+           two equations have to vanish).
+      
+           We now change the random generator to the function above.
+           Before doing this we must clear the statistics since they
+           would be useless if points found by different methods are mixed
+        Example
+           e.clear()
+           e.setPointIterator(smartIterator)
+           e.run(100)
+        Text
+           We see that many more points are found in the same time. 
+           This reduces the time needed to find interesting points
+           in high codimension.          
+///
+
+
+
 TEST ///
     -- test watching user defined rankJacobianAt
            K = ZZ/5;
@@ -3195,8 +3478,10 @@ TEST ///
            assert( 1 == #( e.collectedCount() ) );
 ///
 
+
 end
 ---
+
 
 
 quit -- F11 F11 F12
