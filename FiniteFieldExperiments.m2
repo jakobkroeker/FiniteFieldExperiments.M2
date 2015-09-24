@@ -1706,7 +1706,7 @@ doc ///
         an unified interface to an experiment
    Description
          Text
-            With an {\tt  Experiment } it is possible to check point properties of an @TO BlackBoxParameterSpace@ or @TO BlackBoxIdeal@ 
+            With an @TO{Experiment} it is possible to check point properties of an @TO BlackBoxParameterSpace@ or @TO BlackBoxIdeal@ 
             at random points and collect user-defined statistics. \break
             If the black box from supports evaluation, then at each point the jacobian can be computed
             and jets at smooth ones. From the collected statistics a heuristic decomposition can be estimated and finally performed using interpolation methods, see @TO "Experiment example"@
@@ -1876,6 +1876,8 @@ doc ///
             \break
             Finally a herustic decomposition can be computed using interpolation methods if the black box supports jet calculations.
             \break \break
+
+            {\bf QuickStart } \break \break
             See @TO "Experiment example"@ for a tutorial.
                         
       
@@ -3027,7 +3029,7 @@ doc ///
            this is true in this example since rank 0 only occurs at
            the intersection point of the line and plane.
            
-           For a more realistic example see (Singularities of cubic surfaces)
+           For a more realistic example see @TO "Experiment for singularities of cubic surfaces" @
    SeeAlso
        watchedProperties
        watchProperty
@@ -3194,6 +3196,107 @@ TEST ///
            e.run(100)
            assert( 1 == #( e.collectedCount() ) );
 ///
+
+doc ///
+    Key
+        "Experiment for singularities of cubic surfaces"
+    Headline
+        use an Experiment to study the space of cubic surfaces
+    Description
+        Text
+            A black box parameter space is used to implement parameter spaces
+            with their universal families in a pointwise fashion.
+            
+            Let us build the parameter space of cubic surfaces with a view of 
+            studying its stratification with respect to singularity type.
+            
+            We work in charateristic 7.            
+        Example    
+            K = ZZ/7
+        Text
+            The coordinate ring of IP^3
+        Example
+            R = K[x,y,z,w]
+        Text  
+            Make an empty blackbox which will later contain our 
+            describtion of the parameter space of cubic surfaces.
+            It will depend on 20 parameters, since acubic polynomial 
+            in 4 variables has 20 coefficients.
+        Example
+            bbC = blackBoxParameterSpace(20,K);
+            bbC.knownPointProperties()
+        Text
+            We now build the cubics from the coefficents, i.e. we
+            construct the member of the universal familiy over 
+            a given parameter point:
+        Example
+            mons3 = matrix entries transpose super basis(3,R)
+            cubicAt = (point) -> matrix entries (point*mons3)
+        Text 
+            register this function in the black box 
+        Example
+            bbC = bbC.registerPointProperty("cubicAt",cubicAt);
+            bbC.knownPointProperties()
+        Text
+            Lets test this functionality with some special cubics.
+            The first example is the cubic cone. It is singular
+            at (0:0:0:1):                   
+        Example    
+            cubicCone = matrix{{x^3+y^3+z^3}}
+            coeffCubicCone = contract(transpose mons3,cubicCone)
+            bbC.cubicAt(coeffCubicCone)
+        Text
+            The second example is the Fermat cubic. It is smooth everywhere    
+        Example
+            cubicFermat = matrix{{x^3+y^3+z^3+w^3}}
+            coeffCubicFermat = contract(transpose mons3,cubicFermat)
+            bbC.cubicAt(coeffCubicFermat)
+        Text
+            Now we want to implement the stratification by singularity type.
+            For this we first determine the singular locus of a cubic surface:
+        Example
+            singularLocusAt = (bb,point) -> ideal jacobian bb.cubicAt(point)
+            bbC = bbC.rpp("singularLocusAt",singularLocusAt);
+            bbC.knownPointProperties()
+            bbC.singularLocusAt(coeffCubicCone)   
+            bbC.singularLocusAt(coeffCubicFermat)
+        Text
+            As a first approximation of the singularity type we use
+            the degree of the singular locus
+        Example
+            degreeSingularLocusAt = (bb,point) -> (
+                 s := bb.singularLocusAt(point);
+                 if dim s == 0 then return 0;                
+                 if dim s == 1 then return degree s;                 
+                 if dim s >= 2 then return infinity;
+              )
+            bbC = bbC.rpp("degreeSingularLocusAt",degreeSingularLocusAt);
+            bbC.knownPointProperties()
+        Text
+            Calculate the degree of the singular locus for our examples
+        Example
+            bbC.degreeSingularLocusAt(coeffCubicCone)
+            bbC.degreeSingularLocusAt(coeffCubicFermat)
+        Text
+            Now the BlackBoxParameterspace hat a number of point properties
+        Example
+            bbC.knownPointProperties()
+        Text
+            These properties can now be used in a finite field experiment
+            that studies the statification of our parameter space. Here is a
+            simple minded version of such an experiment:
+        Example
+            tally apply(100,i->bbC.degreeSingularLocusAt(random(K^1,K^20))) 
+        Text
+            We see that there is an open stratum of smooth cubics. The
+            largest closed stratum consists of those cubics with a A1 singularity.
+            The package finiteFieldExperiments helps to do the bookkeeping 
+            for such experiments and also provides more detailed interpretation
+            of the results.
+
+///
+
+
 
 end
 ---
