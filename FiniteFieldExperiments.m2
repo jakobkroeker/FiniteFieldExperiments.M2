@@ -9,7 +9,7 @@ newPackage(
            Email => "bothmer@math.uni-hannover.de", 
            HomePage => "http://www.crcg.de/wiki/Bothmer"},
            { Name => "Jakob Kroeker", 
-           Email => "kroeker@uni-math.gwdg.de", 
+           Email => "jakobkroeker.academic@spaceship-earth.net", 
            HomePage => "http://www.crcg.de/wiki/User:Kroeker"}
       },
      Configuration => {},
@@ -1262,27 +1262,77 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
        );
      );
 
-     
+
+     positionsOfProperties := (newWatchedList)->
+     ( 
+         return  apply( newWatchedList, 
+                           targetProperty -> position( experiment.watchedProperties() , (prop)->prop==targetProperty)
+                );
+     );
+
+     updateWatchedListIsProjection := (newWatchedList)->
+     (
+
+         propertyPositions :=  positionsOfProperties(newWatchedList);
+
+          return( 0 == #(select(propertyPositions, (pos)->pos===null)) ); 
+
+     );
  
-     projectionUpdate := method();
-     projectionUpdate(ExperimentData) := Tally => opts -> (experimentData) -> 
-     ( 
-          experimentData.propertyList 
-          
+     projectionUpdate :=  ( newWatchedList) -> 
+     (     
+          -- assume: new watched property list is projection of old one.
+
+          -- 1. get the tuple of positions of new watchedProperties in propertyList.
+         propertyPositions :=  positionsOfProperties(newWatchedList);
+
+
+          assert( 0 == #(select(propertyPositions, (pos)->pos===null)) );        
+
+         --    experimentData.propertyList 
+
+          newCountData := new MutableHashTable;
+
+          newKey := null;
+
+          -- sum up counts
+          for key in keys experimentData.countData do
+          (
+                newKey = apply( propertyPositions, pos-> key#pos);
+                if (not newCountData#?newKey) then  (    newCountData#newKey =   experimentData.countData#key     )
+                                               else (    newCountData#newKey =   newCountData#newKey + experimentData.countData#key     );
+
+          );
+          -- reclassify collected points
+
+          newPoints := new MutableHashTable;
+
+          for key in keys experimentData.points do
+          (
+                newKey = apply( propertyPositions, pos-> key#pos);
+                if (not newPoints#?newKey)    then  (    newPoints#newKey =   experimentData.points#key     )
+                                               else (    newPoints#newKey =   newCountData#newKey |  experimentData.points#key     );
+
+          );
+
+          experimentData.countData = new Tally from newCountData;
+          experimentData.points    = newPoints;
+            
+          --experimentData.propertyList = newWatchedList;
      );
 
-     update := method();
-     update(ExperimentData) := Tally => opts -> (experimentData) -> 
-     ( 
-        pointIterator := createIterator (  experiment.points() );
-        experimentData.points = new MutableHashTable;
-        experimentData.countData = new Tally;
+     --update := method();
+     --update(ExperimentData) := Tally => opts -> (experimentData) -> 
+     --( 
+     --   pointIterator := createIterator (  experiment.points() );
+     --   experimentData.points = new MutableHashTable;
+     --   experimentData.countData = new Tally;
 
-        while ( pointIterator.next() ) do
-        (
-            runExperimentOnce( experimentData, pointIterator.point(), pointsPerComponent );
-        );
-     );
+     --   while ( pointIterator.next() ) do
+     --   (
+     --       runExperimentOnce( experimentData, pointIterator.point(), pointsPerComponent );
+     --   );
+     --);
 
 
 
@@ -1345,51 +1395,65 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
       clearWatchedProperties();
   );
 
+   --newPropertyListIsProjection = (newPL)->
+   --(
+   --     
+   --);
+
    experiment.setWatchedProperties = ( propertyStringList )->
    (  
-      if experiment.trials()=!=0 then error ("cannot change watched properties - experiment was already run! Clear statistics and retry.");
 
-      setWatchedPropertiesInternal(propertyStringList);
-      update(experimentData);
+      if ( updateWatchedListIsProjection(propertyStringList) ) then 
+      (
+          projectionUpdate(propertyStringList);
+          setWatchedPropertiesInternal(propertyStringList);
+      )
+      else
+      (
+
+          if experiment.trials()=!=0 then error ("cannot change watched properties - experiment was already run! Clear statistics and retry.");
+
+          -- improvement: allow in case the new properties is a projection
+          setWatchedPropertiesInternal(propertyStringList);
+      );
    );
 
    UpdateRecordedPropertiesError := "cannot change watched properties - experiment was already run! You could clear() the statistics and retry.";
   
 
-
+   experiment.propertyIsWatched = method();
+   experiment.propertyIsWatched (String) := Boolean => (propertyName)->
+   (
+        if ( #(select( experiment.watchedProperties(), (prop)->propertyName==prop)) >0 ) then
+        ( 
+           return true;
+        );    
+        return false;
+   );
 
    experiment.watchProperty=(propertyName)->
    (
-       if experiment.trials()=!=0 then error (UpdateRecordedPropertiesError);
+        if not blackBoxIdeal.hasPointProperty(propertyName) then 
+            error ("blackBoxIdeal seems not to have property" | propertyName );
 
-          if not blackBoxIdeal.hasPointProperty(propertyName) then 
-              error ("blackBoxIdeal seems not to have property" | propertyName );
+       if (not experiment.propertyIsWatched(propertyName)) then
+       (
+                if (experiment.trials()=!=0 ) then error (UpdateRecordedPropertiesError);
+       );
 
       experimentData.propertyList = unique (experimentData.propertyList | { propertyName }) ;
       setWatchedPropertiesInternal( experimentData.propertyList );   
-      update(experimentData);
    );
 
    experiment.watchProperties = (propertyNameList)->
    (
-       if experiment.trials()=!=0 then error (UpdateRecordedPropertiesError);
-
        for propertyName in propertyNameList do
        (
            experiment.watchProperty(propertyName);
        );
    );
 
-    experiment.propertyIsWatched = method();
-   experiment.propertyIsWatched (String) := Boolean => (propertyName)->
-   (
- 
-      if ( #(select( experiment.watchedProperties(), (prop)->propertyName==prop)) >0 ) then
-      ( 
-         return true;
-      );
-      return false;
-   );
+  
 
    assertPropertyIsWatched := (propertyName) ->
    (
@@ -1410,30 +1474,33 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
 
    experiment.ignoreProperty = (propertyName)->
    (
-       if experiment.trials()=!=0 then error (UpdateRecordedPropertiesError);
-
+    
        assertPropertyIsWatched(propertyName);
        assertIgnorePropertyAllowed(propertyName);
 
-       experimentData.propertyList = delete(propertyName, experimentData.propertyList ) ;
-       setWatchedPropertiesInternal( experimentData.propertyList );   
-        
-       update(experimentData);
+  
+       newPropertyList := experimentData.propertyList ;
+  
+       newPropertyList = delete(propertyName, newPropertyList ) ;
+ 
+       projectionUpdate( newPropertyList );
+
+       setWatchedPropertiesInternal( newPropertyList );   
    );
 
 
    experiment.ignoreProperties = (ignorePropertyStringList)->
    (
-      if experiment.trials()=!=0 then error (UpdateRecordedPropertiesError);
       for propertyName in ignorePropertyStringList do
       (
           assertPropertyIsWatched(propertyName);
           assertIgnorePropertyAllowed(propertyName);
       );
 
-      apply( ignorePropertyStringList, propToIgnore-> ( experimentData.propertyList = delete(propToIgnore, experimentData.propertyList ); ));
-      setWatchedPropertiesInternal( experimentData.propertyList );    
-      update(experimentData);
+      newPropertyList := experimentData.propertyList ;
+      apply( ignorePropertyStringList, propToIgnore-> ( newPropertyList= delete(propToIgnore, newPropertyList ); ));
+      projectionUpdate( newPropertyList );
+      setWatchedPropertiesInternal(newPropertyList);    
    );
 
  
