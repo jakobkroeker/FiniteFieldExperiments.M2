@@ -28,12 +28,9 @@ export {
   "estimateStratification",
   "estimateCodim", 
   "estimateNumberOfComponents",              
-  "createInterpolatedIdeal",
   "createIterator",
   "createRandomPointIterator",
   "Map",
-  "interpolateBB",
-  "interpolate",
   "isOnComponent",
   "poissonEstimate",
   "Experiment",
@@ -66,6 +63,7 @@ FiniteFieldExperimentsProtect = ()->
   protect pointKeys; 
   protect points;
   protect trials;
+  protect smoothPoints;
   protect createAllInterpolatedIdeals;
   protect interpolatedIdealKeys;
 
@@ -124,6 +122,9 @@ FiniteFieldExperimentsProtect = ()->
 
 FiniteFieldExperimentsExport  = ()->
 (
+
+    exportMutable(smoothPoints);
+
     exportMutable(bareIdeals);
   exportMutable(experiment);
   exportMutable(reset);
@@ -1136,6 +1137,24 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
    );
 
 
+   experiment.smoothPoints = (precision, trials)->
+   (
+      plist :=  experiment.points();
+      smothPoints :=  {};
+      jet := null;
+      for point in plist do
+      (
+            jet = jetAt(blackBoxIdeal,point,precision,trials);
+            if (jet#"succeeded") then
+            (
+                smothPoints = smothPoints | {point};
+            );
+            
+      );
+      return smothPoints;
+   );
+
+
 
    runExperimentOnce := method();
 
@@ -1507,6 +1526,10 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
    );
 
  
+   experiment.interpolateComponents = (maxDeg, onComponentPrecision)->
+   (
+         blackBoxIdeal.interpolateComponents( experiment.smoothPoints(10,10), maxDeg, onComponentPrecision);
+   );
 
 
    -- maybe observed Properties is not a good name - is 'recordedProperties' better ?
@@ -1709,7 +1732,7 @@ doc ///
         an unified interface to an experiment
    Description
          Text
-            With an @TO{Experiment} it is possible to check point properties of an @TO BlackBoxParameterSpace@ or @TO BlackBoxIdeal@ 
+            With an @TO{Experiment}@ it is possible to check point properties of an @TO BlackBoxParameterSpace@ or @TO BlackBoxIdeal@ 
             at random points and collect user-defined statistics. \break
             If the black box from supports evaluation, then at each point the jacobian can be computed
             and jets at smooth ones. From the collected statistics a heuristic decomposition can be estimated and finally performed using interpolation methods, see @TO "Experiment example"@
@@ -3578,7 +3601,7 @@ doc ///
             of the results.
 
  
- 
+///
 end
 ---
 

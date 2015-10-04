@@ -45,7 +45,12 @@ export {
     "keysWithoutSymbols",
     "rebuildBlackBox",
     "guessAcceptedParameterNumber",
-    "dropDegreeInfo"
+    "dropDegreeInfo",
+    "createInterpolatedIdeal",
+    "interpolateBB",
+    "interpolate",
+    "MapHelper",
+    "InterpolatedIdeal"
 }
 
 --undocumented {
@@ -60,6 +65,14 @@ export {
 idealBlackBoxesProtect = ()->
 (
 --protect eps;
+
+
+protect setComponentCandidates;
+protect componentCandidates;
+protect setOnComponentPrecision;
+protect interpolateComponents;
+protect componentCandidatesAt;
+
 protect jacobianAt;
 protect rankJacobianAt;
 protect valuesAt;
@@ -100,6 +113,13 @@ protect knownAttributes;
 
 idealBlackBoxesExport = ()->
 (
+    exportMutable(setComponentCandidates);
+    exportMutable(componentCandidates);
+    exportMutable(setOnComponentPrecision);
+    exportMutable(interpolateComponents);
+
+    exportMutable(componentCandidatesAt);
+ 
     exportMutable(eps);
     exportMutable(jacobianAt);
     exportMutable(rankJacobianAt);
@@ -172,6 +192,8 @@ idealBlackBoxesExport(); -- export the symbols to make the package work
 
 needsPackage "SimpleDoc";
 needsPackage "Text";
+
+
 
 
 BlackBoxLogger = Logger("BlackBoxIdeals");
@@ -295,7 +317,9 @@ TEST ///
 ///
 
 
- 
+SingularPointException = new Type of HashTable;
+
+
 
 -- Estring = new Type of String - goal was to distinguies string keys from symbol keys without changing string visuaulization (net())
 -- but that turned out to be impossible, because e.g. operator '#' cannot be overloaded.
@@ -881,7 +905,8 @@ jetAtSingleTrial( HashTable, Matrix, ZZ ) := MutableHashTable => ( blackBox,  po
 
 jetAt = method();
 
-jetAt( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials )  ->
+--jetAt( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials )  ->
+jetAt( HashTable, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials )  ->
 (
     if ( numTrials<1 ) then error "jetAt: expected numTrials >=1 ";
     bestJet := jetAtSingleTrial ( blackBox,  point, jetLength);
@@ -983,6 +1008,167 @@ new BlackBoxIdeal from Thing := ( E, thing) -> (
 
 
 
+-- Type MapHelper contains a matrix and a function
+-- to evaluate this matrix on a point
+-- This is for example used when projecting onto a
+-- subspace (i.e elimination of variables)
+MapHelper = new Type of HashTable;
+
+createMapHelper = (mapMatrix, imageRing) -> (
+    mapData := new MutableHashTable;
+    
+    mapData#"imageRing" = imageRing;
+    mapData#"matrix" = mapMatrix;
+    
+    mapData#"valueAt" =  method();    
+    mapData#"valueAt" (Matrix) := Matrix => (point)->
+    (
+        return sub(mapMatrix,point);
+    );
+   
+    mapData#"valueAtJet" = method();
+    mapData#"valueAtJet" (HashTable) := HashTable => (jet) -> (
+        return new HashTable from {
+           "failedJetLength" => jet#"failedJetLength",
+           "jet" => (mapData#"valueAt")(jet#"jet"),
+           "succeeded" => jet#"succeeded"
+           };
+     );
+   
+    return new MapHelper from mapData
+    )
+
+new MapHelper from Matrix := (XXX, mapMatrix) -> (
+     -- das hier ist irgendwie alles Quatsch...
+     --sourceRing := ring mapMatrix;
+     --K := coefficientRing sourceRing;
+     --m := rank source mapMatrix;
+     --xxx := symbol xxx;    -- todo: get symbol in user space?
+     --imageRing := K[xxx_1..xxx_m];
+     imageRing := null; 
+     return createMapHelper(mapMatrix, imageRing);
+);
+
+
+
+
+--InterpolatedIdeal = new Type of MutableHashTable;
+
+InterpolatedIdeal = new Type of HashTable;
+
+new InterpolatedIdeal from MutableHashTable :=  (InterpolatedIdealAncestor,l)->
+(  
+     --type check?
+     return l;
+);
+
+new InterpolatedIdeal from List :=  (InterpolatedIdealAncestor,l)->
+(  
+     return new InterpolatedIdeal from new MutableHashTable from l;
+);
+
+
+
+-- find polynomials containing a component
+-- via interpolation
+
+
+-- find linear combinations of monomials containing a given jet
+interpolate = (mons,jetList) -> (
+     R := ring mons;
+     K := coefficientRing R;
+     jetsSucceeded := select(jetList,jetP->jetP#"succeeded");
+     if #jetsSucceeded != #jetList then error throw new SingularPointException from {"errorMessage"=>"the point is not smooth";};
+     -- substitute jets into the monomials and take coefficients
+     coeffList := apply(jetList,jetP ->  sub(last coefficients sub(mons,jetP#"jet"),K));
+     -- find interpolation solution
+     s := syz fold((a,b)->(a||b),coeffList);
+     -- make polynomials from the solution
+     I := ideal mingens ideal(mons*s);
+     --I = ideal(mons*s);
+     I
+     )
+
+
+-- find all polynomials of degree smallerEqual than maxDegree containing the component of BB containing the point
+-- 
+-- this is the most basic simple minded implementation where only one very long jet is considered.
+interpolateBB = method();
+-- interpolateBB(ZZ,BlackBoxParameterSpace,Matrix,MapHelper) := Ideal =>
+interpolateBB(ZZ,HashTable,Matrix,MapHelper) := Ideal =>  
+             (maxDegree,BB,point,mmap) -> 
+     (
+     R := mmap#"imageRing";
+     mons := matrix {flatten apply(maxDegree+1,i->flatten entries basis(i,R))};
+     -- find one jet with precision 10 more then number of monomials
+     jetP := jetAt(BB,point,rank source mons+10,2);
+     -- !!!this heuristic must be tested!!!
+     -- Test: see if interpolated polynomials are in at least one
+     -- irreducible component of the BlackBoxIdeal.
+     jetPimage :=  (mmap#"valueAtJet")(jetP);
+     --new HashTable from {
+     --      "failedJetLength" => jetP#"failedJetLength",
+     --      "jet" => (mmap#"valueAt")(jetP#"jet"),
+     --      "succeeded" => jetP#"succeeded"
+     --      };
+     interpolate(mons,{jetPimage})
+     )
+
+--interpolateBB(ZZ,BlackBoxParameterSpace,Matrix,Matrix) := Ideal =>
+interpolateBB(ZZ,HashTable,Matrix,Matrix) := Ideal =>  
+             (maxDegree,BB,point,mmap) -> 
+(
+     interpolateBB(maxDegree,BB,point,new MapHelper from mmap)
+)
+
+
+--interpolateBB(ZZ,BlackBoxParameterSpace,Matrix) := Ideal =>
+interpolateBB(ZZ,HashTable,Matrix) := Ideal =>  
+             (maxDegree,BB,point) -> 
+(
+     interpolateBB(maxDegree,BB,point,createMapHelper(vars BB.ring,BB.ring))
+)
+
+
+
+createInterpolatedIdealObj = method();
+createInterpolatedIdealObj( Ideal,ZZ,String ) := InterpolatedIdeal => 
+                       (I,maxDegree, description)->
+(
+     result := new InterpolatedIdeal from {
+      "ideal" => I,
+      "maxDegree" => maxDegree,
+      "description" => description
+     };
+     return result;
+);
+
+
+createInterpolatedIdeal = method();
+--internal method
+createInterpolatedIdeal (ZZ,BlackBoxIdeal,Matrix) := InterpolatedIdeal => (maxDegree, BB, point)->
+(
+   createInterpolatedIdealObj ( interpolateBB(maxDegree,BB,point), maxDegree, "" )
+);
+
+createInterpolatedIdeal (ZZ, HashTable, Matrix) := InterpolatedIdeal => (maxDegree, BB, point)->
+(
+   createInterpolatedIdealObj ( interpolateBB(maxDegree,BB,point), maxDegree, "" )
+);
+
+
+createInterpolatedIdeal (ZZ,BlackBoxIdeal,Matrix, String) := InterpolatedIdeal => (maxDegree, BB, point, name)->
+(
+   createInterpolatedIdealObj ( interpolateBB(maxDegree,BB,point), maxDegree, name )
+);
+
+
+createInterpolatedIdeal (ZZ, HashTable, Matrix, String) := InterpolatedIdeal => (maxDegree, BB, point, name)->
+(
+   createInterpolatedIdealObj ( interpolateBB(maxDegree,BB,point), maxDegree, name )
+);
+
+
 
 -- internal method to create a basic black box ( a black box for a parameter space )
 --
@@ -1020,6 +1206,9 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
                                            -- the value cannot be stored in the blackBox directly as a key-value pair, 
                                            -- because, otherwise different black box references referring to the same object
                                            -- could get out of sync. The variable is accessed by a getter(numVariables())
+
+
+  
 
     singularTestOptions := new MutableHashTable;
     singularTestOptions.precision = 10;
@@ -1587,6 +1776,159 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
          );    
 
        );
+
+      componentCandidates := new MutableHashTable; -- should not be a HashTable but a type
+
+
+      jets := new MutableHashTable;
+
+      blackBox.setComponentCandidates = (cc)->
+     ( 
+           -- jets = new MutableHashTable; -- clear old cache for point jets
+           componentCandidates = cc;
+     );
+
+     blackBox.componentCandidates = ()->
+     (
+         return new HashTable from componentCandidates;
+     );
+
+     onComponentPrecision := 5;
+
+     blackBox.setOnComponentPrecision = (precision)->
+     (
+         onComponentPrecision=precision;
+     );
+
+     isOnComponent := method();
+
+    
+     isOnComponent (Ideal, Matrix, ZZ) := Boolean => (componentIdeal, point, onComponentPrecision)->
+     (
+          if not (jets#?point) then
+         (        
+             --jetP := jetAt(interpolation.blackBoxIdeal() ,point,onComponentPrecision, 1);
+             jets#point = jetAt( bb ,point, onComponentPrecision, 1);
+         );
+         jetP := jets#point;  
+
+         if jetP#"jetLength" < onComponentPrecision then 
+         (
+             jetP = jets#point;  
+             jets#point = jetAt( bb ,point,onComponentPrecision, 1);
+         );
+
+         if jetP#"succeeded" then 
+         (
+               print "succeeded";
+               return (0 == sub( componentIdeal, jetP#"jet" ));
+         ) else (
+                print "point not smooth";
+                error "point is not smooth";
+             );
+
+     );
+
+
+
+     isOnComponent (String , Matrix, ZZ) := Boolean => (componentId, point, onComponentPrecision)->
+     (
+         if (not componentCandidates#?componentId) then error "component does not exist";
+         return isOnComponent(componentCandidates#?componentId,  point, onComponentPrecision) ;
+     );
+
+
+     blackBox.interpolateComponents  = (pointList, maxDegree, onComponentPrecision) -> 
+     (
+        idealCount := 0;
+        localInterpolatedIdeals := {};
+      
+        -- T := timing 
+
+
+        err := null;
+
+        for point in pointList do
+        (
+             print "point ";
+             print (toString point);
+
+             --time if bb.isCertainlySingularAt(point) then 
+             --(
+             --   continue;
+             --);
+             pointIsSingular := false;
+
+             -- check if point is already on one of the known components
+             bIsOnComponent := false;
+             for interpolData in localInterpolatedIdeals do
+             (
+                 try (  
+                        if  isOnComponent (  interpolData#"ideal", point, 0 ) then
+                         (
+                             if  isOnComponent (  interpolData#"ideal", point, onComponentPrecision ) then
+                             (
+                                  bIsOnComponent = true; 
+                                 print "bIsOnComponent";
+                                  break;
+                             );
+                         ); 
+                    )  
+                    else (
+                    pointIsSingular = true;
+                    break;
+                );
+                    
+             );
+             if (bIsOnComponent or pointIsSingular) then 
+             (
+                 continue;
+             );
+        
+           err := catch  (
+                 localInterpolatedIdeals = localInterpolatedIdeals | { createInterpolatedIdeal (maxDegree, blackBox, point, ("ideal_" |toString idealCount ))  };  
+            );
+
+            idealCount = idealCount +1 ;
+
+            if ( SingularPointException === (class err)) then 
+            (
+                  print "singular point";
+                  BlackBoxLogger.debug("createInterpolatedIdeal: point"| toString point| " was singular");
+            )
+            else  ( 
+                if (err =!= null) then
+                (
+                     throw "unexpected error2";
+                     print toString err;  
+                );
+            );
+
+        );
+        -- print "timing for loop", T#0;
+        interpolatedIdeals := new MutableHashTable from 
+           apply ( #localInterpolatedIdeals, idx-> (("ideal_" |toString idx ) => localInterpolatedIdeals#idx ) ) ;
+
+       blackBox.setComponentCandidates(interpolatedIdeals);
+    );
+
+
+
+     blackBox.componentCandidatesAt = (point)->
+     (
+        candidates := {};
+        for componentKey in keys componentCandidates do
+        (
+            if ( isOnComponent(componentKey, point, onComponentPrecision)) then
+            (
+                candidates = candidates | { componentKey };
+            );
+        );
+        return candidates;
+     );
+
+     -- blackBox.registerPointProperty("componentCandidatesAt", componentCandidatesAt);
+
 
        --bb = new HashTable from bb;
        -- todo: here we have an issue; how to find out the class of the outer blackbox? 
@@ -2714,7 +3056,7 @@ doc ///
 doc ///
     Key
         jetAt
-        (jetAt, BlackBoxParameterSpace, Matrix, ZZ, ZZ)
+        (jetAt, HashTable, Matrix, ZZ, ZZ)
     Headline
         find jets on the varieties defined by a black box
     Usage   
@@ -3374,6 +3716,125 @@ doc ///
           isProbablySmoothAt
           jetAt
 ///
+
+
+doc ///
+   Key
+        interpolate
+   Headline
+        find polynomials containing a list of jets
+   Usage   
+        I = interpolate(mons,jetList)
+   Inputs  
+        mons:Matrix 
+            of monomials
+        jetList:List
+            of jets    
+   Description
+        Text
+            Finds those linear combinations of monomials that vanish
+            on the given list of jets.
+               
+            Lets consider a black box that describes
+            a line and a plane intersecting at the origin:    
+        Example      
+            K = ZZ/5
+            R = K[x,y,z]
+            I = ideal (x*z,y*z)
+            bb = blackBoxIdeal I;       
+        Text
+            \break 
+            Consider a point on the line:
+        Example
+            point = matrix{{0,0,1_K}}
+        Text
+            \break
+            and a jet of lenght 3 starting at this point and
+            lying on the variety described by the black box ideal
+        Example
+            j = jetAt(bb,point,4,1)     
+        Text
+            \break
+            Now find linear polynomials containing this jet:
+        Example
+            interpolate(matrix{{x,y,z}},{j})   
+        Text
+            Notice that polynomials containig the line are found.
+            The surface is invisible to the interpolation.   
+   Caveat
+       This function does not estimate the lenght of the jet needed to
+       get a useful answer. (The jet should be at least as long as the
+       number of monomials). This is done by @TO interpolateBB @. 
+   SeeAlso
+       interpolateBB
+       createInterpolatedIdeal
+///
+
+
+doc ///
+    Key
+        interpolateBB
+        (interpolateBB, ZZ, HashTable, Matrix)
+        (interpolateBB, ZZ, HashTable, Matrix, MapHelper)
+    Headline
+        find polynomials containing a list of jets
+    Usage   
+        I = interpolateBB(maxDegree,BlackBox,point)
+        I = interpolateBB(maxDegree,BlackBox,point,map)
+    Inputs  
+        maxDegree:ZZ 
+            the maximal degree of polynomials considered
+        BlackBox:BlackBoxIdeal
+        point: Matrix
+            a point where the Blackbox vanishes    
+        map: MapHelper
+            
+    Description
+        Text
+           Finds all polynomials of degree at most maxDegree
+           that contain the component on which the point lies.
+           If the point is not smooth, an error will be produced.
+       
+           Lets consider a black box that describes
+           a line and a plane intersecting at the origin:
+        Example      
+           K = ZZ/5
+           R = K[x,y,z]
+           I = ideal (x*z,y*z)
+           bb = blackBoxIdeal I;       
+        Text
+           \break 
+           Consider two points on the variety described 
+           by the blackbox:
+        Example
+           pointOnLine = matrix{{0,0,1_K}}
+           pointOnPlane = matrix{{0,1,0_K}}
+        Text
+           \break
+           Now find linear equations containing the respective
+           components on which the points lie:
+        Example
+           interpolateBB(1,bb,pointOnLine)
+           interpolateBB(1,bb,pointOnPlane)
+        Text
+           \break
+           Finding points on the different components can be done
+           by running an  Experiment. Interpolating a component
+           for all points found can be done by ....   
+    Caveat
+        This function does not work with multigraded rings.
+        At the moment this has to be done by hand with @TO interpolate @. 
+      
+        At the moment the interpolation is done by producing one
+        jet of the appropriate length. Often one could interpolate
+        much faster if several shorter jets were used. (Most of the
+        time is used when producing the jets)
+    SeeAlso
+        interpolate
+        createInterpolatedIdeal    
+///
+
+
 
 TEST ///
   --test for issue #117
