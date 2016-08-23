@@ -464,7 +464,7 @@ toExternalString(ExperimentData) := String=> (ed)->
 ( 
    return "createExperimentData " | "(" 
    | toExternalString ed.coefficientRing | ", \n "
-   | toString (new HashTable from ed.points) | ", \n"
+   | toExternalString (new HashTable from ed.points) | ", \n" -- HC:introduced External
    | toExternalString ed.countData | ",\n"
    | toExternalString ed.trials | ",\n"
    | toExternalString ed.propertyList | ",\n"
