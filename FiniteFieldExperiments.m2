@@ -9,7 +9,7 @@ newPackage(
            Email => "bothmer@math.uni-hannover.de", 
            HomePage => "http://www.crcg.de/wiki/Bothmer"},
            { Name => "Jakob Kroeker", 
-           Email => "kroeker@uni-math.gwdg.de", 
+           Email => "jakobkroeker.academic@spaceship-earth.net", 
            HomePage => "http://www.crcg.de/wiki/User:Kroeker"}
       },
      Configuration => {},
@@ -51,6 +51,7 @@ FiniteFieldExperimentsProtect = ()->
   protect bareIdeals;
   protect experiment;
   protect reset;
+  protect pointKey;
   protect setPointIterator;
   protect setPointGenerator;
   protect printInterpolatedIdeals;
@@ -77,9 +78,8 @@ FiniteFieldExperimentsProtect = ()->
   protect interpolatedIdeals;
 
   protect getExperimentData;
-  protect setRecordedProperties;
-  protect recordProperty;
   protect ignoreProperty;
+  protect propertyIsWatched;
   protect ignoreProperties;
 
   protect update;
@@ -93,7 +93,7 @@ FiniteFieldExperimentsProtect = ()->
   protect rankJacobianAtKey;
   protect watchProperty;
   protect watchProperties;
-  protect recordProperties;
+  protect setWatchedProperties;
 
   protect propertyName;
   protect propertyAt;
@@ -107,8 +107,8 @@ FiniteFieldExperimentsProtect = ()->
   protect usedRankJacobianAt;
 
 
-  protect minPointsPerComponent;
-  protect setMinPointsPerComponent;
+  protect pointsPerComponent;
+  protect setPointsPerComponent;
   protect stratificationIntervalView;
   protect countsByCount;  --protect countsByCount;
 
@@ -127,6 +127,7 @@ FiniteFieldExperimentsExport  = ()->
     exportMutable(bareIdeals);
   exportMutable(experiment);
   exportMutable(reset);
+  exportMutable(pointKey);
   exportMutable(setPointIterator);
   exportMutable(setPointGenerator);
   exportMutable(printInterpolatedIdeals);
@@ -158,9 +159,8 @@ FiniteFieldExperimentsExport  = ()->
   exportMutable(isInteresting);
 
   exportMutable(getExperimentData);
-  exportMutable(setRecordedProperties);
-  exportMutable(recordProperty);
   exportMutable(ignoreProperty);
+  exportMutable(propertyIsWatched);
   exportMutable(ignoreProperties);
 
 
@@ -174,7 +174,6 @@ FiniteFieldExperimentsExport  = ()->
  exportMutable(rankJacobianAtKey);
  exportMutable(watchProperties);
  exportMutable(watchProperty);
- exportMutable(recordProperties);
  exportMutable(propertyName);
  exportMutable(propertyAt);
 
@@ -182,13 +181,14 @@ FiniteFieldExperimentsExport  = ()->
 
  exportMutable(recordedProperties);
  exportMutable(watchedProperties);
+ exportMutable(setWatchedProperties);
 
  exportMutable(useRankJacobianAt);
  exportMutable(usedRankJacobianAt);
  
 
-  exportMutable(minPointsPerComponent);
-  exportMutable(setMinPointsPerComponent);
+  exportMutable(pointsPerComponent);
+  exportMutable(setPointsPerComponent);
   exportMutable(stratificationIntervalView);
 
  
@@ -211,9 +211,12 @@ countData,                 --internal variable
 createExperimentData,      --internal, only used for IO
 createIterator,            --document in random point iterator, later.
 createRandomPointIterator, --document in random point iterator, later.
-begin,                         --document in random point iterator, later.
-next,                          --document in random point iterator, later.
-point,                         --document in random point iterator, later.
+begin,                     --document in random point iterator, later.
+next,                      --document in random point iterator, later.
+point,                     --document in random point iterator, later.
+points,                        --a list of all points not sorted into list. 
+                               --not used anymore since tryProperty has
+                               --been implemented
 reset,                         --iterator
 compatible,           --internal method
 createMapHelper,
@@ -235,10 +238,7 @@ testDebug,
 update,              --intern
 updateExperiment,    -- newFeature not ready.
 FFELogger,            -- internal for debug.
-recordProperties,     -- replace with watchProperties
-recordProperty,       -- replace with watchProperty
 recordedProperties,   -- replace with watchedProperties
-setRecordedProperties  -- replace with watchProperties
 }
 
 
@@ -395,7 +395,7 @@ new ExperimentData from Ring := (E,coeffRing) -> (
 estimateNumberOfComponents(Experiment,List) := HashTable => opts->    (experiment,key) -> 
 (
       countData := experiment.count();
-      posRankJacobianAt := experiment.position( "rankJacobianAt" );
+      posRankJacobianAt := experiment.position( experiment.usedRankJacobianAt() );
      if posRankJacobianAt === null then error("To estimate number of components, \"rankJacobianAt\" must be watched");
     
      cardinality := experiment.coefficientRingCardinality();
@@ -781,7 +781,7 @@ net (EstimatedDecomposition) := Net =>(estimatedDecomposition)->
 
 estimateDecompositionOld := (experiment) -> (
        countData := experiment.count();
-       posRankJacobianAt := experiment.position( "rankJacobianAt" );
+       posRankJacobianAt := experiment.position(  experiment.usedRankJacobianAt() );
        if posRankJacobianAt === null then error("To estimate the decomposition, \"rankJacobianAt\" must be watched");
 
        cardinality := experiment.coefficientRingCardinality();
@@ -802,7 +802,7 @@ estimateDecompositionOld := (experiment) -> (
  
 
 estimateDecomposition =  (experiment) -> (
-       posRankJacobianAt := experiment.position( "rankJacobianAt" );
+       posRankJacobianAt := experiment.position(  experiment.usedRankJacobianAt() );
        if posRankJacobianAt === null then error("To estimate the decomposition, \"rankJacobianAt\" must be watched");
 
        estimate := flatten apply(keys experiment.count(), key-> ( (key#posRankJacobianAt, estimateNumberOfComponents(experiment,key)), key) );
@@ -1028,7 +1028,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
    );
 
    -- some of the  following values initialized at end ( e.g. propertiesAt initialization depends presence of some functions defined later)
-   minPointsPerComponent := 10;
+   pointsPerComponent := 10;
 
    rankJacobianAtKey := null;
    rankJacobianAt := null;
@@ -1062,7 +1062,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
         bb1 := experiment.blackBoxIdeal();
         bb2 := re2.blackBoxIdeal();
 
-     return (  experiment.minPointsPerComponent() ==  re2.minPointsPerComponent() and
+     return (  experiment.pointsPerComponent() ==  re2.pointsPerComponent() and
                experiment.coefficientRing()       === re2.coefficientRing() and
                experiment.watchedProperties()     ==  re2.watchedProperties() and
                experiment.rankJacobianAtKey()         ==  re2.rankJacobianAtKey() and
@@ -1142,15 +1142,15 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
 
 
 
-   experiment.setMinPointsPerComponent = (numPointsPerComponent)->
+   experiment.setPointsPerComponent = (numPointsPerComponent)->
    ( 
-     minPointsPerComponent = numPointsPerComponent;
+     pointsPerComponent = numPointsPerComponent;
    );
 
 
-   experiment.minPointsPerComponent = ()->
+   experiment.pointsPerComponent = ()->
    ( 
-     return minPointsPerComponent ;
+     return pointsPerComponent ;
    );
 
 
@@ -1161,24 +1161,6 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
    -- maybe think about writing 'connectProperty' ... (propName, bb.propName); default is 1:1.
    -- then, what should happen if a user requests to watch property xy ?
    
-
-   experiment.useRankJacobianAt = (rankJacobianAtName)->
-   ( 
-       if experiment.trials()=!=0 then error ("cannot change rankJacobianAt  - experiment was already run! You could clear() the statistics and retry. ");
-
-       if rankJacobianAtName===null then
-       (
-         rankJacobianAtKey = null;
-         rankJacobianAt = null ;
-         return;
-       );
-       if blackBoxIdeal.hasPointProperty(rankJacobianAtName) then 
-       (
-          rankJacobianAtKey = rankJacobianAtName;
-          rankJacobianAt = blackBoxIdeal.pointProperty(rankJacobianAtName) ;
-       ) 
-       else  error ("blackBoxIdeal seems not to have property" | propertyName );
-   );
 
 
 
@@ -1278,30 +1260,87 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
        for i in 1..newTrials do
        (
            assert( pPointIterator.next() );
-           runExperimentOnce( experimentData, pPointIterator.point(), minPointsPerComponent );
+           runExperimentOnce( experimentData, pPointIterator.point(), pointsPerComponent );
            experimentData.trials =  experiment.trials();
        );
      );
 
- 
 
-     update := method();
-     update(ExperimentData) := Tally => opts -> (experimentData) -> 
+     positionsOfProperties := (newWatchedList)->
      ( 
-        pointIterator := createIterator (  experiment.points() );
-        experimentData.points = new MutableHashTable;
-        experimentData.countData = new Tally;
-
-        while ( pointIterator.next() ) do
-        (
-            runExperimentOnce( experimentData, pointIterator.point(), minPointsPerComponent );
-        );
+         return  apply( newWatchedList, 
+                           targetProperty -> position( experiment.watchedProperties() , (prop)->prop==targetProperty)
+                );
      );
 
+     updateWatchedListIsProjection := (newWatchedList)->
+     (
+
+         propertyPositions :=  positionsOfProperties(newWatchedList);
+
+          return( 0 == #(select(propertyPositions, (pos)->pos===null)) ); 
+
+     );
+ 
+     projectionUpdate :=  ( newWatchedList) -> 
+     (     
+          -- assume: new watched property list is projection of old one.
+
+          -- 1. get the tuple of positions of new watchedProperties in propertyList.
+         propertyPositions :=  positionsOfProperties(newWatchedList);
+
+
+          assert( 0 == #(select(propertyPositions, (pos)->pos===null)) );        
+
+         --    experimentData.propertyList 
+
+          newCountData := new MutableHashTable;
+
+          newKey := null;
+
+          -- sum up counts
+          for key in keys experimentData.countData do
+          (
+                newKey = apply( propertyPositions, pos-> key#pos);
+                if (not newCountData#?newKey) then  (    newCountData#newKey =   experimentData.countData#key     )
+                                               else (    newCountData#newKey =   newCountData#newKey + experimentData.countData#key     );
+
+          );
+          -- reclassify collected points
+
+          newPoints := new MutableHashTable;
+
+          for key in keys experimentData.points do
+          (
+                newKey = apply( propertyPositions, pos-> key#pos);
+                if (not newPoints#?newKey)    then  (    newPoints#newKey =   experimentData.points#key     )
+                                               else (    newPoints#newKey =   newCountData#newKey |  experimentData.points#key     );
+
+          );
+
+          experimentData.countData = new Tally from newCountData;
+          experimentData.points    = newPoints;
+            
+          --experimentData.propertyList = newWatchedList;
+     );
+
+     --update := method();
+     --update(ExperimentData) := Tally => opts -> (experimentData) -> 
+     --( 
+     --   pointIterator := createIterator (  experiment.points() );
+     --   experimentData.points = new MutableHashTable;
+     --   experimentData.countData = new Tally;
+
+     --   while ( pointIterator.next() ) do
+     --   (
+     --       runExperimentOnce( experimentData, pointIterator.point(), pointsPerComponent );
+     --   );
+     --);
 
 
 
-   setRecordedPropertiesInternal := (propListToObserve)->
+
+   setWatchedPropertiesInternal := (propListToObserve)->
    ( 
       for propertyName in propListToObserve do
       (
@@ -1315,59 +1354,159 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
       );   
    );
 
+   experiment.useRankJacobianAt = (rankJacobianAtName)->
+   ( 
+       if experiment.trials()=!=0 then error ("cannot change rankJacobianAt  - experiment was already run! You could clear() the statistics and retry. ");
+
+       if rankJacobianAtName===null then
+       (
+         rankJacobianAtKey = null;
+         rankJacobianAt = null ;
+         return;
+       );
+
+       if (not blackBoxIdeal.hasPointProperty(rankJacobianAtName)) then 
+            error ("blackBoxIdeal seems not to have property " | rankJacobianAtName );
+ 
+       if (rankJacobianAtKey=!=null) then
+       (
+            if (experiment.propertyIsWatched(rankJacobianAtKey)) then
+            (
+                   experimentData.propertyList = delete(rankJacobianAtKey, experimentData.propertyList ) ;
+                   setWatchedPropertiesInternal( experimentData.propertyList );   
+            );
+       );
+
+      rankJacobianAtKey = rankJacobianAtName;
+      rankJacobianAt = blackBoxIdeal.pointProperty(rankJacobianAtName) ;
+      experiment.watchProperty(rankJacobianAtKey);
+ 
+   );
+
+
+
   experiment.clearWatchedProperties = (   )->
   (
       experiment.clear(); 
-      setRecordedPropertiesInternal({});
+      setWatchedPropertiesInternal({});
   );
 
+  experiment.reset = (   )->
+  (
+      --redundant: experiment.clear(); 
+      experiment.clear(); 
+      clearWatchedProperties();
+  );
 
-   experiment.setRecordedProperties = ( propertyStringList )->
+   --newPropertyListIsProjection = (newPL)->
+   --(
+   --     
+   --);
+
+   experiment.setWatchedProperties = ( propertyStringList )->
    (  
-      if experiment.trials()=!=0 then error ("cannot change watched properties - experiment was already run! Clear statistics and retry.");
 
-      setRecordedPropertiesInternal(propertyStringList);
-      update(experimentData);
+      if ( updateWatchedListIsProjection(propertyStringList) ) then 
+      (
+          projectionUpdate(propertyStringList);
+          setWatchedPropertiesInternal(propertyStringList);
+      )
+      else
+      (
+
+          if experiment.trials()=!=0 then error ("cannot change watched properties - experiment was already run! Clear statistics and retry.");
+
+          -- improvement: allow in case the new properties is a projection
+          setWatchedPropertiesInternal(propertyStringList);
+      );
    );
 
    UpdateRecordedPropertiesError := "cannot change watched properties - experiment was already run! You could clear() the statistics and retry.";
   
 
-   experiment.watchProperties = experiment.setRecordedProperties;
+   experiment.propertyIsWatched = method();
+   experiment.propertyIsWatched (String) := Boolean => (propertyName)->
+   (
+        if ( #(select( experiment.watchedProperties(), (prop)->propertyName==prop)) >0 ) then
+        ( 
+           return true;
+        );    
+        return false;
+   );
 
    experiment.watchProperty=(propertyName)->
    (
-       if experiment.trials()=!=0 then error (UpdateRecordedPropertiesError);
+        if not blackBoxIdeal.hasPointProperty(propertyName) then 
+            error ("blackBoxIdeal seems not to have property" | propertyName );
 
-          if not blackBoxIdeal.hasPointProperty(propertyName) then 
-              error ("blackBoxIdeal seems not to have property" | propertyName );
+       if (not experiment.propertyIsWatched(propertyName)) then
+       (
+                if (experiment.trials()=!=0 ) then error (UpdateRecordedPropertiesError);
+       );
 
       experimentData.propertyList = unique (experimentData.propertyList | { propertyName }) ;
-      setRecordedPropertiesInternal( experimentData.propertyList );   
-      update(experimentData);
+      setWatchedPropertiesInternal( experimentData.propertyList );   
    );
 
-   experiment.recordProperty=experiment.watchProperty;
-
-   experiment.ignoreProperty=(propertyName)->
+   experiment.watchProperties = (propertyNameList)->
    (
-       if experiment.trials()=!=0 then error (UpdateRecordedPropertiesError);
+       for propertyName in propertyNameList do
+       (
+           experiment.watchProperty(propertyName);
+       );
+   );
 
-      experimentData.propertyList = delete(propertyName, experimentData.propertyList ) ;
-      setRecordedPropertiesInternal( experimentData.propertyList );   
-        
-      update(experimentData);
+  
+
+   assertPropertyIsWatched := (propertyName) ->
+   (
+        if (not experiment.propertyIsWatched(propertyName)) then error ("given property '" |propertyName| "' is not watched !");
+   );
+
+   assertIgnorePropertyAllowed := (propertyName) ->
+   (
+        if (propertyName == "rankJacobianAt") then
+        (
+            if (blackBoxIdeal.type===BlackBoxIdeal) then
+            (
+                 error (" removing 'rankJacobianAt' from watched properties for a " | toString blackBoxIdeal.type | " not allowed !")
+            );
+        );
+   );
+
+
+   experiment.ignoreProperty = (propertyName)->
+   (
+    
+       assertPropertyIsWatched(propertyName);
+       assertIgnorePropertyAllowed(propertyName);
+
+  
+       newPropertyList := experimentData.propertyList ;
+  
+       newPropertyList = delete(propertyName, newPropertyList ) ;
+ 
+       projectionUpdate( newPropertyList );
+
+       setWatchedPropertiesInternal( newPropertyList );   
    );
 
 
    experiment.ignoreProperties = (ignorePropertyStringList)->
    (
-       if experiment.trials()=!=0 then error (UpdateRecordedPropertiesError);
+      for propertyName in ignorePropertyStringList do
+      (
+          assertPropertyIsWatched(propertyName);
+          assertIgnorePropertyAllowed(propertyName);
+      );
 
-      apply( ignorePropertyStringList, propToIgnore-> ( experimentData.propertyList = delete(propToIgnore, experimentData.propertyList ); ));
-      setRecordedPropertiesInternal( experimentData.propertyList );    
-      update(experimentData);
+      newPropertyList := experimentData.propertyList ;
+      apply( ignorePropertyStringList, propToIgnore-> ( newPropertyList= delete(propToIgnore, newPropertyList ); ));
+      projectionUpdate( newPropertyList );
+      setWatchedPropertiesInternal(newPropertyList);    
    );
+
+ 
 
 
    -- maybe observed Properties is not a good name - is 'recordedProperties' better ?
@@ -1434,6 +1573,16 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
    (
       return keys experimentData.points;
    );
+
+   experiment.pointKey = method();
+   experiment.pointKey(ZZ) := Thing => (index)->
+   (
+      pointkeys := experiment.pointKeys();
+
+      if ( (index<0) or (index>= #pointkeys) ) then error "invalid point key position ";
+      return pointkeys#index;
+   );
+
 
    experiment.collectedCount = ()->
    (
@@ -1560,7 +1709,7 @@ doc ///
         an unified interface to an experiment
    Description
          Text
-            With an {\tt  Experiment } it is possible to check point properties of an @TO BlackBoxParameterSpace@ or @TO BlackBoxIdeal@ 
+            With an @TO{Experiment} it is possible to check point properties of an @TO BlackBoxParameterSpace@ or @TO BlackBoxIdeal@ 
             at random points and collect user-defined statistics. \break
             If the black box from supports evaluation, then at each point the jacobian can be computed
             and jets at smooth ones. From the collected statistics a heuristic decomposition can be estimated and finally performed using interpolation methods, see @TO "Experiment example"@
@@ -1578,7 +1727,7 @@ doc ///
             \,\, \bullet \,{\tt count}:  \break
             \,\, \bullet \,{\tt countsByCount}: \break
             \,\, \bullet \,{\tt membershipPrecision}:  \break
-            \,\, \bullet \,{\tt minPointsPerComponent}: \break
+            \,\, \bullet \,{\tt pointsPerComponent}: \break
             \,\, \bullet \,{\tt points}:  \break
             \,\, \bullet \,{\tt pointKeys}: \break
             \,\, \bullet \,{\tt pointLists}:  \break
@@ -1591,10 +1740,10 @@ doc ///
             methods: \break
             \,\, \bullet \,{\tt setIsInteresting}: set a filter for points to consider. \break
             \,\, \bullet \,{\tt setMembershipPrecision}:  \break
-            \,\, \bullet \,{\tt setMinPointsPerComponent}:  \break
+            \,\, \bullet \,{\tt setPointsPerComponent}:  \break
             \,\, \bullet \,{\tt setPointGenerator}: \break
             \,\, \bullet \,{\tt setPointIterator}:  \break
-            \,\, \bullet \,{\tt useJacobianAt}:  \break
+            \,\, \bullet \,{\tt useRankJacobianAt}:  \break
             \,\, \bullet \,{\tt watchProperties, watchProperty }:  \break
             \,\, \bullet \,{\tt ignoreProperties,  ignoreProperty }:  \break
             \,\, \bullet \,{\tt clearWatchedProperties}:  \break
@@ -1730,6 +1879,8 @@ doc ///
             \break
             Finally a herustic decomposition can be computed using interpolation methods if the black box supports jet calculations.
             \break \break
+
+            {\bf QuickStart } \break \break
             See @TO "Experiment example"@ for a tutorial.
                         
       
@@ -1822,17 +1973,22 @@ doc ///
         Example
            e.pointLists()
         Text
+           Points with a particular set of properties can be selected
+           like this:
+        Example
+           e.pointsByKey({2})
+        Text
            Since one always finds many points found on components of low
            codimension it is not useful to remember all of them. The experiment
            remembers by default only about 10 points per component:
         Example
-           e.minPointsPerComponent()
+           e.pointsPerComponent()
            e.collectedCount() 
         Text
-            Here we have not collected exactly 10 points per component since the experiment uses the upper end of the confidence interval for the number of components ( see @TO estimateNumberOfComponents@) as guide for the number of points to keep.
+           Here we have not collected exactly 10 points per component since the experiment uses the upper end of the confidence interval for the number of components ( see @TO estimateNumberOfComponents@) as guide for the number of points to keep.
            The amount of stored points can be adjusted:
         Example
-           e.setMinPointsPerComponent(20)
+           e.setPointsPerComponent(20)
            -- collect about 20 points per component now:
            time e.run(1250);
            e.collectedCount() 
@@ -1884,8 +2040,8 @@ TEST ///
     e = new Experiment from bbRankM
     assert (e.coefficientRing()===coeffRing);
 
-    e.setMinPointsPerComponent(20);
-    assert( e.minPointsPerComponent()==20);
+    e.setPointsPerComponent(20);
+    assert( e.pointsPerComponent()==20);
     FFELogger.setLogLevel(4);
     e.watchProperties {"rankJacobianAt"};
     e.watchedProperties()
@@ -1893,7 +2049,7 @@ TEST ///
                        (prop)->(prop=="rankJacobianAt") ) 
      )
     e.useRankJacobianAt("rankJacobianAt");
-    e.useRankJacobianAt(null);
+    --e.useRankJacobianAt(null);
    
     e.countsByCount()
     points := e.points();
@@ -2039,9 +2195,9 @@ doc ///
             points are on a moduli space one can create the
             corresponding object and study it in detail.
             
-            On stata of low codimension many points are found. To
+            On strata of low codimension many points are found. To
             avoid memory problems only a small number of points
-            are collected (see setMinPointsPerComponent). Therefore
+            are collected (see setPointsPerComponent). Therefore
             the number of collected points is usually smaller than
             the number of found points. 
             
@@ -2064,14 +2220,20 @@ doc ///
            e.run(100)          
            e.collectedCount()
            e.pointLists()
-           e.minPointsPerComponent()
+           e.pointsByKey({2})
+           e.pointsPerComponent()
         Text
            \break Notice that the number of collected points can be larger than
-           the number minPointsPerComponent() since the experiment
+           the number pointsPerComponent() since the experiment
            tries to estimate the number of components for each combination
            of properties. In the beginning where only a few points have
            been found the statistics might be so errorprone that some extra
-           points are collected.   
+           points are collected. 
+   SeeAlso
+          pointLists
+          pointsByKey
+          pointsPerComponent
+          setPointsPerComponent             
 ///
 
 doc ///
@@ -2234,8 +2396,1192 @@ f = new Experiment from bb;
 ///
 
 
+
+doc ///
+   Key
+        "ignoreProperty"
+   Headline
+        deletes a property from the list of watched properties
+   Usage   
+        e.ignoreProperty(propertyName)
+   Inputs  
+        e:Experiment 
+            an Experiment
+        propertyName: String
+            the name of a property
+   Description
+        Text
+           This removes a property from the list of watched properties.
+           This works only if the experiment has been reset with e.clear()
+           since otherwise the statistics would be inconsistent.
+                                 
+           Lets see how this works in an example.                
+           First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.watchedProperties()
+        Text
+           \break Lets not only watch the codimension of the tangentspace
+           at a random point, but also whether the point is probably smooth
+        Example
+           e.watchProperty("isProbablySmoothAt")
+           e.watchedProperties()
+           e.run(250)
+        Text
+           \break Lets assume that from the last experiment we conclude,
+           that the smoothness of a point does not yield any interesting 
+           information for us.
+           In this case we would cease to watch this property in 
+           follow up experiments. Before we can do that, we have to
+           clear the statistics.
+        Example
+           e.clear()
+           e.ignoreProperty("isProbablySmoothAt")
+           e.watchedProperties()
+           e.run(250)  
+   SeeAlso
+      ignoreProperties
+      watchProperty
+      watchProperties
+      watchedProperties  
+///
+
+doc ///
+   Key
+        "ignoreProperties"
+   Headline
+        deletes a property from the list of watched properties
+   Usage   
+        e.ignoreProperties(L)
+   Inputs  
+        e:Experiment 
+            an Experiment
+        L:List
+            a list of property names. 
+   Description
+        Text
+           This removes several properties from the list of watched properties.
+           This works only if the experiment has been reset with e.clear()
+           since otherwise the statistics would be inconsistent.
+                                 
+           Lets see how this works in an artificial but instructive example.                
+           First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.watchedProperties()
+        Text
+           \break Lets not only watch the codimension of the tangentspace
+           at a random point, but also whether the point is probably smooth
+           and what the values at the random points are.
+        Example
+           e.watchProperty("isProbablySmoothAt")
+           e.watchProperty("valuesAt")
+           e.watchedProperties()
+           e.run(250)
+        Text
+           \break Lets assume that from the last experiment we conclude,
+           that the smoothness of a point and the value of
+           the polynomial at the point does not yield any interesting 
+           information for us.
+           In this case we would cease to watch these properties in 
+           follow up experiments. Before we can do that, we have to
+           clear the statistics.
+        Example
+           e.clear()
+           e.ignoreProperties({"isProbablySmoothAt","valuesAt"})
+           e.watchedProperties()
+           e.run(250)  
+   SeeAlso
+      ignoreProperty
+      watchProperty
+      watchProperties
+      watchedProperties   
+///
+
+doc ///
+   Key
+        "pointsPerComponent"
+   Headline
+        the number of points an experiment tries to collect on each component.
+   Usage   
+        e.pointsPerComponent()
+   Inputs  
+        e:Experiment 
+            an Experiment
+   Description
+        Text
+            An experiment collects a limited number of points
+            for each combination of properies it encounters. 
+            
+            This is useful if one wants to inspect
+            points with special properties in more detail. If the 
+            points are on a moduli space one can create the
+            corresponding object and study it in detail.
+            
+            On strata of low codimension many points are found. To
+            avoid memory problems only a small number of points
+            are collected.
+            
+            This function returns the number of points that an
+            experiment tries to collect on each component. Since
+            the number of components is estimated heuristically, the 
+            number of points collected is often different from the
+            goal given by this function. 
+ 
+            Lets see how this works in an example.                
+            First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.run(100)   
+        Text
+           \break The number of points the experiment tries to collect per component:
+        Example
+           e.pointsPerComponent()
+        Text 
+           \break The number of point the experiment has collected
+        Example      
+           e.collectedCount()
+           e.run(100)
+           e.collectedCount()
+        Text
+           \break Lets now increase the number of points we want to collect
+        Example
+           e.setPointsPerComponent(20)
+           e.pointsPerComponent()    
+           e.run(100)
+           e.collectedCount()
+           e.run(100)
+           e.collectedCount()
+   SeeAlso
+        setPointsPerComponent
+        collectedCount
+        pointLists
+        pointsByKey
+///
+
+doc ///
+   Key
+        "pointLists"
+   Headline
+        the points an experiment has collected for closer inspection
+   Usage   
+        e.pointLists()
+   Inputs  
+        e:Experiment 
+            an Experiment
+   Description
+        Text
+            An experiment collects a limited number of points
+            for each combination of properies it encounters. 
+            
+            This is useful if one wants to inspect
+            points with special properties in more detail. If the 
+            points are on a moduli space one can create the
+            corresponding object and study it in detail.
+            
+            On strata of low codimension many points are found. To
+            avoid memory problems only a small number of points
+            are collected.
+            
+            This function returns a hashTable containing a list
+            of collected points for each combination of properties.
+  
+            Lets see how this works in an example.                
+            First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.run(100)   
+        Text
+            \break The number of points the experiment has collected:
+        Example      
+           e.collectedCount()
+        Text
+           \break The points themselves:
+        Example
+           e.pointLists()
+        Text
+           \break The points for a particular set of properites:
+        Example   
+           (e.pointLists())#{2}
+        Text
+           The brackets used in this example are NOT redundant. Better
+           readable is the following syntax
+        Example
+           e.pointsByKey({2})
+   SeeAlso
+        pointsPerComponent
+        setPointsPerComponent
+        collectedCount        
+        pointsByKey
+///        
+
+doc ///
+   Key
+        "pointsByKey"
+   Headline
+        the points an experiment has collected for a particular set of properties
+   Usage   
+        e.pointsByKey(key)
+   Inputs  
+        e:Experiment 
+            an Experiment
+        key: List
+            of property values
+   Description
+        Text
+            An experiment collects a limited number of points
+            for each combination of properies it encounters. 
+            
+            This is useful if one wants to inspect
+            points with special properties in more detail. If the 
+            points are on a moduli space one can create the
+            corresponding object and study it in detail.
+            
+            On strata of low codimension many points are found. To
+            avoid memory problems only a small number of points
+            are collected.
+            
+            This function returns a List 
+            of collected points for a given combination of properties.
+  
+            Lets see how this works in an example.                
+            First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.run(100)   
+        Text
+            \break The number of points the experiment has collected:
+        Example      
+           e.collectedCount()
+        Text
+           \break The points themselves:
+        Example
+           e.pointLists()
+        Text
+           \break The points for a particular set of properites:
+        Example
+           e.pointsByKey({2})
+   SeeAlso
+        pointsPerComponent
+        setPointsPerComponent
+        collectedCount        
+        pointLists
+        pointKeys
+///        
+
+doc ///
+   Key
+        "setPointsPerComponent"
+   Headline
+        change the number of points an experiment tries to collect on each component.
+   Usage   
+        e.setPointsPerComponent(num)
+   Inputs  
+        e:Experiment 
+            an Experiment
+        num: ZZ
+            the number of points an experiment should try to collect on
+            each component.
+   Description
+        Text
+            An experiment collects a limited number of points
+            for each combination of properies it encounters. 
+            
+            This is useful if one wants to inspect
+            points with special properties in more detail. If the 
+            points are on a moduli space one can create the
+            corresponding object and study it in detail.
+            
+            On strata of low codimension many points are found. To
+            avoid memory problems only a small number of points
+            are collected.
+            
+            This function changes the number of points that an
+            experiment tries to collect on each component. Since
+            the number of components is estimated heuristically, the 
+            number of points collected is in the end often different from 
+            (but close to) the
+            goal given by this function. 
+ 
+            Lets see how this works in an example.                
+            First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.run(100)   
+        Text
+           \break The number of points the experiment tries to collect per component:
+        Example
+           e.pointsPerComponent()
+        Text 
+           \break The number of point the experiment has collected
+        Example      
+           e.collectedCount()
+           e.run(100)
+           e.collectedCount()
+        Text
+           \break Lets now increase the number of points we want to collect
+        Example
+           e.setPointsPerComponent(20)
+           e.pointsPerComponent()    
+           e.run(100)
+           e.collectedCount()
+           e.run(100)
+           e.collectedCount()
+   SeeAlso
+        pointsPerComponent
+        collectedCount
+        pointLists
+        pointsByKey
+///
+
+doc ///
+   Key
+        "pointKeys"
+   Headline
+        a list of property combinations found by an experiment
+   Usage   
+        e.pointKeys()
+   Inputs  
+        e:Experiment 
+            an Experiment
+        num: ZZ
+            the number of points an experiment should try to collect on
+            each component.
+   Description
+        Text
+            An experiment collects a limited number of points
+            for each combination of properies it encounters. 
+            
+            This is useful if one wants to inspect
+            points with special properties in more detail. If the 
+            points are on a moduli space one can create the
+            corresponding object and study it in detail.
+            
+            
+            This function returns a list of those property combinations
+            that it has encountered. This is sometimes useful if
+            each property is very long or difficult to enter.
+            
+            Lets see how this works in an example. Here we look
+            for matrices with special syzygies
+                           
+            First we create a black box that makes random matrices of quadrics.
+        Example      
+           K = ZZ/2;
+           R = K[x,y,z,w];
+        Text
+           We want to study the parameter space of 2x3 matrices
+           with quadratic entries. Such matrices are defined by
+           60 coefficients.
+        Example   
+           bb = blackBoxParameterSpace(80,K);
+        Text
+           We start by making quadrics from 10 coefficiets
+        Example
+           mons2 = matrix entries transpose super basis(2,R)
+           quadricAt = (point10) -> (point10*mons2)_0_0;
+           quadricAt(matrix{{1,0,0,0,1,0,0,1,0,1}})
+        Text
+           Now we make a 2x3 matrix of quadrics from 80 coefficients
+        Example
+           matrixAt = (point80) -> matrix apply(2,i->
+                apply(4,j->(
+                          quadricAt(point80_{i*10+j..i*10+j+9})
+                          )
+                     )
+                )          
+           matrixAt(random(K^1,K^80))
+        Text
+           For later use we register this function in the 
+           black box parameter space
+        Example
+           bb = bb.registerPointProperty("matrixAt",matrixAt);
+        Text
+           Now we look at the syzygies of such a matrix
+        Example
+           bettiAt = (point80) -> betti res coker matrixAt(point80)
+           bettiAt(random(K^1,K^80))
+           bb = bb.rpp("bettiAt",bettiAt);
+        Text
+           Now we 
+           make an experiment to study this parameter space
+        Example   
+           e = new Experiment from bb;
+        Text
+           We are interested in the betti tableau ot the minimal free resolution.
+        Example   
+           e.watchProperty("bettiAt")
+           e.run(100)
+           e.countsByCount()
+        Text
+           We now want to look at the collected point with special
+           betti tableaus
+        Example
+           e.pointKeys()
+           e.pointKey(0)
+           e.pointsByKey e.pointKey(0)
+   SeeAlso
+        pointLists
+        pointsByKey
+        collectedCount
+        pointsPerComponent
+        setPointsPerComponent
+///
+
+
+doc ///
+   Key
+        "e.run"
+   Headline
+        runs an experiment for a given number of trials
+   Usage   
+        e.run(trials)
+   Inputs  
+        e:Experiment 
+            an Experiment
+        trials: ZZ
+            the number of random point the experiment shall try out
+   Description
+        Text
+           This is the central function of this package that does all 
+           the work. It 
+           starts an experiment to evaluate the watched properties
+           at a given number of random points. The experiment then
+           counts the number of times a particular property is encontered.
+        
+           If the experiment is made from a black box ideal, only points
+           on which the generators of the ideal vanish are counted. If
+           the experiment is made form a black box parameter space, all
+           points are counted.
+        
+           Also the experiment stores some points for later inspection. 
+           For documentationa about how this works see collectedCount
+        
+           Lets see how this works in an example.                
+        
+           First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.watchedProperties()
+           e.run(100)
+        Text
+           \break The experiment has evaluated the black box ideal at 
+           100 random points and for each point where the ideal vanished it calculated
+           the rank of the jacobi matrix at this point. Then the
+           number of points for each rank are counted.
+       
+           If one wants better statistics one can run the experiment for more
+           trials
+        Example
+           e.trials()   
+           e.run(100)
+           e.trials()
+        Text
+           The experiment has autmatically collected some points
+           for each combination of properties
+        Example
+           e.pointLists()
+           e.pointsByKey({2})
+           e.collectedCount()
+        Text
+           Notice that the experiment has not collected all points it
+           found. This is done to save memory space.
+   SeeAlso
+       trials
+       watchedProperties
+       pointLists
+       pointsByKey
+       collectedCount
+///                 
+         
+doc ///
+   Key
+        "trials"
+   Headline
+        the number of trials an experiment has been run so far
+   Usage   
+        e.trials()
+   Inputs  
+        e:Experiment 
+            an Experiment
+   Description
+        Text
+           Returns the number of trials an experment has been run so far.
+           This might be important to interpret the statistics of 
+           the experiment. It is used for example in estimateStratification
+           and estimateDecomposition.  
+             
+           Lets see how this works in an example.                
+        
+           First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.watchedProperties()
+           e.run(100)
+           e.trials()   
+           e.run(100)
+           e.trials()
+///                 
+ 
+doc ///
+   Key
+        "tryProperty"
+   Headline
+        evaluate a new property on the collected points.
+   Usage   
+        e.tryProperty(name)
+   Inputs  
+        e:Experiment 
+            an Experiment
+        name:String
+            the name of a property.
+   Description
+        Text
+           Evaluates a given property on all collected points.
+           
+           This is useful if in the course of experimenting one thinks
+           of a new property that might help in the analysis of 
+           the problem at hand. Before running the complete experiment
+           again an watching the new property it is much faster to
+           begin by evaluating the new property on the collected points.
+           Since the experiment collects points on all interesting strata
+           this gives a good first overview of what the new property
+           will do.
+             
+           Lets see how this works in an example.                
+        
+           First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.watchedProperties()
+           e.run(250)
+           e.collectedCount()
+        Text 
+           \break Perhaps we are wondering is points with a certain
+           rank of the Jacobi matrix are allways singular:
+        Example
+           e.tryProperty("isCertainlySingularAt")
+        Text
+           It seems that all points with rank 0 are singular. Indeed
+           this is true in this example since rank 0 only occurs at
+           the intersection point of the line and plane.
+           
+           For a more realistic example see @TO "Experiment for singularities of cubic surfaces" @
+   SeeAlso
+       watchedProperties
+       watchProperty
+       watchProperties
+///                 
+
+doc ///
+   Key
+        "usedRankJacobianAt"
+   Headline
+        the name of the black box property used to calculate the codimension of the tangent space at a point.
+   Usage   
+        e.usedRankJacobianAt()
+   Inputs  
+        e:Experiment 
+            an Experiment
+   Description
+        Text
+           Sometimes it is useful to implement a custom method for
+           calculating the codimension of the tangent space at a point.
+
+           This method must be first be registered as a property of the black box 
+           used in the experiment. Then one tells the experiment to
+           use this new property for caculating tangent spaces.
+           
+           This function documented here can then be used to see which property
+           is currently used for calculating the codimension of a tangent
+           space at a point.
+            
+           Lets see how this works in an example.                
+        
+           First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break We now create (in this case stupid) new property:
+        Example
+           rankAllways5At = (point) -> 5;
+           bb = bb.rpp("rankAllways5At",rankAllways5At);
+           bb.knownPointProperties()
+        Text
+           \break Now make an experiment from the blackbox:
+        Example        
+           e = new Experiment from bb;
+           e.usedRankJacobianAt()
+           e.run(100)
+        Text 
+           \break Now we change the method for calculating the
+           rank of jacobi matrices. Before doing this we must
+           clear the statistics.
+        Example
+           e.clear()
+           e.useRankJacobianAt("rankAllways5At")
+           e.usedRankJacobianAt()
+           e.run(100)
+        Text
+           A more realistic application is for example the case
+           where the equations of our ideal can be written 
+           as A*B = 0 with A and B matrices with polynomial entries.
+           We can then use the product rule 
+           (A*B)' = A'*B + A*B' to differentiate. This is often faster.
+           
+           An other case where this might be used is when we have a morphism
+           X -> Y and look at random points in X but are interested in the
+           tangent space after projecting to Y.
+   SeeAlso
+      useRankJacobianAt
+///                 
+
+doc ///
+   Key
+        "useRankJacobianAt"
+   Headline
+       change the black box property used to calculate the codimension of the tangent space at a point.
+   Usage   
+        e.useRankJacobianAt(name)
+   Inputs  
+        e:Experiment 
+            an Experiment
+        name: String
+            name of the new property to be used
+   Description
+        Text
+           Sometimes it is useful to implement a custom method for
+           calculating the codimension of the tangent space at a point.
+
+           This method must be first be registered as a property of the black box 
+           used in the experiment. Then one uses the function
+           documented here to tell the experiment to
+           use this new property for caculating tangent spaces.
+           
+           It is important to tell the experiment explicitly which property
+           calculates the codimension of the tangenspace at a point since
+           this is used in calculating estimates of decompositions. 
+            
+           Lets see how this works in an example.                
+        
+           First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break We now create (in this case stupid) new property:
+        Example
+           rankAllways5At = (point) -> 5;
+           bb = bb.rpp("rankAllways5At",rankAllways5At);
+           bb.knownPointProperties()
+        Text
+           \break Now make an experiment from the blackbox:
+        Example        
+           e = new Experiment from bb;
+           e.usedRankJacobianAt()
+           e.run(100)
+           e.estimateDecomposition()
+        Text 
+           \break Now we change the method for calculating the
+           rank of jacobi matrices. Before doing this we must
+           clear the statistics.
+        Example
+           e.clear()
+           e.useRankJacobianAt("rankAllways5At")
+           e.watchProperty("rankAllways5At")
+           e.usedRankJacobianAt()
+           e.run(100)
+           e.estimateDecomposition()
+        Text
+           A more realistic application is for example the case
+           where the equations of our ideal can be written 
+           as A*B = 0 with A and B matrices with polynomial entries.
+           We can then use the product rule 
+           (A*B)' = A'*B + A*B' to differentiate. This is often faster.
+           
+           An other case where this might be used is when we have a morphism
+           X -> Y and look at random points in X but are interested in the
+           tangent space after projecting to Y.
+   SeeAlso
+      usedRankJacobianAt
+///                 
+ 
+
+doc ///
+   Key
+        "watchProperty"
+   Headline
+        add a property the list of watched properties
+   Usage   
+        e.watchProperty(name)
+   Inputs  
+        e:Experiment 
+            an Experiment
+        name:String
+            the name of the black box property to be added. 
+   Description
+        Text
+           This add a property to the list of watched properties.
+           This works only if the experiment has been reset with e.clear()
+           since otherwise the statistics would be inconsistent.
+                                 
+           Lets see how this works in an artificial but instructive example.                
+           First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.watchedProperties()
+        Text
+           \break Lets not only watch the codimension of the tangentspace
+           at a random point, but also whether the point is probably smooth.
+        Example
+           e.watchProperty("isProbablySmoothAt")
+           e.watchedProperties()
+           e.run(500)
+   SeeAlso
+      ignoreProperty
+      ignoreProperties
+      watchProperties
+      watchedProperties   
+///
+ 
+doc ///
+   Key
+        "watchProperties"
+   Headline
+        add a list of properties the list of watched properties
+   Usage   
+        e.watchProperties(L)
+   Inputs  
+        e:Experiment 
+            an Experiment
+        L:String
+            of name of property to be added. 
+   Description
+        Text
+           This add several properties to the list of watched properties.
+           This works only if the experiment has been reset with e.clear()
+           since otherwise the statistics would be inconsistent.
+                                 
+           Lets see how this works in an artificial but instructive example.                
+           First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.watchedProperties()
+        Text
+           \break Lets not only watch the codimension of the tangentspace
+           at a random point, but also whether the point is probably smooth.
+        Example
+           e.watchProperties({"isProbablySmoothAt","isCertainlySingularAt"})
+           e.watchedProperties()
+           e.run(300)
+   SeeAlso
+      ignoreProperty
+      ignoreProperties
+      watchProperty
+      watchedProperties   
+///
+ 
+doc ///
+   Key
+        "watchedProperties"
+   Headline
+        returns the list of properties that are watched by an experiment
+   Usage   
+        e.watchedProperties()
+   Inputs  
+        e:Experiment 
+            an Experiment
+   Description
+        Text
+           During an experiment a black box is evaluated in random points.
+           The experiment automatically looks at certain properties 
+           associated to the point. This could be the codimension of 
+           the tangent space at this point or wether the variety considered
+           is singular or smooth.
+           
+           More interesting applications are possible if the variety
+           considered is a parameter space of certain algebraic objects 
+           (curves, matrices, etc). In this case the object parametrized
+           by a point can have interestering properties wich we want to 
+           study (eg. number of singularities in the case of curve or
+           betti numbers of their kernels in the case of matrices).
+      
+           The experiment keeps automatically counts the number of
+           times each combination of properties was encountered
+           during the experiment so far. This gives some heuristic
+           information about the size of the strata in which these occur.
+           
+           The function documented shows which properties are currently
+           watched.
+           
+           Lets see how this works in an artificial but instructive example.                
+           First we create an ideal we want to analyse and put it into a blackbox:
+        Example      
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+        Text
+           \break The ideal describes a line and a plane intersecting at the origin. \break     
+           \break Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.watchedProperties()
+        Text
+           \break rankJacobianAt is automatically watched since the rank of
+           the Jacobi matrix is the codimension of the tangent space to
+           the variety at this point. This gives an upper bound to the
+           codimension of the component of the variety on which the 
+           point lies. This is used in the heuristic estimates given
+           by this package. 
+        Example
+           e.run(200)
+           e.estimateDecomposition()
+        Text   
+           \break Lets now also watch whether the points considered
+           are probably smooth. For this the statitics have to be cleared
+           first:
+        Example
+           e.clear()
+           e.watchProperty("isProbablySmoothAt")
+           e.watchedProperties()
+           e.run(300)
+   SeeAlso
+      ignoreProperty
+      ignoreProperties
+      watchProperty
+      watchProperties
+///
+
+doc ///
+   Key
+        "setPointIterator"
+   Headline
+        changes the way random points are chosen
+   Usage   
+        e.setPointIterator(iterator)
+   Inputs  
+        e:Experiment 
+            an Experiment
+        itearator: HashTable
+            defining a point iterator            
+   Description
+        Text
+           Sometimes it is usefull to change the way random points of an 
+           experiment are chosen. 
+           
+           Lets look at a typical but somewhat artificial example:           
+        Example
+           K = ZZ/11;
+           R = K[a,b,c,x,y,z];
+           I = ideal (a*x^2+b*y^2+c*z^2,a*x+b*y+c*z);
+           bb = blackBoxIdeal I;
+        Text     
+           Notice that the equations of the ideal are linear in a,b,c.
+           Therefore to find a point in the vanishing set, 
+           we can choose x,y,z randomly first and solve the resulting
+           linear equations for a,b,c later:
+        Example
+           pointX = random(K^1,K^3)
+        Text    
+           We substitute these values into the equations of the
+           ideal to get linear equations for a,b,c:
+        Example
+           gensA = matrix{{a,b,c}}
+           IA = sub(I,gensA|pointX)
+        Text
+           We now extract the coefficients of these linear equations
+        Example
+           coefficientsLinearEquation = transpose sub(diff(transpose gensA,gens IA),K)
+        Text
+           and look at a basis of the linear subspace defined by these equations
+        Example
+           basisOfLinearSpace = syz coefficientsLinearEquation
+        Text
+           Notice that this space can sometimes be more than 1 dimensional
+           if the coefficient vectors are linearly dependent.
+           
+           Now we choose a random point inside the linear space by
+           taking a random linear combination of the basis vectors
+        Example
+           pointA = transpose (basisOfLinearSpace * random(source basisOfLinearSpace,K^1))
+        Text
+           The values for a,b,c and for x,y,z give our random point
+        Example
+           point = pointA|pointX
+        Text
+           indeed it lies in the vanishing set of our ideal:
+        Example
+           sub(I,point)
+        Text
+           Lets put this into a function:
+        Example
+           smartRandomPoint = () -> (
+                -- choose x,y,z randomly
+                pointX = random(K^1,K^3);
+                -- substituting these values we get linear equations for a,b,c
+                IA = sub(I,gensA|pointX);
+                -- we now extract the coefficients of these linear equations
+                coefficientsLinearEquation = transpose sub(diff(transpose gensA,gens IA),K);
+                -- and look at a basis of the linear subspace defined by these equations
+                basisOfLinearSpace = syz coefficientsLinearEquation;
+                -- now choose a random point inside this linear space
+                pointA = transpose (basisOfLinearSpace * random(source basisOfLinearSpace,K^1));
+                point = pointA|pointX
+                );
+        Text
+           Indeed this gives points in the vanishing set of I:
+        Example
+           sub(I,smartRandomPoint())
+        Text
+           We now want to use this function to choose random points
+           in an experiment. For this we frist have to create an 
+           iterator from it:
+        Example
+           smartIterator = createRandomPointIterator(smartRandomPoint);
+        Text
+           Now we create the experiment:
+        Example
+           e = new Experiment from bb;
+           e.run(200)
+        Text
+           running the experiment with the usual random generator
+           finds only a few points on the variety. (about 200/11^2 = 8 since
+           two equations have to vanish).
+      
+           We now change the random generator to the function above.
+           Before doing this we must clear the statistics since they
+           would be useless if points found by different methods are mixed
+        Example
+           e.clear()
+           e.setPointIterator(smartIterator)
+           e.run(100)
+        Text
+           We see that many more points are found in the same time. 
+           This reduces the time needed to find interesting points
+           in high codimension.          
+///
+
+
+
+TEST ///
+    -- test watching user defined rankJacobianAt
+           K = ZZ/5;
+           R = K[x,y,z];
+           I = ideal (x*z,y*z);
+           bb = blackBoxIdeal I;
+ 
+           rankAllways5At = (point) -> 5;
+           bb = bb.rpp("rankAllways5At",rankAllways5At);
+          
+           assert(bb.hasPointProperty("rankAllways5At"));
+           e = new Experiment from bb;
+ 
+           e.run(100)
+
+           e.clear()
+           e.useRankJacobianAt("rankAllways5At")
+           assert(e.propertyIsWatched( "rankAllways5At"));
+           assert(1 == #(e.watchedProperties()) );
+           e.run(100)
+           assert( 1 == #( e.collectedCount() ) );
+///
+ 
+doc ///
+    Key
+        "Experiment for singularities of cubic surfaces"
+    Headline
+        use an Experiment to study the space of cubic surfaces
+    Description
+        Text
+            A black box parameter space is used to implement parameter spaces
+            with their universal families in a pointwise fashion.
+            
+            Let us build the parameter space of cubic surfaces with a view of 
+            studying its stratification with respect to singularity type.
+            
+            We work in charateristic 7.            
+        Example    
+            K = ZZ/7
+        Text
+            The coordinate ring of IP^3
+        Example
+            R = K[x,y,z,w]
+        Text  
+            Make an empty blackbox which will later contain our 
+            describtion of the parameter space of cubic surfaces.
+            It will depend on 20 parameters, since acubic polynomial 
+            in 4 variables has 20 coefficients.
+        Example
+            bbC = blackBoxParameterSpace(20,K);
+            bbC.knownPointProperties()
+        Text
+            We now build the cubics from the coefficents, i.e. we
+            construct the member of the universal familiy over 
+            a given parameter point:
+        Example
+            mons3 = matrix entries transpose super basis(3,R)
+            cubicAt = (point) -> matrix entries (point*mons3)
+        Text 
+            register this function in the black box 
+        Example
+            bbC = bbC.registerPointProperty("cubicAt",cubicAt);
+            bbC.knownPointProperties()
+        Text
+            Lets test this functionality with some special cubics.
+            The first example is the cubic cone. It is singular
+            at (0:0:0:1):                   
+        Example    
+            cubicCone = matrix{{x^3+y^3+z^3}}
+            coeffCubicCone = contract(transpose mons3,cubicCone)
+            bbC.cubicAt(coeffCubicCone)
+        Text
+            The second example is the Fermat cubic. It is smooth everywhere    
+        Example
+            cubicFermat = matrix{{x^3+y^3+z^3+w^3}}
+            coeffCubicFermat = contract(transpose mons3,cubicFermat)
+            bbC.cubicAt(coeffCubicFermat)
+        Text
+            Now we want to implement the stratification by singularity type.
+            For this we first determine the singular locus of a cubic surface:
+        Example
+            singularLocusAt = (bb,point) -> ideal jacobian bb.cubicAt(point)
+            bbC = bbC.rpp("singularLocusAt",singularLocusAt);
+            bbC.knownPointProperties()
+            bbC.singularLocusAt(coeffCubicCone)   
+            bbC.singularLocusAt(coeffCubicFermat)
+        Text
+            As a first approximation of the singularity type we use
+            the degree of the singular locus
+        Example
+            degreeSingularLocusAt = (bb,point) -> (
+                 s := bb.singularLocusAt(point);
+                 if dim s == 0 then return 0;                
+                 if dim s == 1 then return degree s;                 
+                 if dim s >= 2 then return infinity;
+              )
+            bbC = bbC.rpp("degreeSingularLocusAt",degreeSingularLocusAt);
+            bbC.knownPointProperties()
+        Text
+            Calculate the degree of the singular locus for our examples
+        Example
+            bbC.degreeSingularLocusAt(coeffCubicCone)
+            bbC.degreeSingularLocusAt(coeffCubicFermat)
+        Text
+            Now the BlackBoxParameterspace hat a number of point properties
+        Example
+            bbC.knownPointProperties()
+        Text
+            These properties can now be used in a finite field experiment
+            that studies the statification of our parameter space. Here is a
+            simple minded version of such an experiment:
+        Example
+            tally apply(100,i->bbC.degreeSingularLocusAt(random(K^1,K^20))) 
+        Text
+            We see that there is an open stratum of smooth cubics. The
+            largest closed stratum consists of those cubics with a A1 singularity.
+            The package finiteFieldExperiments helps to do the bookkeeping 
+            for such experiments and also provides more detailed interpretation
+            of the results.
+
+ 
+ 
 end
 ---
+
 
 
 quit -- F11 F11 F12

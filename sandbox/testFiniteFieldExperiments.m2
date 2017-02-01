@@ -25,8 +25,8 @@ check FiniteFieldExperiments;
     keys e
     assert (e.coefficientRing()===coeffRing);
 
-    e.setMinPointsPerComponent(20);
-    assert( e.minPointsPerComponent()==20);
+    e.setPointsPerComponent(20);
+    assert( e.pointsPerComponent()==20);
     FFELogger.setLevel(4);
     e.watchProperties {"rankMat"};
      e.watchedProperties()
@@ -57,7 +57,7 @@ check FiniteFieldExperiments;
 
 
     e2 = new Experiment from bbRankM
-    e2.setMinPointsPerComponent(20);
+    e2.setPointsPerComponent(20);
     e2.watchProperties {"rankMat"};
     e2.run(1000);
     e.merge(e2);

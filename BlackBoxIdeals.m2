@@ -187,6 +187,8 @@ if BlackBoxIdeals#Options#DebuggingMode then
 
 bblog := BlackBoxLogger;
 
+-- bblog.setLogLevel(LogLevel.DEBUG);
+
 -- why did I need comparison between a string and a symbol ? (jk) - if I recall correctly, it was related for intervals...
 
 String ? Symbol := (str,symb)->
@@ -1139,7 +1141,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
    setPointProperty ( Symbol, Function ) := Thing => ( propertySymbol, propertyMethod )->
    (
 
-     bblog.debug(" called setPointProperty ") ;
+     bblog.debug(" called setPointProperty for " | toString propertySymbol ) ;
 
       propertyName := toString propertySymbol;
 
@@ -1176,6 +1178,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
      -- step 5
      if mutable blackBox then 
      (
+          bblog.debug(" mutable blackBox ") ;
          blackBox#propertySymbol        = (point)->( (blackBox.pointProperty(propertyName))(point) );
          blackBox#propertyName          = (point)->( (blackBox.pointProperty(propertyName))(point) );
 
@@ -1956,6 +1959,7 @@ doc ///
         : BlackBoxIdeal
    Description
          Text
+            {\bf Design} \break
             The {\tt  BlackBoxIdeal } objects implements the interface of @TO BlackBoxParameterSpace @ \break 
             and in addition following methods and attributes:
 
@@ -2326,11 +2330,16 @@ doc ///
             A black box parameter space is used to implement parameter spaces
             with their universal families in a pointwise fashion.
             
-            @TO "Singularities of cubic surfaces" @
+          
       
-            Implements an unified interface for some explicit and implicit given ideals. \break  \break
-            see also @TO BlackBoxIdeal @
+            Implements an unified interface for some explicit and implicit given ideals. \break
+            See also @TO BlackBoxIdeal @
             \break             \break
+
+            { \bf QuickStart } \break \break 
+            For a quick start see the @TO "Singularities of cubic surfaces" @-tutorial
+            \break \break
+            { \bf Design } \break \break 
             The simplest parameter space black box  implements  \break \break 
             Attributes:\break 
             \,\, \bullet \,{\tt numVariables }: number of variables in the parameter space. \break
@@ -2345,6 +2354,7 @@ doc ///
             \,\, \, \, expected Interface of {\tt propertyMethod} is: \break  
             \,\, \, \, \, (  {\tt blackBox }: @TO BlackBoxParameterSpace @,  {\tt point }: @TO Matrix@ )  \break 
             \break
+            Special point property names:
             \,\, \, \, There are several special property names:  @TO valuesAt@, @TO jacobianAt@. \break 
             \,\, \, \,  If one of this properties is registered or updated, it triggers update of dependent properties \break
             \,\, \, \,  e.g. registering evaluation @TO valuesAt@  will implicitly \break 
@@ -2479,11 +2489,14 @@ doc ///
             \,\,  \bullet \,  @TO blackBoxIdealFromEvaluation@  \break \break
 
             All black boxes implement the interface of @TO BlackBoxParameterSpace @ \break
-            If the black box was created from an ideal or an evaluation, it has additional properties, see  @TO BlackBoxIdeal @ \break  
+            If the black box was created from an ideal or an evaluation, it has additional properties, see  @TO BlackBoxIdeal @ 
+            \break  \break
+            {\bf QuickStart } \break \break
+            For a tutorial see @TO "Singularities of cubic surfaces" @
                         
       
     Caveat
-         the black box properties are write-protected to prevent accidental modification  by the user; \break 
+         The black box properties are write-protected to prevent accidental modification  by the user; \break 
          however implementing write-protection leads to undesired code compexity and at the same time it is still possible to overcome the  protection. \break
          Currently adding properties to the blackBox with more than one parameter (point) is not implemented (e.g. jet computation ). \break
          Also not done yet is the implementation of the {\tt Observable } interface for the various black boxes ({\tt FiniteFieldExperiment } which will be  {\tt Observers }) \break
