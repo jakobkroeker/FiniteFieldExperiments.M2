@@ -113,48 +113,48 @@ protect knownAttributes;
 
 idealBlackBoxesExport = ()->
 (
-    exportMutable(setComponentCandidates);
-    exportMutable(componentCandidates);
-    exportMutable(setOnComponentPrecision);
-    exportMutable(interpolateComponents);
+    exportMutable("setComponentCandidates");
+    exportMutable("componentCandidates");
+    exportMutable("setOnComponentPrecision");
+    exportMutable("interpolateComponents");
 
-    exportMutable(componentCandidatesAt);
+    exportMutable("componentCandidatesAt");
  
-    exportMutable(eps);
-    exportMutable(jacobianAt);
-    exportMutable(rankJacobianAt);
-    exportMutable(valuesAt);
-    exportMutable(unknownIsValid);                 
-    exportMutable(numVariables);  
-    exportMutable(numGenerators);
-    exportMutable(isZeroAt);      
-    exportMutable(pointProperties);  
-    exportMutable(registerPointProperty); 
-    exportMutable(rpp);
-    exportMutable(upp);
-    exportMutable(setPointProperty);
-    exportMutable(setValuesAt);    
-    exportMutable(checkInputPoint);
-    exportMutable(deduceNumGenerators);
-    exportMutable(setIsZeroAt);
-    exportMutable(getUpdatedBlackBox);
-    exportMutable(type);
-    exportMutable(unknowns);
-    exportMutable(pointProperty);
-    exportMutable(updatePointProperty);
-    exportMutable(setJacobianAt);
-    exportMutable(equations);
+    exportMutable("eps");
+    exportMutable("jacobianAt");
+    exportMutable("rankJacobianAt");
+    exportMutable("valuesAt");
+    exportMutable("unknownIsValid");                 
+    exportMutable("numVariables");  
+    exportMutable("numGenerators");
+    exportMutable("isZeroAt");      
+    exportMutable("pointProperties");  
+    exportMutable("registerPointProperty"); 
+    exportMutable("rpp");
+    exportMutable("upp");
+    exportMutable("setPointProperty");
+    exportMutable("setValuesAt");    
+    exportMutable("checkInputPoint");
+    exportMutable("deduceNumGenerators");
+    exportMutable("setIsZeroAt");
+    exportMutable("getUpdatedBlackBox");
+    exportMutable("type");
+    exportMutable("unknowns");
+    exportMutable("pointProperty");
+    exportMutable("updatePointProperty");
+    exportMutable("setJacobianAt");
+    exportMutable("equations");
 
-    exportMutable(hasPointProperty);
-    exportMutable(knownPointProperties);
-    exportMutable(knownPointPropertiesAsSymbols);
+    exportMutable("hasPointProperty");
+    exportMutable("knownPointProperties");
+    exportMutable("knownPointPropertiesAsSymbols");
 
-    exportMutable(knownMethods);
-    exportMutable(knownAttributes);
-    exportMutable(numTrials);
-    exportMutable(setSingularityTestOptions);
-    exportMutable(updateSingularityTest);
-    exportMutable(singularityTestOptions);
+    exportMutable("knownMethods");
+    exportMutable("knownAttributes");
+    exportMutable("numTrials");
+    exportMutable("setSingularityTestOptions");
+    exportMutable("updateSingularityTest");
+    exportMutable("singularityTestOptions");
 
 )
 
