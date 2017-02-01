@@ -28,12 +28,9 @@ export {
   "estimateStratification",
   "estimateCodim", 
   "estimateNumberOfComponents",              
-  "createInterpolatedIdeal",
   "createIterator",
   "createRandomPointIterator",
   "Map",
-  "interpolateBB",
-  "interpolate",
   "isOnComponent",
   "poissonEstimate",
   "Experiment",
@@ -66,6 +63,7 @@ FiniteFieldExperimentsProtect = ()->
   protect pointKeys; 
   protect points;
   protect trials;
+  protect smoothPoints;
   protect createAllInterpolatedIdeals;
   protect interpolatedIdealKeys;
 
@@ -124,83 +122,86 @@ FiniteFieldExperimentsProtect = ()->
 
 FiniteFieldExperimentsExport  = ()->
 (
-    exportMutable(bareIdeals);
-  exportMutable(experiment);
-  exportMutable(reset);
-  exportMutable(pointKey);
-  exportMutable(setPointIterator);
-  exportMutable(setPointGenerator);
-  exportMutable(printInterpolatedIdeals);
-  exportMutable(membershipPrecision);
-  exportMutable(setMembershipPrecision);
 
-  exportMutable(clearWatchedProperties);
-  exportMutable(testDebug);
-  exportMutable(next);
-  exportMutable(begin);
-  exportMutable(count);
-  exportMutable(countinfo);
-  exportMutable(point);
-  exportMutable(collectedCount);
-  exportMutable(pointKeys);
-  exportMutable(points);
-  exportMutable(trials);
-  exportMutable(interpolatedIdeals);
-  exportMutable(createAllInterpolatedIdeals);
-  exportMutable(interpolatedIdealKeys);
+    exportMutable("smoothPoints");
+
+    exportMutable("bareIdeals");
+  exportMutable("experiment");
+  exportMutable("reset");
+  exportMutable("pointKey");
+  exportMutable("setPointIterator");
+  exportMutable("setPointGenerator");
+  exportMutable("printInterpolatedIdeals");
+  exportMutable("membershipPrecision");
+  exportMutable("setMembershipPrecision");
+
+  exportMutable("clearWatchedProperties");
+  exportMutable("testDebug");
+  exportMutable("next");
+  exportMutable("begin");
+  exportMutable("count");
+  exportMutable("countinfo");
+  exportMutable("point");
+  exportMutable("collectedCount");
+  exportMutable("pointKeys");
+  exportMutable("points");
+  exportMutable("trials");
+  exportMutable("interpolatedIdeals");
+  exportMutable("createAllInterpolatedIdeals");
+  exportMutable("interpolatedIdealKeys");
  
-  exportMutable(coefficientRingCardinality);
-  exportMutable(pointLists);
-  exportMutable(pointsByKey);
+  exportMutable("coefficientRingCardinality");
+  exportMutable("pointLists");
+  exportMutable("pointsByKey");
 
-  exportMutable(countData);
+  exportMutable("countData");
 
-  exportMutable(setIsInteresting);
-  exportMutable(isInteresting);
+  exportMutable("setIsInteresting");
+  exportMutable("isInteresting");
 
-  exportMutable(getExperimentData);
-  exportMutable(ignoreProperty);
-  exportMutable(propertyIsWatched);
-  exportMutable(ignoreProperties);
+  exportMutable("getExperimentData");
+  exportMutable("ignoreProperty");
+  exportMutable("propertyIsWatched");
+  exportMutable("ignoreProperties");
 
 
-  exportMutable(update);
-  exportMutable(updateExperiment);
-  exportMutable(saveData);
-  exportMutable(loadData);
+  exportMutable("update");
+  exportMutable("updateExperiment");
+  exportMutable("saveData");
+  exportMutable("loadData");
 
- exportMutable(propertyList);
- exportMutable(clear);
- exportMutable(rankJacobianAtKey);
- exportMutable(watchProperties);
- exportMutable(watchProperty);
- exportMutable(propertyName);
- exportMutable(propertyAt);
+ exportMutable("propertyList");
+ exportMutable("clear");
+ exportMutable("rankJacobianAtKey");
+ exportMutable("watchProperties");
+ exportMutable("watchProperty");
+ exportMutable("propertyName");
+ exportMutable("propertyAt");
 
- exportMutable(tryProperty);
+ exportMutable("tryProperty");
 
- exportMutable(recordedProperties);
- exportMutable(watchedProperties);
- exportMutable(setWatchedProperties);
+ exportMutable("recordedProperties");
+ exportMutable("watchedProperties");
+ exportMutable("setWatchedProperties");
 
- exportMutable(useRankJacobianAt);
- exportMutable(usedRankJacobianAt);
+ exportMutable("useRankJacobianAt");
+ exportMutable("usedRankJacobianAt");
  
 
-  exportMutable(pointsPerComponent);
-  exportMutable(setPointsPerComponent);
-  exportMutable(stratificationIntervalView);
+  exportMutable("pointsPerComponent");
+  exportMutable("setPointsPerComponent");
+  exportMutable("stratificationIntervalView");
 
  
-  exportMutable(countsByCount);
+  exportMutable("countsByCount");
 
- exportMutable(estimateStratification2);
- exportMutable(experimentData);
- exportMutable(isRandom);
- exportMutable(compatible);
+ exportMutable("estimateStratification2");
+ exportMutable("experimentData");
+ exportMutable("isRandom");
+ exportMutable("compatible");
  
- exportMutable(createExperimentData);
- exportMutable(createMapHelper);
+ exportMutable("createExperimentData");
+
 ) 
 
 undocumented {
@@ -219,7 +220,7 @@ points,                        --a list of all points not sorted into list.
                                --been implemented
 reset,                         --iterator
 compatible,           --internal method
-createMapHelper,
+
 estimateNumberOfComponents,    --internal
 estimateCodim,      --deprecated
 ringCardinality,    --internal
@@ -246,7 +247,7 @@ needsPackage "SimpleDoc";
 needsPackage "Text";
 
 
-exportMutable(savedExperimentData412398472398473923847);
+exportMutable("savedExperimentData412398472398473923847");
 
 FiniteFieldExperimentsExport();
 
@@ -1136,6 +1137,24 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
    );
 
 
+   experiment.smoothPoints = (precision, trials)->
+   (
+      plist :=  experiment.points();
+      smothPoints :=  {};
+      jet := null;
+      for point in plist do
+      (
+            jet = jetAt(blackBoxIdeal,point,precision,trials);
+            if (jet#"succeeded") then
+            (
+                smothPoints = smothPoints | {point};
+            );
+            
+      );
+      return smothPoints;
+   );
+
+
 
    runExperimentOnce := method();
 
@@ -1507,6 +1526,10 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
    );
 
  
+   experiment.interpolateComponents = (maxDeg, onComponentPrecision)->
+   (
+         blackBoxIdeal.interpolateComponents( experiment.smoothPoints(10,10), maxDeg, onComponentPrecision);
+   );
 
 
    -- maybe observed Properties is not a good name - is 'recordedProperties' better ?
@@ -1709,7 +1732,7 @@ doc ///
         an unified interface to an experiment
    Description
          Text
-            With an @TO{Experiment} it is possible to check point properties of an @TO BlackBoxParameterSpace@ or @TO BlackBoxIdeal@ 
+            With an @TO{Experiment}@ it is possible to check point properties of an @TO BlackBoxParameterSpace@ or @TO BlackBoxIdeal@ 
             at random points and collect user-defined statistics. \break
             If the black box from supports evaluation, then at each point the jacobian can be computed
             and jets at smooth ones. From the collected statistics a heuristic decomposition can be estimated and finally performed using interpolation methods, see @TO "Experiment example"@
@@ -3578,7 +3601,7 @@ doc ///
             of the results.
 
  
- 
+///
 end
 ---
 

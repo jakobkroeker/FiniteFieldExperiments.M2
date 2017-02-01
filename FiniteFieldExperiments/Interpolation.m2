@@ -2,47 +2,6 @@
 --needsPackage"BlackBoxIdeals"
 
 
--- Type MapHelper contains a matrix and a function
--- to evaluate this matrix on a point
--- This is for example used when projecting onto a
--- subspace (i.e elimination of variables)
-MapHelper = new Type of HashTable;
-
-createMapHelper = (mapMatrix, imageRing) -> (
-    mapData := new MutableHashTable;
-    
-    mapData#"imageRing" = imageRing;
-    mapData#"matrix" = mapMatrix;
-    
-    mapData#"valueAt" =  method();    
-    mapData#"valueAt" (Matrix) := Matrix => (point)->
-    (
-        return sub(mapMatrix,point);
-    );
-   
-    mapData#"valueAtJet" = method();
-    mapData#"valueAtJet" (HashTable) := HashTable => (jet) -> (
-        return new HashTable from {
-           "failedJetLength" => jet#"failedJetLength",
-           "jet" => (mapData#"valueAt")(jet#"jet"),
-           "succeeded" => jet#"succeeded"
-           };
-     );
-   
-    return new MapHelper from mapData
-    )
-
-new MapHelper from Matrix := (XXX, mapMatrix) -> (
-     -- das hier ist irgendwie alles Quatsch...
-     --sourceRing := ring mapMatrix;
-     --K := coefficientRing sourceRing;
-     --m := rank source mapMatrix;
-     --xxx := symbol xxx;    -- todo: get symbol in user space?
-     --imageRing := K[xxx_1..xxx_m];
-     imageRing := null; 
-     return createMapHelper(mapMatrix, imageRing);
-);
-
 
 TEST ///
 assert (
@@ -53,80 +12,6 @@ assert (
 ///
 
 
--- find polynomials containing a component
--- via interpolation
-
-
--- find linear combinations of monomials containing a given jet
-interpolate = (mons,jetList) -> (
-     R := ring mons;
-     K := coefficientRing R;
-     jetsSucceeded := select(jetList,jetP->jetP#"succeeded");
-     if #jetsSucceeded != #jetList then error "the point is not smooth";
-     -- substitute jets into the monomials and take coefficients
-     coeffList := apply(jetList,jetP ->  sub(last coefficients sub(mons,jetP#"jet"),K));
-     -- find interpolation solution
-     s := syz fold((a,b)->(a||b),coeffList);
-     -- make polynomials from the solution
-     I := ideal mingens ideal(mons*s);
-     --I = ideal(mons*s);
-     I
-     )
-
-doc ///
-   Key
-        interpolate
-   Headline
-        find polynomials containing a list of jets
-   Usage   
-        I = interpolate(mons,jetList)
-   Inputs  
-        mons:Matrix 
-            of monomials
-        jetList:List
-            of jets    
-   Description
-        Text
-            Finds those linear combinations of monomials that vanish
-            on the given list of jets.
-               
-            Lets consider a black box that describes
-            a line and a plane intersecting at the origin:    
-        Example      
-            K = ZZ/5
-            R = K[x,y,z]
-            I = ideal (x*z,y*z)
-            bb = blackBoxIdeal I;       
-        Text
-            \break 
-            Consider a point on the line:
-        Example
-            point = matrix{{0,0,1_K}}
-        Text
-            \break
-            and a jet of lenght 3 starting at this point and
-            lying on the variety described by the black box ideal
-        Example
-            j = jetAt(bb,point,4,1)     
-        Text
-            \break
-            Now find linear polynomials containing this jet:
-        Example
-            interpolate(matrix{{x,y,z}},{j})   
-        Text
-            Notice that polynomials containig the line are found.
-            The surface is invisible to the interpolation.   
-   Caveat
-       This function does not estimate the lenght of the jet needed to
-       get a useful answer. (The jet should be at least as long as the
-       number of monomials). This is done by @TO interpolateBB @. 
-   SeeAlso
-       interpolateBB
-       isOnComponent
-       createInterpolatedIdeal
-       createAllInterpolatedIdeals
-       interpolatedIdealKeys      
-///
 
 TEST ///
   K = ZZ/5
@@ -140,42 +25,6 @@ TEST ///
 ///
 
 
-
--- find all polynomials of degree smallerEqual than maxDegree containing the component of BB containing the point
--- 
--- this is the most basic simple minded implementation where only one very long jet is considered.
-interpolateBB = method();
-interpolateBB(ZZ,BlackBoxParameterSpace,Matrix,MapHelper) := Ideal => 
-             (maxDegree,BB,point,mmap) -> 
-     (
-     R := mmap#"imageRing";
-     mons := matrix {flatten apply(maxDegree+1,i->flatten entries basis(i,R))};
-     -- find one jet with precision 10 more then number of monomials
-     jetP := jetAt(BB,point,rank source mons+10,2);
-     -- !!!this heuristic must be tested!!!
-     -- Test: see if interpolated polynomials are in at least one
-     -- irreducible component of the BlackBoxIdeal.
-     jetPimage :=  (mmap#"valueAtJet")(jetP);
-     --new HashTable from {
-     --      "failedJetLength" => jetP#"failedJetLength",
-     --      "jet" => (mmap#"valueAt")(jetP#"jet"),
-     --      "succeeded" => jetP#"succeeded"
-     --      };
-     interpolate(mons,{jetPimage})
-     )
-
-interpolateBB(ZZ,BlackBoxParameterSpace,Matrix,Matrix) := Ideal => 
-             (maxDegree,BB,point,mmap) -> 
-(
-     interpolateBB(maxDegree,BB,point,new MapHelper from mmap)
-)
-
-interpolateBB(ZZ,BlackBoxParameterSpace,Matrix) := Ideal => 
-             (maxDegree,BB,point) -> 
-(
-     interpolateBB(maxDegree,BB,point,createMapHelper(vars BB.ring,BB.ring))
-)
-
 TEST ///
   K = ZZ/5
   R = K[x,y,z]
@@ -186,72 +35,6 @@ TEST ///
   assert (ideal(x,y) == interpolateBB(1,bb,point))
 ///
 
-
-doc ///
-    Key
-        interpolateBB
-        (interpolateBB, ZZ, BlackBoxParameterSpace, Matrix)
-        (interpolateBB, ZZ, BlackBoxParameterSpace, Matrix, MapHelper)
-    Headline
-        find polynomials containing a list of jets
-    Usage   
-        I = interpolateBB(maxDegree,BlackBox,point)
-        I = interpolateBB(maxDegree,BlackBox,point,map)
-    Inputs  
-        maxDegree:ZZ 
-            the maximal degree of polynomials considered
-        BlackBox:BlackBoxIdeal
-        point: Matrix
-            a point where the Blackbox vanishes    
-        map: MapHelper
-            
-    Description
-        Text
-           Finds all polynomials of degree at most maxDegree
-           that contain the component on which the point lies.
-           If the point is not smooth, an error will be produced.
-       
-           Lets consider a black box that describes
-           a line and a plane intersecting at the origin:
-        Example      
-           K = ZZ/5
-           R = K[x,y,z]
-           I = ideal (x*z,y*z)
-           bb = blackBoxIdeal I;       
-        Text
-           \break 
-           Consider two points on the variety described 
-           by the blackbox:
-        Example
-           pointOnLine = matrix{{0,0,1_K}}
-           pointOnPlane = matrix{{0,1,0_K}}
-        Text
-           \break
-           Now find linear equations containing the respective
-           components on which the points lie:
-        Example
-           interpolateBB(1,bb,pointOnLine)
-           interpolateBB(1,bb,pointOnPlane)
-        Text
-           \break
-           Finding points on the different components can be done
-           by running an @TO Experiment @. Interpolating a component
-           for all points found can be done by @TO createAllInterpolatedIdeals @.   
-    Caveat
-        This function does not work with multigraded rings.
-        At the moment this has to be done by hand with @TO interpolate @. 
-      
-        At the moment the interpolation is done by producing one
-        jet of the appropriate length. Often one could interpolate
-        much faster if several shorter jets were used. (Most of the
-        time is used when producing the jets)
-    SeeAlso
-        interpolate
-        isOnComponent
-        createAllInterpolatedIdeals
-        createInterpolatedIdeal
-        interpolatedIdealKeys      
-///
 
 
 
@@ -273,7 +56,7 @@ TEST ///
   -- a point where the blackBox does not vanish
   assert (try interpolateBB(1,bb,notApoint) then false else true)
   -- a point where the blackBox is not smooth
-  assert (try interpolateBB(1,bb,intersectionPoint) then false else true)
+  assert (SingularPointException === class catch interpolateBB(1,bb,intersectionPoint))
   -- a point over the wrong field
   assert (try interpolateBB(1,bb,pointQQ) then false else true) 
 ///
@@ -281,47 +64,6 @@ TEST ///
 
 
 
---InterpolatedIdeal = new Type of MutableHashTable;
-
-InterpolatedIdeal = new Type of HashTable;
-
-new InterpolatedIdeal from MutableHashTable :=  (InterpolatedIdealAncestor,l)->
-(  
-     --type check?
-     return l;
-);
-
-new InterpolatedIdeal from List :=  (InterpolatedIdealAncestor,l)->
-(  
-     return new InterpolatedIdeal from new MutableHashTable from l;
-);
-
-
-
-createInterpolatedIdealObj = method();
-createInterpolatedIdealObj( Ideal,ZZ,String ) := InterpolatedIdeal => 
-                       (I,maxDegree,name)->
-(
-     result := new InterpolatedIdeal from {
-      "ideal" => I,
-      "maxDegree" => maxDegree,
-      "name" => name
-     };
-     return result;
-)
-
-
-createInterpolatedIdeal = method();
---internal method
-createInterpolatedIdeal (ZZ,BlackBoxIdeal,Matrix) := InterpolatedIdeal => (maxDegree, BB, point)->
-(
-   createInterpolatedIdealObj ( interpolateBB(maxDegree,BB,point), maxDegree, "" )
-)
-
-createInterpolatedIdeal (ZZ,BlackBoxIdeal,Matrix, String) := InterpolatedIdeal => (maxDegree, BB, point, name)->
-(
-   createInterpolatedIdealObj ( interpolateBB(maxDegree,BB,point), maxDegree, name )
-)
 
 InterpolatedImage = new Type of HashTable;
 
@@ -366,7 +108,8 @@ createInterpolatedImage(Experiment,Ring, MapHelper) := HashTable => (experiment,
                0 == sub( interpolationIdeal, ((mapdata#"valueAtJet")(jetP))#"jet" )
           ) else error "point not smooth"
      );
-    interpolatedIdeals := {};
+    interpolatedIdeals := {}; 
+    -- better: interpolatedIdeals:= new MutableHashTable; ? but then we do not know if it was initialized??
     interpolation.createAllInterpolatedIdeals  = (maxDegree, onComponentPrecision) -> 
     ( 
         idealCount := 0;
@@ -380,7 +123,7 @@ createInterpolatedImage(Experiment,Ring, MapHelper) := HashTable => (experiment,
              --   continue;
              --);
              pointIsSingular := false;
-
+             --
              -- check if point is already on one of the known components
              bIsOnComponent := false;
              for interpolData in localInterpolatedIdeals do
@@ -396,29 +139,38 @@ createInterpolatedImage(Experiment,Ring, MapHelper) := HashTable => (experiment,
                          ); 
                      )  
                     else (
+                    print ("pointIsSingular");
                     pointIsSingular = true;
                     break;
                 );
-                    
+             --       
              );
              if (bIsOnComponent or pointIsSingular) then 
              (
                  continue;
              );
-
-            try (
-              localInterpolatedIdeals = localInterpolatedIdeals | { createInterpolatedIdeal (maxDegree, interpolation.blackBoxIdeal(), point, ("ideal_" |toString idealCount ))  };             
-              idealCount = idealCount +1 ;
-            ) 
-            else (
+             --debug
+             --print(localInterpolatedIdeals);
+             --print(point);
+             
+             interpolatedIdealOrException := catch createInterpolatedIdeal (maxDegree, interpolation.blackBoxIdeal(), point, ("ideal_" |toString idealCount )) ;          
+             if ( class interpolatedIdealOrException ===  SingularPointException) then
+             (
+                print( interpolatedIdealOrException); --debug
                 FFELogger.debug("createInterpolatedIdeal: point"| toString point| " was singular");
-            );
-
+             )
+             else
+             (
+               interpolatedIdeal := interpolatedIdealOrException;
+               localInterpolatedIdeals = localInterpolatedIdeals | { interpolatedIdeal };             
+               idealCount = idealCount +1 ;
+             );
         );
-        -- print "timing for loop", T#0;
+        -- print "timing for loop", T#0;        
         interpolatedIdeals = new MutableHashTable from 
-           apply ( #localInterpolatedIdeals, idx-> (("ideal_" |toString idx ) => localInterpolatedIdeals#idx ) ) ;
-
+           apply ( #localInterpolatedIdeals, idx-> (("ideal_" |toString idx ) => localInterpolatedIdeals#idx ) ) ;           
+       --print ("created interpolatedIdeals");
+       FFELogger.debug("created interpolatedIdeals");
        return interpolation.interpolatedIdeals();
     );
 
@@ -468,6 +220,8 @@ createInterpolatedImage(Experiment,Ring, MapHelper) := HashTable => (experiment,
 
    interpolation.interpolatedIdeals = ()->
    ( 
+       --print (interpolatedIdeals); --debug
+       --print (keys interpolatedIdeals); --debug
        ll := apply (keys interpolatedIdeals, key-> ( key=>new InterpolatedIdeal from interpolatedIdeals#key ));
        return new HashTable from ll;
    );
