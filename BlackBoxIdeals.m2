@@ -50,12 +50,12 @@ export {
     "interpolateBB",
     "interpolate",
     "MapHelper",
-    "InterpolatedIdeal"
+    "InterpolatedIdeal",
+    "SingularPointException",
+    "createMapHelper"
 }
 
---undocumented {
---
---}
+ 
 
 -- why is/was setting 'jacobianAt' necessary??? (jk)
 
@@ -107,12 +107,14 @@ protect knownPointProperties;
 protect knownPointPropertiesAsSymbols;
 protect knownMethods;
 protect knownAttributes;
+ --protect createMapHelper;
 );
 
 --todo: fix dublicate code,  -  padicLiftProtect and padicLiftExport
 
 idealBlackBoxesExport = ()->
 (
+    
     exportMutable("setComponentCandidates");
     exportMutable("componentCandidates");
     exportMutable("setOnComponentPrecision");
@@ -155,7 +157,6 @@ idealBlackBoxesExport = ()->
     exportMutable("setSingularityTestOptions");
     exportMutable("updateSingularityTest");
     exportMutable("singularityTestOptions");
-
 )
 
 -- the following symbols which are marked as undocumented are in fact documented inside the BlackBoxParameterSpace and BlackBoxIdeal
@@ -180,7 +181,8 @@ undocumented {
     numTrials,
     pointProperty, -- internal function
     guessAcceptedParameterNumber, -- internal function
-    updateSingularityTest --internal function
+    updateSingularityTest, --internal function
+    createMapHelper
 } 
 
 
@@ -1078,7 +1080,7 @@ interpolate = (mons,jetList) -> (
      R := ring mons;
      K := coefficientRing R;
      jetsSucceeded := select(jetList,jetP->jetP#"succeeded");
-     if #jetsSucceeded != #jetList then error throw new SingularPointException from {"errorMessage"=>"the point is not smooth";};
+     if #jetsSucceeded != #jetList then error throw new SingularPointException from {"errorMessage"=>"jets not succeed.Point is not smooth?";};
      -- substitute jets into the monomials and take coefficients
      coeffList := apply(jetList,jetP ->  sub(last coefficients sub(mons,jetP#"jet"),K));
      -- find interpolation solution

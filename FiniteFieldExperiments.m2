@@ -201,7 +201,7 @@ FiniteFieldExperimentsExport  = ()->
  exportMutable("compatible");
  
  exportMutable("createExperimentData");
- exportMutable("createMapHelper");
+
 ) 
 
 undocumented {
@@ -220,7 +220,7 @@ points,                        --a list of all points not sorted into list.
                                --been implemented
 reset,                         --iterator
 compatible,           --internal method
-createMapHelper,
+
 estimateNumberOfComponents,    --internal
 estimateCodim,      --deprecated
 ringCardinality,    --internal

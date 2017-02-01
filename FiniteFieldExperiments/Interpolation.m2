@@ -56,7 +56,7 @@ TEST ///
   -- a point where the blackBox does not vanish
   assert (try interpolateBB(1,bb,notApoint) then false else true)
   -- a point where the blackBox is not smooth
-  assert (try interpolateBB(1,bb,intersectionPoint) then false else true)
+  assert (SingularPointException === class catch interpolateBB(1,bb,intersectionPoint))
   -- a point over the wrong field
   assert (try interpolateBB(1,bb,pointQQ) then false else true) 
 ///
@@ -108,7 +108,8 @@ createInterpolatedImage(Experiment,Ring, MapHelper) := HashTable => (experiment,
                0 == sub( interpolationIdeal, ((mapdata#"valueAtJet")(jetP))#"jet" )
           ) else error "point not smooth"
      );
-    interpolatedIdeals := {};
+    interpolatedIdeals := {}; 
+    -- better: interpolatedIdeals:= new MutableHashTable; ? but then we do not know if it was initialized??
     interpolation.createAllInterpolatedIdeals  = (maxDegree, onComponentPrecision) -> 
     ( 
         idealCount := 0;
@@ -122,7 +123,7 @@ createInterpolatedImage(Experiment,Ring, MapHelper) := HashTable => (experiment,
              --   continue;
              --);
              pointIsSingular := false;
-
+             --
              -- check if point is already on one of the known components
              bIsOnComponent := false;
              for interpolData in localInterpolatedIdeals do
@@ -138,29 +139,38 @@ createInterpolatedImage(Experiment,Ring, MapHelper) := HashTable => (experiment,
                          ); 
                      )  
                     else (
+                    print ("pointIsSingular");
                     pointIsSingular = true;
                     break;
                 );
-                    
+             --       
              );
              if (bIsOnComponent or pointIsSingular) then 
              (
                  continue;
              );
-
-            try (
-              localInterpolatedIdeals = localInterpolatedIdeals | { createInterpolatedIdeal (maxDegree, interpolation.blackBoxIdeal(), point, ("ideal_" |toString idealCount ))  };             
-              idealCount = idealCount +1 ;
-            ) 
-            else (
+             --debug
+             --print(localInterpolatedIdeals);
+             --print(point);
+             
+             interpolatedIdealOrException := catch createInterpolatedIdeal (maxDegree, interpolation.blackBoxIdeal(), point, ("ideal_" |toString idealCount )) ;          
+             if ( class interpolatedIdealOrException ===  SingularPointException) then
+             (
+                print( interpolatedIdealOrException); --debug
                 FFELogger.debug("createInterpolatedIdeal: point"| toString point| " was singular");
-            );
-
+             )
+             else
+             (
+               interpolatedIdeal := interpolatedIdealOrException;
+               localInterpolatedIdeals = localInterpolatedIdeals | { interpolatedIdeal };             
+               idealCount = idealCount +1 ;
+             );
         );
-        -- print "timing for loop", T#0;
+        -- print "timing for loop", T#0;        
         interpolatedIdeals = new MutableHashTable from 
-           apply ( #localInterpolatedIdeals, idx-> (("ideal_" |toString idx ) => localInterpolatedIdeals#idx ) ) ;
-
+           apply ( #localInterpolatedIdeals, idx-> (("ideal_" |toString idx ) => localInterpolatedIdeals#idx ) ) ;           
+       --print ("created interpolatedIdeals");
+       FFELogger.debug("created interpolatedIdeals");
        return interpolation.interpolatedIdeals();
     );
 
@@ -210,6 +220,8 @@ createInterpolatedImage(Experiment,Ring, MapHelper) := HashTable => (experiment,
 
    interpolation.interpolatedIdeals = ()->
    ( 
+       --print (interpolatedIdeals); --debug
+       --print (keys interpolatedIdeals); --debug
        ll := apply (keys interpolatedIdeals, key-> ( key=>new InterpolatedIdeal from interpolatedIdeals#key ));
        return new HashTable from ll;
    );
