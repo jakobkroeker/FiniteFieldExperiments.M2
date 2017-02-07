@@ -32,8 +32,7 @@ export {
     "jetAt",
     "isCertainlySingularAt",
     "isProbablySmoothAt",
-    "keysWithoutSymbols",
-    "rebuildBlackBox",
+    "keysWithoutSymbols",    
     "guessAcceptedParameterNumber",
     "dropDegreeInfo",
     "createInterpolatedIdeal",
@@ -78,7 +77,7 @@ idealBlackBoxesProtect = ()->
     protect checkInputPoint;
     protect deduceNumGenerators;
     protect setIsZeroAt;
-    protect getUpdatedBlackBox;
+  
     protect type;
     protect unknowns;
     protect pointProperty;
@@ -93,6 +92,7 @@ idealBlackBoxesProtect = ()->
     protect knownAttributes;
     --protect knownProperties;
     --protect createMapHelper;
+    protect updateBlackBox;
 );
 
 --todo: fix dublicate code,  -  padicLiftProtect and padicLiftExport
@@ -124,7 +124,6 @@ idealBlackBoxesExport = ()->
     exportMutable("checkInputPoint");
     exportMutable("deduceNumGenerators");
     exportMutable("setIsZeroAt");
-    exportMutable("getUpdatedBlackBox");
     exportMutable("type");
     exportMutable("unknowns");
     exportMutable("pointProperty");
@@ -142,10 +141,13 @@ idealBlackBoxesExport = ()->
     exportMutable("setSingularityTestOptions");
     exportMutable("updateSingularityTest");
     exportMutable("singularityTestOptions");
+    exportMutable("updateBlackBox");
 )
 
--- the following symbols which are marked as undocumented are in fact documented inside the BlackBoxParameterSpace and BlackBoxIdeal
--- please do only mark documented symbols as undocumented, at least there should be a comment note inside this package.
+-- the following symbols which are marked as undocumented are in fact documented 
+-- inside the BlackBoxParameterSpace and BlackBoxIdeal
+-- please do only mark documented symbols as undocumented, 
+-- at least there should be a comment note inside this package.
 -- 
 undocumented { 
     setIsZeroAt,      -- internal   
@@ -154,7 +156,6 @@ undocumented {
     setPointProperty, -- internal   
     deduceNumGenerators, -- internal   
     dropDegreeInfo,      -- internal   
-    getUpdatedBlackBox,
     pointProperties,     -- internal key     
     equations,
     keysWithoutSymbols,
@@ -183,7 +184,7 @@ needsPackage "Text";
 
 BlackBoxLogger = Logger("BlackBoxIdeals");
 
--- todo: how to switch this on and off?
+-- todo: how to switch this on and off by the user? using closures again? 
 -- if BlackBoxIdeals#Options#DebuggingMode then 
 --    BlackBoxLogger.setLogLevel(LogLevel.DEBUG);
 
@@ -192,7 +193,7 @@ if BlackBoxIdeals#Options#DebuggingMode then
 
 
 
-bblog := BlackBoxLogger;
+bblog := BlackBoxLogger; --shortcut
 
 -- bblog.setLogLevel(LogLevel.DEBUG);
 
@@ -300,13 +301,6 @@ SingularPointException = new Type of HashTable;
 
 
 
--- Estring = new Type of String ; the goal was to distinguies string keys 
--- from symbol keys without changing string visuaulization (net())
--- but that turned out to be impossible(or too hard), because e.g. the operator '#' cannot be overloaded.
-
-
---net (String) := Net =>(str)->(   strl := "\""| str| "\"" ;   return stack separate strl; );
-
 savedEpsRings := new MutableHashTable;
 
 
@@ -327,7 +321,7 @@ savedEpsRings := new MutableHashTable;
 -- and the symbol from the package dictionary "BlackBoxIdeals.Dictionary"
 -- see also https://github.com/jakobkroeker/FiniteFieldExperiments.M2/issues/116
 -- 
--- question: what happens in case the user loads a package which defines the same symbol?
+-- TODO question: what happens in case the user loads a package which defines the same symbol?
 
 -- artificial example:  
 -- restart
@@ -354,8 +348,9 @@ getPropertySymbols(String) := List => (propertyName)->
 );
 
 
-
+--
 -- package-global symbol for "eps"
+--
 geps := getSymbol "eps"; 
 
 getEpsRing = method();
@@ -441,7 +436,8 @@ TEST ///
 -- polynomialLCMDenominator()
 --
 -- computes the least common multiple of the denominators of the polynomial (rational) cofficients;
--- that means if we have a polynomial = sum { (a_i/b_i)*monomial_i }, a_i and b_i integers, then the function returns LCM( (b_i) )
+-- that means if we have a polynomial = sum { (a_i/b_i)*monomial_i }, a_i and b_i integers,
+-- then the function returns LCM( (b_i) )
 --
 polynomialLCMDenominator = (polynomial)->
 (
@@ -787,7 +783,7 @@ TEST ///
 
 -- introduce a new type representing a parameter space.
 
-BlackBoxParameterSpace = new Type of  HashTable;
+BlackBoxParameterSpace = new Type of  MutableHashTable;
 
 
 
@@ -821,7 +817,7 @@ jetAtSingleTrial = method();
 -- using Newtons-Algorithm one could double precision in each step, but
 -- for this we also need high precision jacobi-matrices.
 -- For black-Box-Jacobi-Matrices we might not have high precision Jacobi-Matrices
--- question: what do we mean by high precision Jacobi-Matrices?
+-- todo question: what do we mean by high precision Jacobi-Matrices?
 --
 --jetAtSingleTrial( BlackBoxParameterSpace, Matrix, ZZ ) := MutableHashTable => ( blackBox,  point, jetLength )  ->
 jetAtSingleTrial( HashTable, Matrix, ZZ ) := MutableHashTable => ( blackBox,  point, jetLength )  ->
@@ -924,8 +920,8 @@ jetAtSingleTrial( HashTable, Matrix, ZZ ) := MutableHashTable => ( blackBox,  po
 
 jetAt = method();
 
---jetAt( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials )  ->
-jetAt( HashTable, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials )  ->
+jetAt( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials )  ->
+--jetAt( HashTable, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials )  ->
 (
     if ( numTrials<1 ) then error "jetAt: expected numTrials >=1 ";
     bestJet := jetAtSingleTrial ( blackBox,  point, jetLength);
@@ -949,8 +945,8 @@ jetAt( HashTable, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jet
 
 
 isCertainlySingularAt = method();
---isCertainlySingularAt( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials ) ->
-isCertainlySingularAt( HashTable, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials ) ->
+isCertainlySingularAt( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials ) ->
+--isCertainlySingularAt( HashTable, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials ) ->
 (
    if ( numTrials<1 ) then error "isCertainlySingularAt: expected numTrials >=1 ";
   
@@ -964,6 +960,13 @@ isCertainlySingularAt( HashTable, Matrix, ZZ, ZZ) := MutableHashTable => ( black
     );
     return false;
 );
+
+isCertainlySingularAt( BlackBoxParameterSpace, Matrix, HashTable) := MutableHashTable => ( blackBox,  point, options ) ->
+--isCertainlySingularAt( HashTable, Matrix, HashTable) := MutableHashTable => ( blackBox,  point,  options ) ->
+(
+    return isCertainlySingularAt(blackBox, point, options.precision, options.numTrials);
+);
+
 
 -- 'keysWithoutSymbols': returns hashtable keys without symbol keys.
 --
@@ -1087,34 +1090,43 @@ new InterpolatedIdeal from List :=  (InterpolatedIdealAncestor,l)->
 -- find polynomials containing a component
 -- via interpolation
 
-
+-- interpolate()
+--
 -- find linear combinations of monomials containing a given jet
-interpolate = (mons,jetList) -> 
+--
+interpolate = (mons, jetList) -> 
 (
+    bblog.debug("interpolate call; mons" | toExternalString mons | "; jetList :" | toString jetList);    
     R := ring mons;
     K := coefficientRing R;
-    jetsSucceeded := select(jetList,jetP->jetP#"succeeded");
+    jetsSucceeded := select(jetList, jetP->jetP#"succeeded");
     if #jetsSucceeded != #jetList then 
     ( 
-        error throw new SingularPointException from {"errorMessage"=>"jets not succeed.Point is not smooth?";}
+        error throw new SingularPointException from {"errorMessage"=>"jets not succeed. Point is not smooth?";}
     );
     -- substitute jets into the monomials and take coefficients
-    coeffList := apply(jetList,jetP ->  sub(last coefficients sub(mons,jetP#"jet"),K));
+    coeffList := apply(jetList,jetP ->  sub(last coefficients sub(mons, jetP#"jet"),K));
+    BlackBoxLogger.debug("interpolate, coeffList:" | toExternalString coeffList);
     -- find interpolation solution
     s := syz fold((a,b)->(a||b),coeffList);
     -- make polynomials from the solution
+    -- todo maybe mingens is slow
     I := ideal mingens ideal(mons*s);
-    --I = ideal(mons*s);
     I
 )
 
 
+-- interpolateBB()
+--
 -- find all polynomials of degree smallerEqual than maxDegree containing the component of BB containing the point
 -- 
 -- this is the most basic simple minded implementation where only one very long jet is considered.
+--
+
 interpolateBB = method();
--- interpolateBB(ZZ,BlackBoxParameterSpace,Matrix,MapHelper) := Ideal =>
-interpolateBB(ZZ,HashTable,Matrix,MapHelper) := Ideal =>  
+
+interpolateBB(ZZ,BlackBoxParameterSpace,Matrix,MapHelper) := Ideal =>
+--interpolateBB(ZZ,HashTable,Matrix,MapHelper) := Ideal =>  
              (maxDegree,BB,point,mmap) -> 
 (
     R := mmap#"imageRing";
@@ -1133,16 +1145,16 @@ interpolateBB(ZZ,HashTable,Matrix,MapHelper) := Ideal =>
     interpolate(mons,{jetPimage})
 )
 
---interpolateBB(ZZ,BlackBoxParameterSpace,Matrix,Matrix) := Ideal =>
-interpolateBB(ZZ,HashTable,Matrix,Matrix) := Ideal =>  
+interpolateBB(ZZ,BlackBoxParameterSpace,Matrix,Matrix) := Ideal =>
+--interpolateBB(ZZ,HashTable,Matrix,Matrix) := Ideal =>  
              (maxDegree,BB,point,mmap) -> 
 (
     interpolateBB(maxDegree,BB,point,new MapHelper from mmap)
 )
 
 
---interpolateBB(ZZ,BlackBoxParameterSpace,Matrix) := Ideal =>
-interpolateBB(ZZ,HashTable,Matrix) := Ideal =>  
+interpolateBB(ZZ,BlackBoxParameterSpace,Matrix) := Ideal =>
+--interpolateBB(ZZ,HashTable,Matrix) := Ideal =>  
              (maxDegree,BB,point) -> 
 (
     interpolateBB(maxDegree,BB,point,createMapHelper(vars BB.ring,BB.ring))
@@ -1190,6 +1202,183 @@ createInterpolatedIdeal (ZZ, HashTable, Matrix, String) := InterpolatedIdeal => 
 );
 
 
+-- should be private, since each blackbox needs an own component calculator.
+
+-- or, the jets should be stored in the blackBox
+
+
+createSimpleComponentCalculator = () ->
+(
+    simpleComponentCalculator := MutableHashTable;
+    
+    componentCandidates := new MutableHashTable; -- should not be a HashTable but a type
+
+
+    jets := new MutableHashTable;
+
+    simpleComponentCalculator.setComponentCandidates = (cc)->
+    ( 
+        -- jets = new MutableHashTable; -- clear old cache for point jet        
+        componentCandidates = cc;
+    );
+
+    simpleComponentCalculator.componentCandidates = ()->
+    (
+        return new HashTable from componentCandidates;
+    );
+
+    onComponentPrecision := 5;
+
+    simpleComponentCalculator.setOnComponentPrecision = (precision)->
+    (
+        onComponentPrecision=precision;
+    );
+
+    isOnComponent := method();
+
+    --
+    -- uses a single long jet to test if a point is on a component.
+    --
+    isOnComponent (BlackBoxParameterSpace, Ideal, Matrix, ZZ) := Boolean => (blackBox, componentIdeal, point, onComponentPrecisionParam)->
+    (
+        if not (jets#?point) then
+        (        
+            -- we have no cached jets for the given point => compute jets
+            --jetP := jetAt(interpolation.blackBoxIdeal() ,point, onComponentPrecisionParam, 1);
+            jets#point = jetAt( blackBox ,point, onComponentPrecisionParam, 1);
+        );
+        jetP := jets#point;  
+
+        if jetP#"jetLength" < onComponentPrecisionParam then 
+        (
+            -- we have cashed jets, but they are too short.. => compute jets of requested length
+            jets#point = jetAt( blackBox ,point, onComponentPrecisionParam, 1);
+            jetP = jets#point;  
+        );
+
+        if jetP#"succeeded" then 
+        (
+            print "succeeded";
+            return (0 == sub( componentIdeal, jetP#"jet" ));
+        )
+        else
+        (
+            print "point not smooth";
+            error "point is not smooth";
+        );
+
+    );
+
+    isOnComponent (BlackBoxParameterSpace, Ideal, Matrix) := Boolean => (blackBox, componentIdeal, point)->
+    (
+        return (blackBox, componentIdeal, point, onComponentPrecision);
+    );
+
+    isOnComponent (String , Matrix, ZZ) := Boolean => (componentId, point, onComponentPrecision)->
+    (
+        if (not componentCandidates#?componentId) then error "component does not exist";
+        return isOnComponent(componentCandidates#?componentId,  point, onComponentPrecision) ;
+    );
+    
+     isOnComponent (String , Matrix, ZZ) := Boolean => (componentId, point)->
+    (
+        if (not componentCandidates#?componentId) then error "component does not exist";
+        return isOnComponent(componentCandidates#?componentId,  point, onComponentPrecision) ;
+    );
+
+
+    simpleComponentCalculator.interpolateComponents  = (blackBox, pointList, interpolationMaxDegree, onComponentPrecision) -> 
+    (
+        idealCount := 0;
+        localInterpolatedIdeals := {};
+
+        -- T := timing 
+        
+        err := null;
+
+        for point in pointList do
+        (
+            print "point ";
+            print (toString point);
+
+            --time if bb.isCertainlySingularAt(point) then 
+            --(
+            --   continue;
+            --);
+            pointIsSingular := false;
+
+            -- check if point is already on one of the known components
+            bIsOnComponent := false;
+            for interpolData in localInterpolatedIdeals do
+            (
+                try 
+                (  
+                    if  isOnComponent (  interpolData#"ideal", point, 0 ) then
+                        (
+                            if  isOnComponent (  interpolData#"ideal", point, onComponentPrecision ) then
+                            (
+                                bIsOnComponent = true; 
+                                print "bIsOnComponent";
+                                break;
+                            );
+                        ); 
+                )  
+                else 
+                (
+                    pointIsSingular = true;
+                    break;
+                );                        
+            );
+            if (bIsOnComponent or pointIsSingular) then 
+            (
+                continue;
+            );
+
+            err := catch  (
+                localInterpolatedIdeals = localInterpolatedIdeals | { createInterpolatedIdeal (interpolationMaxDegree, blackBox, point, ("ideal_" |toString idealCount ))  };  
+            );
+
+            idealCount = idealCount +1 ;
+
+            if ( SingularPointException === (class err)) then 
+            (
+                print "singular point";
+                BlackBoxLogger.debug("createInterpolatedIdeal: point"| toString point| " was singular");
+            )
+            else  
+            ( 
+                if (err =!= null) then
+                (
+                        throw "unexpected error2";
+                        print toString err;  
+                );
+            );
+        );
+        -- print "timing for loop", T#0;
+        interpolatedIdeals := new MutableHashTable from 
+            apply ( #localInterpolatedIdeals, idx-> (("ideal_" |toString idx ) => localInterpolatedIdeals#idx ) ) ;
+
+        simpleComponentCalculator.setComponentCandidates(interpolatedIdeals);
+    );
+
+
+
+    simpleComponentCalculator.componentCandidatesAt = (point)->
+    (
+        candidates := {};
+        for componentKey in keys componentCandidates do
+        (
+            if ( isOnComponent(componentKey, point, onComponentPrecision)) then
+            (
+                candidates = candidates | { componentKey };
+            );
+        );
+        return candidates;
+    );
+    
+    return simpleComponentCalculator;
+);
+
 
 -- internal method to create a basic black box ( a black box for a parameter space )
 --
@@ -1215,10 +1404,12 @@ createInterpolatedIdeal (ZZ, HashTable, Matrix, String) := InterpolatedIdeal => 
 
 blackBoxParameterSpaceInternal = method();
 
-blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeffRing ) ->
+blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, numVariables, coeffRing ) ->
 (
     
-    blackBox := new MutableHashTable;   
+    blackBox := new MutableHashTable;
+    
+    blackBox = newClass(resultType, blackBox);
     
     -- public: 
     blackBox.coefficientRing = coeffRing;  
@@ -1423,7 +1614,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
     valuesAtWrapper := ( pValuesAt, point) ->
     (
         result := pValuesAt(  point); 
-        try  ( assert(numRows result==1); ) else { error ( "'valuesAt' did not return an one-row matrix "); };
+        try  ( assert(numRows result==1); ) else { error ( "valuesAt did not return an one-row matrix "); };
         return result;
     );
 
@@ -1466,14 +1657,14 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
 
         localIsCertainlySingularAtWrapper  := ( point )  ->
         (
-            return isCertainlySingularAt( blackBox,  point, singularTestOptions.precision,  singularTestOptions.numTrials );
+            return isCertainlySingularAt( blackBox,  point, singularTestOptions );
         );
 
         setPointProperty("isCertainlySingularAt" , localIsCertainlySingularAtWrapper );
 
         localIsProbablySmoothAtWrapper  := ( point )  ->
         (
-            return not isCertainlySingularAt( blackBox,  point, singularTestOptions.precision,  singularTestOptions.numTrials );
+            return not isCertainlySingularAt( blackBox,  point, singularTestOptions );
         );
 
         setPointProperty("isProbablySmoothAt" , localIsProbablySmoothAtWrapper );
@@ -1488,7 +1679,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
         (
             localIsCertainlySingularWrapper  := (  point )  ->
             (
-                return isCertainlySingularAt( blackBox,  point, singularTestOptions.precision,  singularTestOptions.numTrials );
+                return isCertainlySingularAt( blackBox,  point, singularTestOptions );
             );
 
             if blackBox.hasPointProperty("isCertainlySingularAt") then 
@@ -1501,7 +1692,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
             );
             localIsProbablySmoothWrapper  := (  point )  ->
             (
-                return not isCertainlySingularAt( blackBox,  point, singularTestOptions.precision,  singularTestOptions.numTrials );
+                return not isCertainlySingularAt( blackBox,  point, singularTestOptions );
             );
 
             if blackBox.hasPointProperty("isProbablySmoothAt") then 
@@ -1575,7 +1766,8 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
 
 
         --if acceptedNumParameters=!=2 then 
-        --    error (" provided method " | propertyName | " expected to accept 2 parameters ( blackbox, point ),  but the passed one seems to accept " | toString acceptedNumParameters);
+        --    error (" provided method " | propertyName | " expected to accept 2 parameters ( blackbox, point ),  
+        -- but the passed one seems to accept " | toString acceptedNumParameters);
         
         -- now wrap the provided method if neccesary in a way that it accepts only a point: 
 
@@ -1607,45 +1799,81 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
     --          a point property is registered in a different package
     -- 
 
+    
 
-
-    -- todo: test if updating 'valuesAt' will  trigger updating isZeroAt and jacobianAt 
-    -- 
-
-    --  updatePointProperty:
-    --    if a property is already set, updates it.
+    --  updatePointProperty()
     --
+    -- if a property is already set, updates it.
+    --
+    -- todo: test if updating 'valuesAt' will  trigger updating isZeroAt and jacobianAt 
+    --     
     blackBox.updatePointProperty = method();
 
     blackBox.updatePointProperty(String, Function) := (BlackBoxParameterSpace) => ( propertyName, propertyMethod )->
     (
         if  (  pointProperties#?propertyName ) then
         (  
-            -- todo: question do it for all symbols or not
             propertySymbol := getPropertySymbol(propertyName);
             assert(propertySymbol=!=null);
             
             outerSetPointProperty( propertySymbol, propertyMethod );
         ) 
         else ( error ("point property "| toString propertyName | " does not exist.") );
-        return blackBox.getUpdatedBlackBox(blackBox);
+        blackBox.updateBlackBox();
+        return blackBox;
+    );
+
+    -- updateBlackBox()
+    --
+    -- update keys of the blackBox Hashtable in case there are known point properties but no corresponding 
+    -- keys. Initial purpose (that changed): blackbox variable was by intention not writeable and modification needed
+    -- copying. 
+    -- Current purpose: access point property by property name string via '#' operator. 
+    -- But, question, does this also add the symbolic stuff??? Something seems still weird here...(jk, 07.02.2017)
+    -- 
+    blackBox.updateBlackBox = () ->
+    (
+        return;
+        -- not necessary anymore(?)
+        for  property in blackBox.knownPointProperties() do
+        (
+            propkeys := unique sort {( property )} | {toString property};
+           
+            for key in propkeys  do
+            (
+                if not blackBox#?key then 
+                (
+                    -- hier springen wir jetzt nie(?) rein.
+                    --print("here3");
+                    blackBox.pointProperty(property);
+                    --blackBox#key = (point)->( (blackBox.pointProperty(toString property))(point) );
+                    blackBox#key =  (blackBox.pointProperty(toString property)) ;                 
+                )
+                else 
+                (      
+                );     
+            );    
+
+        );
     );
 
 
-
-    -- registerPointProperty: a method to register a point property, while providing a propertySymbol,  
+    -- registerPointProperty()
+    --
+    -- a method to register a point property, while providing a propertySymbol,  
     -- expecting that after registering (and getUpdatedBlackBox() ) the property will be accessible via  blackBox#propertySymbol .
-    -- usually providing the corresponding symbol is not necessary, but it could be, since each package has its own symbol scope.
+    -- Usually providing the corresponding symbol is not necessary, but it could be, since each package has its own symbol scope.
+    --
+  
+    --
     
-    -- todo: this one should not be a public one
-
-    blackBox.registerPointProperty = method();
-
-
+    blackBox.registerPointProperty = method();    
+    
+    -- todo: this method with this interface should not be publicly visible or accessible (is an internal one)
+    --
     blackBox.registerPointProperty(String, Symbol, Function) := BlackBoxParameterSpace => 
       ( propertyName, propertySymbol, propertyMethod )->
     (
-
         assert( (toString propertySymbol)==propertyName);
 
         if  ( not  pointProperties#?propertyName 
@@ -1654,22 +1882,27 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
             outerSetPointProperty( propertySymbol, propertyMethod );
         )
         else error(" key  "| propertyName |"  exists already. If it is a point property, please use 'updatePointProperty' for updating.");
-        return blackBox.getUpdatedBlackBox(blackBox);
+        blackBox.updateBlackBox();
+        return blackBox;
     );
 
-
+   -- public..
+    --
     blackBox.registerPointProperty(String, Function) := Thing => ( propertyName, propertyMethod )->
     (
         propertySymbol :=  getPropertySymbol(propertyName);
         return blackBox.registerPointProperty(  propertyName, propertySymbol, propertyMethod )
-        --return blackBox.getUpdatedBlackBox(blackBox);
     );
 
     blackBox.rpp =  blackBox.registerPointProperty;
 
     blackBox.upp =  blackBox.updatePointProperty;
 
+    --
+    -- knownMethods()
+    --
     -- return a list of known methods. Manually updated.
+    --
     blackBox.knownMethods = ()->
     (   
         methods:= { getGlobalSymbol( BlackBoxIdeals.Dictionary, "knownMethods" ) ,
@@ -1683,7 +1916,6 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
                     getGlobalSymbol( BlackBoxIdeals.Dictionary, "rpp" ), 
                     getGlobalSymbol( BlackBoxIdeals.Dictionary, "upp" ), 
                     getGlobalSymbol( BlackBoxIdeals.Dictionary, "updatePointProperty" )
-                    ----getGlobalSymbol( BlackBoxIdeals.Dictionary, "getUpdatedBlackBox" ),
                     --getGlobalSymbol( BlackBoxIdeals.Dictionary, "unknownIsValid" )
             };
     --  methods:= {   knownMethods,
@@ -1694,7 +1926,6 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
     --                pointProperty,
     --                registerPointProperty, 
     --                updatePointProperty,
-    --                getUpdatedBlackBox,
     --                unknownIsValid
     --              };
 
@@ -1705,8 +1936,11 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
     );
   
   
-    -- 'knownAttributes' returns a list of known Attributes. 
+    -- knownAttributes()
+    --
+    -- returns a list of known attributes. 
     -- (computed as 'keys blackBox which are not Functions' \ {knownPointPropertiesAsSymbols() }
+    --
     blackBox.knownAttributes = ()->
     (
         all :=  keysWithoutSymbols blackBox;
@@ -1728,7 +1962,10 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
     );
 
 
-    
+    -- get singularityTestOptions
+    --
+    -- returns currently used configuration for singularity test (at a point)
+    --
     blackBox.singularityTestOptions = ()->
     (
         if not blackBox.hasPointProperty("valuesAt") then
@@ -1739,7 +1976,10 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
     );
 
 
-
+    -- set singularityTestOptions
+    --
+    -- sets currently used configuration for singularity test (at a point)
+    --
     blackBox.setSingularityTestOptions = (prec, numTrials)->
     (
         if not blackBox.hasPointProperty("valuesAt") then
@@ -1763,7 +2003,7 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
 
     blackBox.setComponentCandidates = (cc)->
     ( 
-        -- jets = new MutableHashTable; -- clear old cache for point jets
+        -- jets = new MutableHashTable; -- clear old cache for point jet        
         componentCandidates = cc;
     );
 
@@ -1781,11 +2021,14 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
 
     isOnComponent := method();
 
-
+    --
+    -- uses a single long jet to test if a point is on a component.
+    --
     isOnComponent (Ideal, Matrix, ZZ) := Boolean => (componentIdeal, point, onComponentPrecision)->
     (
         if not (jets#?point) then
         (        
+            -- we have no cached jets for the given point => compute jets
             --jetP := jetAt(interpolation.blackBoxIdeal() ,point,onComponentPrecision, 1);
             jets#point = jetAt( blackBox ,point, onComponentPrecision, 1);
         );
@@ -1793,8 +2036,9 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
 
         if jetP#"jetLength" < onComponentPrecision then 
         (
-            jetP = jets#point;  
+            -- we have cashed jets, but they are too short.. => compute jets of requested length
             jets#point = jetAt( blackBox ,point,onComponentPrecision, 1);
+            jetP = jets#point;  
         );
 
         if jetP#"succeeded" then 
@@ -1915,63 +2159,10 @@ blackBoxParameterSpaceInternal( ZZ, Ring ) := HashTable => ( numVariables, coeff
 
     -- a user should not call this method...
 
-    
-    -- .getUpdatedBlackBox()
-    --
-    -- return a blackbox {\tt bb } for which all recently registered properties 
-    -- are accessible using the point operator: e.g. if {\tt "bettiAt"} was registered, 
-    -- then it is then accessible as {\tt bb.bettiAt } 
-    --
-    
-    blackBox.getUpdatedBlackBox  = (bb1)->
-    (       
-        bb := new MutableHashTable from  bb1;
-        for key in keys blackBox do
-        (
-            if not bb#?key then
-            (
-                bb#key = blackBox#key;
-            )
-        );
-        blackBox = bb;
-      
-        for  property in blackBox.knownPointProperties() do
-        (
-            propkeys := unique sort {( property )} | {toString property};
-           
-            for key in propkeys  do
-            (
-                --if not bb#?property then 
-                if not blackBox#?key then 
-                (
-                    -- hier springen wir jetzt nie rein.
-                    blackBox.pointProperty(property);
-                    --blackBox#key = (point)->( (blackBox.pointProperty(toString property))(point) );
-                    blackBox#key =  (blackBox.pointProperty(toString property)) ;
-                 
-                )
-                else 
-                (      
-                );     
-            );    
-
-        );
-
-        bb = newClass(  blackBox.type, bb );
-        return  bb;
-    );
-
     return blackBox;
 )
 
---   Provide via registerPointProperty() added new black box properties
---   via point('.') operator (syntactic sugar)
-rebuildBlackBox = method() ;
-
-rebuildBlackBox(HashTable) := HashTable => ( bb )->
-(
-    return  bb.getUpdatedBlackBox(bb);
-);
+ 
 
 
 -- blackBoxParameterSpaceInternal()
@@ -1979,9 +2170,9 @@ rebuildBlackBox(HashTable) := HashTable => ( bb )->
 -- this function may be used to create a derived object, which inherits properties of an black box ideal
 -- since the blackbox object is not copied 
 --
-blackBoxParameterSpaceInternal(Ring) := HashTable => ( pRing ) ->
+blackBoxParameterSpaceInternal(Type, Ring) := HashTable => ( resultType, pRing ) ->
 (
-    blackBox := blackBoxParameterSpaceInternal(#(gens pRing), coefficientRing pRing);
+    blackBox := blackBoxParameterSpaceInternal(resultType, #(gens pRing), coefficientRing pRing);
     
     blackBox.ring = pRing;
     blackBox.unknowns = gens blackBox.ring;
@@ -2033,11 +2224,10 @@ blackBoxParameterSpace = method();
 --
 new BlackBoxParameterSpace from Ring := (E, pRing )->
 (
-    blackBox := blackBoxParameterSpaceInternal( pRing);
+    blackBox := blackBoxParameterSpaceInternal(BlackBoxParameterSpace, pRing);
    
-    blackBox.type = BlackBoxParameterSpace;
-    blackBox = blackBox.getUpdatedBlackBox(blackBox);
-    return new HashTable from blackBox;
+    blackBox.type = BlackBoxParameterSpace;   
+    return blackBox;
 )
 
 --
@@ -2062,11 +2252,10 @@ blackBoxParameterSpace(Ring) := HashTable => ( pRing ) ->
 
 blackBoxParameterSpace(ZZ, Ring) := BlackBoxParameterSpace => ( numVariables, coeffRing )  ->
 (
-    blackBox := blackBoxParameterSpaceInternal( numVariables, coeffRing );
+    blackBox := blackBoxParameterSpaceInternal(BlackBoxParameterSpace, numVariables, coeffRing );
     blackBox.type = BlackBoxParameterSpace;
-    blackBox = blackBox.getUpdatedBlackBox(blackBox);
-    bb := newClass( BlackBoxParameterSpace, blackBox );
-    return bb;
+    --bb := newClass( BlackBoxParameterSpace, blackBox );
+    return blackBox;
 )
 
 
@@ -2079,7 +2268,7 @@ blackBoxParameterSpace(ZZ, Ring) := BlackBoxParameterSpace => ( numVariables, co
 --
 blackBoxIdealInternal := ( equationsIdeal)->
 (   
-    blackBox :=  blackBoxParameterSpaceInternal( ring equationsIdeal );
+    blackBox :=  blackBoxParameterSpaceInternal( BlackBoxIdeal, ring equationsIdeal );
     
     blackBox.type = BlackBoxIdeal;
     
@@ -2116,7 +2305,7 @@ blackBoxIdealInternal := ( equationsIdeal)->
             )
     );   
     
-    return new HashTable from blackBox; 
+    return blackBox; 
 )
 
 --
@@ -2125,8 +2314,7 @@ blackBoxIdealInternal := ( equationsIdeal)->
 new BlackBoxIdeal from Ideal := (E, equationsIdeal)->
 (
     blackBox := blackBoxIdealInternal(equationsIdeal);
-    blackBox = blackBox.getUpdatedBlackBox(blackBox);
-    return new HashTable from blackBox;
+    return blackBox;
 )
 
 --
@@ -2188,11 +2376,11 @@ testBlackBoxIdeal=()->
 
 blackBoxIdealFromEvaluationInternal := method();
 
-blackBoxIdealFromEvaluationInternal(ZZ, Ring, Function) := HashTable => ( numVariables, coeffRing, pValuesAt )  ->
+blackBoxIdealFromEvaluationInternal(Type, ZZ, Ring, Function) := HashTable => ( resultType, numVariables, coeffRing, pValuesAt )  ->
 (
-    blackBox := blackBoxParameterSpaceInternal( numVariables, coeffRing );
+    blackBox := blackBoxParameterSpaceInternal( resultType, numVariables, coeffRing );
 
-    blackBox.type = BlackBoxIdeal;
+    blackBox.type = resultType;
 
     --sets isZeroAt, jacobianAt, rankJacobianAt and numGenerators
     blackBox.registerPointProperty ("valuesAt", (bb,point)->pValuesAt(point) ); 
@@ -2226,10 +2414,9 @@ blackBoxIdealFromEvaluation = method();
 
 blackBoxIdealFromEvaluation(ZZ, Ring, Function) := HashTable => ( numVariables, coeffRing, valuesAt )  ->
 (
-    blackBox := blackBoxIdealFromEvaluationInternal( numVariables, coeffRing, valuesAt ) ;
-    blackBox.type = BlackBoxIdeal;
-    blackBox = blackBox.getUpdatedBlackBox(blackBox);
-    blackBox = newClass( BlackBoxIdeal, blackBox ); 
+    blackBox := blackBoxIdealFromEvaluationInternal(BlackBoxIdeal, numVariables, coeffRing, valuesAt ) ;
+    --blackBox.type = BlackBoxIdeal;
+    --blackBox = newClass( BlackBoxIdeal, blackBox ); 
     return blackBox ;
 )
 
@@ -2237,7 +2424,7 @@ blackBoxIdealFromEvaluation(ZZ, Ring, Function) := HashTable => ( numVariables, 
 blackBoxIdealFromEvaluation( Ring, Function ) := HashTable => ( pRing, pValuesAt ) ->
 (
 
-   blackBox := blackBoxParameterSpaceInternal(pRing );
+   blackBox := blackBoxParameterSpaceInternal(BlackBoxIdeal, pRing );
    blackBox.type = BlackBoxIdeal;
    blackBox.registerPointProperty ("valuesAt", (bb,point)->pValuesAt(point) ); --sets isZeroAt, jacobianAt, rankJacobianAt and numGenerators
 
@@ -2251,8 +2438,7 @@ blackBoxIdealFromEvaluation( Ring, Function ) := HashTable => ( pRing, pValuesAt
    );
 
    check(); 
-   blackBox = blackBox.getUpdatedBlackBox(blackBox);
-   blackBox = newClass( BlackBoxIdeal, blackBox ); 
+   --blackBox = newClass( BlackBoxIdeal, blackBox ); 
    return blackBox;
 )
 
@@ -2566,34 +2752,31 @@ TEST ///
     bbRankM.updatePointProperty("rankMat",rankMatNew)
     assert( rankMatNew(bbRankM,point) == (bbRankM.pointProperty("rankMat"))(point) );
     assert( rankMatNew(bbRankM,point) == (bbRankM.pointProperty(getGlobalSymbol "rankMat"))(point) );
+ 
 
+    -- assert bbRankM#?(global rankMat); -- fails..
+    assert bbRankM#?("rankMat");
 
-    bbRankMNew = rebuildBlackBox bbRankM;
+    assert( rankMatNew(bbRankM,point) == bbRankM.rankMat(point) );
 
-    assert bbRankMNew#?(global rankMat);
-    assert bbRankMNew#?("rankMat");
-
-    assert( rankMatNew(bbRankMNew,point) == bbRankMNew.rankMat(point) );
-
-    assert(bbRankMNew.coefficientRing===ZZ);
+    assert(bbRankM.coefficientRing===ZZ);
 
     rankMatNew := (blackBox, point)->4 --also influences bbRankM; because rebuild does not copy; it just exports new registered properties.
 
-    bbRankMNew.updatePointProperty("rankMat",rankMatNew)
+    bbRankM.updatePointProperty("rankMat",rankMatNew)
 
     (bbRankM.pointProperty("rankMat"))(point);
 
-    assert( rankMatNew(bbRankMNew,point) == bbRankMNew.rankMat(point) );
-    assert( rankMatNew(bbRankMNew,point) == bbRankMNew#"rankMat"(point) );
-    assert( rankMatNew(bbRankMNew,point) == (bbRankMNew.pointProperty("rankMat"))(point) );
-    assert( rankMatNew(bbRankMNew,point) == (bbRankMNew.pointProperty(getGlobalSymbol "rankMat"))(point) );
+    assert( rankMatNew(bbRankM,point) == bbRankM.rankMat(point) );
+    assert( rankMatNew(bbRankM,point) == bbRankM#"rankMat"(point) );
+    assert( rankMatNew(bbRankM,point) == (bbRankM.pointProperty("rankMat"))(point) );
+    assert( rankMatNew(bbRankM,point) == (bbRankM.pointProperty(getGlobalSymbol "rankMat"))(point) );
     keys bbRankM
     
     valuesAt := ( blackBox, point )-> matrix {{1,2}};
 
     bbRankM.registerPointProperty( "valuesAt", valuesAt );
-    -- that is unfortunate; registering a point property requires a rebuild.
-    bbRankM = rebuildBlackBox bbRankM
+    -- that is unfortunate; registering a point property requires a rebuild.   
      
     assert(  bbRankM.hasPointProperty("isZeroAt") );
 
@@ -2602,11 +2785,11 @@ TEST ///
     assert( bbRankM.numGenerators() =!= null)
 
     assert( bbRankM.numGenerators() === 2 )
-    -- bbRankMNew.numGenerators()
+    -- bbRankM.numGenerators()
     
     illegalPoint := matrix {{1,2,3,4,5,6}}; 
    
-    try ( bbRankMNew.rankMat(illegalPoint) ) then ( assert(false) ) else ();
+    try ( bbRankM.rankMat(illegalPoint) ) then ( assert(false) ) else ();
 
     bbRankM = blackBoxParameterSpace( 5 ,ZZ/7 )
 
@@ -2614,8 +2797,6 @@ TEST ///
 
     --bbRankM.registerPointProperty("valuesAt",valuesAt);
     bbRankM.rpp("valuesAt",valuesAt);
-
-    bbRankM = rebuildBlackBox bbRankM;
 
     point  = sub(point,ZZ/7); 
 
@@ -3068,7 +3249,7 @@ doc ///
 doc ///
     Key
         jetAt
-        (jetAt, HashTable, Matrix, ZZ, ZZ)
+        (jetAt, BlackBoxParameterSpace, Matrix, ZZ, ZZ)
     Headline
         find jets on the varieties defined by a black box
     Usage   
@@ -3131,51 +3312,7 @@ doc ///
         isCertainlySingularAt
 ///
 
-
-doc ///
-    Key
-        rebuildBlackBox
-    Headline
-        provide new added black box properties via point('.') operator
-    Usage   
-        rebuildBlackBox(bb)
-    Inputs  
-        bb: BlackBoxIdeal
-             a black box ideal
-        bb: BlackBoxParameterSpace
-             a black box parameter space
-    Outputs
-        : BlackBoxIdeal
-        : BlackBoxParameterSpace
-    Description
-        Text
-          Provide via registerPointProperty() added new black box properties
-          via point('.') operator (syntactic sugar)  
-        Example
-            K = ZZ/101
-            bbC = blackBoxParameterSpace(2,K);
-
-            valueAt = (point) -> ( 
-                 R = K[x,y];
-                 I = ideal(x^2-y^2+x^3);
-                 return sub(I,sub(point,R) )
-             )
-        Text
-            register this function in the BlackBox
-        Example
-            updatedbbC = bbC.registerPointProperty("valueAt",valueAt);
-        Text
-            in case we do not use updatedbbC we cannot access 'valueAt' via point operator:
-        Example
-            point = matrix{{3,6_K}};
-            try bbC.valueAt(point) else "error"
-            updatedbbC.valueAt(point) -- ok
-        Text
-            however, we can get construct another updated black box using 'rebuildBlackBox()'
-        Example
-            bbC = rebuildBlackBox(bbC);
-            bbC.valueAt(point) -- ok
-///
+ 
 
 doc ///
     Key
@@ -3786,8 +3923,8 @@ doc ///
 doc ///
     Key
         interpolateBB
-        (interpolateBB, ZZ, HashTable, Matrix)
-        (interpolateBB, ZZ, HashTable, Matrix, MapHelper)
+        (interpolateBB, ZZ, BlackBoxParameterSpace, Matrix)
+        (interpolateBB, ZZ, BlackBoxParameterSpace, Matrix, MapHelper)
     Headline
         find polynomials containing a list of jets
     Usage   
@@ -3955,6 +4092,16 @@ end
 -- Todo: introduce force mode option for registerPointProperty? (overwriting registered property?)
 -- todo: introduce for all known properties a precomposition with checkInputPoint
     
+
+
+-- Estring = new Type of String ; the goal was to distinguies string keys 
+-- from symbol keys without changing string visuaulization (net())
+-- but that turned out to be impossible(or too hard), because e.g. the operator '#' cannot be overloaded.
+
+
+--net (String) := Net =>(str)->(   strl := "\""| str| "\"" ;   return stack separate strl; );
+
+
 --(JK) why did I need comparison between a string and a symbol ? (jk) - if I recall correctly, it was related for intervals...
 
 String ? Symbol := (str,symb)->

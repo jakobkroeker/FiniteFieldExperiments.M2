@@ -267,6 +267,9 @@ new InterpolatedImage from Experiment :=  (InterpolatedImage,e)->
     return createInterpolatedImage(e);
 )
 
+-- offtopic; upstream: to increase readability it should be possible to pass parameters by name 
+-- for example  i.createAllInterpolatedIdeals(maxDeg:2, prec:1);
+
 -- todo : new type for mapData. Also support dot access to mapData members.
 
 doc ///

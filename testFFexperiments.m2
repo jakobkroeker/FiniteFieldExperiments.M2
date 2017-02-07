@@ -98,7 +98,7 @@ bbI.knownPointProperties()
 -- but not accessible
 
 -- the blackbox must be updated
-bbI = rebuildBlackBox bbI   
+-- bbI = rebuildBlackBox bbI   
 
 bbI.rankJacobianAtDup(matrix{{0,0,1_K}})
 -- now accessible
