@@ -100,41 +100,41 @@ protect knownAttributes;
 
 idealBlackBoxesExport = ()->
 (
-    exportMutable(eps);
-    exportMutable(jacobianAt);
-    exportMutable(rankJacobianAt);
-    exportMutable(valuesAt);
-    exportMutable(unknownIsValid);                 
-    exportMutable(numVariables);  
-    exportMutable(numGenerators);
-    exportMutable(isZeroAt);      
-    exportMutable(pointProperties);  
-    exportMutable(registerPointProperty); 
-    exportMutable(rpp);
-    exportMutable(upp);
-    exportMutable(setPointProperty);
-    exportMutable(setValuesAt);    
-    exportMutable(checkInputPoint);
-    exportMutable(deduceNumGenerators);
-    exportMutable(setIsZeroAt);
-    exportMutable(getUpdatedBlackBox);
-    exportMutable(type);
-    exportMutable(unknowns);
-    exportMutable(pointProperty);
-    exportMutable(updatePointProperty);
-    exportMutable(setJacobianAt);
-    exportMutable(equations);
+    exportMutable("eps");
+    exportMutable("jacobianAt");
+    exportMutable("rankJacobianAt");
+    exportMutable("valuesAt");
+    exportMutable("unknownIsValid");                 
+    exportMutable("numVariables");  
+    exportMutable("numGenerators");
+    exportMutable("isZeroAt");      
+    exportMutable("pointProperties");  
+    exportMutable("registerPointProperty"); 
+    exportMutable("rpp");
+    exportMutable("upp");
+    exportMutable("setPointProperty");
+    exportMutable("setValuesAt");    
+    exportMutable("checkInputPoint");
+    exportMutable("deduceNumGenerators");
+    exportMutable("setIsZeroAt");
+    exportMutable("getUpdatedBlackBox");
+    exportMutable("type");
+    exportMutable("unknowns");
+    exportMutable("pointProperty");
+    exportMutable("updatePointProperty");
+    exportMutable("setJacobianAt");
+    exportMutable("equations");
 
-    exportMutable(hasPointProperty);
-    exportMutable(knownPointProperties);
-    exportMutable(knownPointPropertiesAsSymbols);
+    exportMutable("hasPointProperty");
+    exportMutable("knownPointProperties");
+    exportMutable("knownPointPropertiesAsSymbols");
 
-    exportMutable(knownMethods);
-    exportMutable(knownAttributes);
-    exportMutable(numTrials);
-    exportMutable(setSingularityTestOptions);
-    exportMutable(updateSingularityTest);
-    exportMutable(singularityTestOptions);
+    exportMutable("knownMethods");
+    exportMutable("knownAttributes");
+    exportMutable("numTrials");
+    exportMutable("setSingularityTestOptions");
+    exportMutable("updateSingularityTest");
+    exportMutable("singularityTestOptions");
 
 )
 
@@ -482,7 +482,6 @@ doc ///
         : Ideal
              ideal with integer coefficients with the same zero set over QQ as the input ideal
     Description
-        Example          
         Text
            \break  Example:  convert an ideal with coefficients in QQ to an ideal with   coefficients in ZZ
         Example          

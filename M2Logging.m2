@@ -61,28 +61,28 @@ M2LoggerProtect = ()->
 
 M2LoggerExport = ()->
 (
-    exportMutable(setLogLevel);
-    exportMutable(getLogLevel);
+    exportMutable("setLogLevel");
+    exportMutable("getLogLevel");
 
 
    --getLogLevel1 := global getLogLevel;
    --getLogLevel1 = getLogLevel;
    --getLogLevel1 = getGlobalSymbol(M2Logging.Dictionary, "getLogLevel);
 
-   exportMutable(getLogLevelName);
-   exportMutable(name);
-   exportMutable(displayName);
-   exportMutable(displayMsgLevel);
+   exportMutable("getLogLevelName");
+   exportMutable("name");
+   exportMutable("displayName");
+   exportMutable("displayMsgLevel");
 
-   exportMutable(fatal);
-   exportMutable(warning);
+   exportMutable("fatal");
+   exportMutable("warning");
  
-   exportMutable(FATAL);
-   exportMutable(ERROR);
-   exportMutable(WARNING);
-   exportMutable(INFO);
-   exportMutable(DEBUG);
-   exportMutable(TRACE);
+   exportMutable("FATAL");
+   exportMutable("ERROR");
+   exportMutable("WARNING");
+   exportMutable("INFO");
+   exportMutable("DEBUG");
+   exportMutable("TRACE");
 );
 
 getLogLevel := getLogLevel;

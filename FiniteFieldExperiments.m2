@@ -124,83 +124,83 @@ FiniteFieldExperimentsProtect = ()->
 
 FiniteFieldExperimentsExport  = ()->
 (
-    exportMutable(bareIdeals);
-  exportMutable(experiment);
-  exportMutable(reset);
-  exportMutable(pointKey);
-  exportMutable(setPointIterator);
-  exportMutable(setPointGenerator);
-  exportMutable(printInterpolatedIdeals);
-  exportMutable(membershipPrecision);
-  exportMutable(setMembershipPrecision);
+  exportMutable("bareIdeals");
+  exportMutable("experiment");
+  exportMutable("reset");
+  exportMutable("pointKey");
+  exportMutable("setPointIterator");
+  exportMutable("setPointGenerator");
+  exportMutable("printInterpolatedIdeals");
+  exportMutable("membershipPrecision");
+  exportMutable("setMembershipPrecision");
 
-  exportMutable(clearWatchedProperties);
-  exportMutable(testDebug);
-  exportMutable(next);
-  exportMutable(begin);
-  exportMutable(count);
-  exportMutable(countinfo);
-  exportMutable(point);
-  exportMutable(collectedCount);
-  exportMutable(pointKeys);
-  exportMutable(points);
-  exportMutable(trials);
-  exportMutable(interpolatedIdeals);
-  exportMutable(createAllInterpolatedIdeals);
-  exportMutable(interpolatedIdealKeys);
+  exportMutable("clearWatchedProperties");
+  exportMutable("testDebug");
+  exportMutable("next");
+  exportMutable("begin");
+  exportMutable("count");
+  exportMutable("countinfo");
+  exportMutable("point");
+  exportMutable("collectedCount");
+  exportMutable("pointKeys");
+  exportMutable("points");
+  exportMutable("trials");
+  exportMutable("interpolatedIdeals");
+  exportMutable("createAllInterpolatedIdeals");
+  exportMutable("interpolatedIdealKeys");
  
-  exportMutable(coefficientRingCardinality);
-  exportMutable(pointLists);
-  exportMutable(pointsByKey);
+  exportMutable("coefficientRingCardinality");
+  exportMutable("pointLists");
+  exportMutable("pointsByKey");
 
-  exportMutable(countData);
+  exportMutable("countData");
 
-  exportMutable(setIsInteresting);
-  exportMutable(isInteresting);
+  exportMutable("setIsInteresting");
+  exportMutable("isInteresting");
 
-  exportMutable(getExperimentData);
-  exportMutable(ignoreProperty);
-  exportMutable(propertyIsWatched);
-  exportMutable(ignoreProperties);
+  exportMutable("getExperimentData");
+  exportMutable("ignoreProperty");
+  exportMutable("propertyIsWatched");
+  exportMutable("ignoreProperties");
 
 
-  exportMutable(update);
-  exportMutable(updateExperiment);
-  exportMutable(saveData);
-  exportMutable(loadData);
+  exportMutable("update");
+  exportMutable("updateExperiment");
+  exportMutable("saveData");
+  exportMutable("loadData");
 
- exportMutable(propertyList);
- exportMutable(clear);
- exportMutable(rankJacobianAtKey);
- exportMutable(watchProperties);
- exportMutable(watchProperty);
- exportMutable(propertyName);
- exportMutable(propertyAt);
+ exportMutable("propertyList");
+ exportMutable("clear");
+ exportMutable("rankJacobianAtKey");
+ exportMutable("watchProperties");
+ exportMutable("watchProperty");
+ exportMutable("propertyName");
+ exportMutable("propertyAt");
 
- exportMutable(tryProperty);
+ exportMutable("tryProperty");
 
- exportMutable(recordedProperties);
- exportMutable(watchedProperties);
- exportMutable(setWatchedProperties);
+ exportMutable("recordedProperties");
+ exportMutable("watchedProperties");
+ exportMutable("setWatchedProperties");
 
- exportMutable(useRankJacobianAt);
- exportMutable(usedRankJacobianAt);
+ exportMutable("useRankJacobianAt");
+ exportMutable("usedRankJacobianAt");
  
 
-  exportMutable(pointsPerComponent);
-  exportMutable(setPointsPerComponent);
-  exportMutable(stratificationIntervalView);
+  exportMutable("pointsPerComponent");
+  exportMutable("setPointsPerComponent");
+  exportMutable("stratificationIntervalView");
 
  
-  exportMutable(countsByCount);
+  exportMutable("countsByCount");
 
- exportMutable(estimateStratification2);
- exportMutable(experimentData);
- exportMutable(isRandom);
- exportMutable(compatible);
+ exportMutable("estimateStratification2");
+ exportMutable("experimentData");
+ exportMutable("isRandom");
+ exportMutable("compatible");
  
- exportMutable(createExperimentData);
- exportMutable(createMapHelper);
+ exportMutable("createExperimentData");
+ exportMutable("createMapHelper");
 ) 
 
 undocumented {
@@ -246,7 +246,7 @@ needsPackage "SimpleDoc";
 needsPackage "Text";
 
 
-exportMutable(savedExperimentData412398472398473923847);
+exportMutable("savedExperimentData412398472398473923847");
 
 FiniteFieldExperimentsExport();
 
