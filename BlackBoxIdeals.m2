@@ -93,6 +93,7 @@ idealBlackBoxesProtect = ()->
     --protect knownProperties;
     --protect createMapHelper;
     protect updateBlackBox;
+    protect setComponentCalculator;
 );
 
 --todo: fix dublicate code,  -  padicLiftProtect and padicLiftExport
@@ -142,6 +143,7 @@ idealBlackBoxesExport = ()->
     exportMutable("updateSingularityTest");
     exportMutable("singularityTestOptions");
     exportMutable("updateBlackBox");
+    exportMutable("setComponentCalculator");
 )
 
 -- the following symbols which are marked as undocumented are in fact documented 
@@ -185,7 +187,7 @@ needsPackage "Text";
 BlackBoxLogger = Logger("BlackBoxIdeals");
 
 -- todo: how to switch this on and off by the user? using closures again? 
--- if BlackBoxIdeals#Options#DebuggingMode then 
+--if BlackBoxIdeals#Options#DebuggingMode then 
 --    BlackBoxLogger.setLogLevel(LogLevel.DEBUG);
 
 if BlackBoxIdeals#Options#DebuggingMode then
@@ -827,8 +829,8 @@ jetAtSingleTrial( HashTable, Matrix, ZZ ) := MutableHashTable => ( blackBox,  po
     retVal := null;
     if not (blackBox.isZeroAt(point))  then
     (
-       retVal = new HashTable from { "succeeded" => false, "jet" => null, "failedJetLength" =>0 , "jetLength" => jetLength};
-       return retVal;
+        retVal = new HashTable from { "succeeded" => false, "jet" => null, "failedJetLength" =>0 , "jetLength" => jetLength};
+        return retVal;
     );
 
     liftingFailed := false;
@@ -890,8 +892,8 @@ jetAtSingleTrial( HashTable, Matrix, ZZ ) := MutableHashTable => ( blackBox,  po
     
         if not (0==rightHandSide % jacobianM2Transposed ) then 
         (
-           failedJetLength = epsPrecision;
-           liftingFailed=true; break; 
+            failedJetLength = epsPrecision;
+            liftingFailed=true; break; 
         );
 
         x := rightHandSide // jacobianM2Transposed ;
@@ -948,8 +950,8 @@ isCertainlySingularAt = method();
 isCertainlySingularAt( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials ) ->
 --isCertainlySingularAt( HashTable, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials ) ->
 (
-   if ( numTrials<1 ) then error "isCertainlySingularAt: expected numTrials >=1 ";
-  
+    if ( numTrials<1 ) then error "isCertainlySingularAt: expected numTrials >=1 ";
+    
     for i in 1..numTrials do
     (
         worstJet := jetAtSingleTrial ( blackBox,  point, jetLength);
@@ -968,7 +970,9 @@ isCertainlySingularAt( BlackBoxParameterSpace, Matrix, HashTable) := MutableHash
 );
 
 
--- 'keysWithoutSymbols': returns hashtable keys without symbol keys.
+-- keysWithoutSymbols(): 
+-- 
+-- returns hashtable keys without symbol keys.
 --
 keysWithoutSymbols = method();
 keysWithoutSymbols(HashTable) := List => (bb)->
@@ -980,8 +984,8 @@ keysWithoutSymbols(HashTable) := List => (bb)->
     (  
         if (class key)===Symbol then
         (
-        keyAsString := toString key;
-        if bbh#?keyAsString then
+            keyAsString := toString key;
+            if bbh#?keyAsString then
                 keylistResult=delete(key,keylistResult);
         );
     );
@@ -1029,6 +1033,9 @@ new BlackBoxIdeal from Thing := ( E, thing) ->
 --
 MapHelper = new Type of HashTable;
 
+--
+--
+--
 createMapHelper = (mapMatrix, imageRing) -> 
 (
     mapData := new MutableHashTable;
@@ -1093,10 +1100,11 @@ new InterpolatedIdeal from List :=  (InterpolatedIdealAncestor,l)->
 -- interpolate()
 --
 -- find linear combinations of monomials containing a given jet
+-- it seems that currently jetList have only one entry.
 --
 interpolate = (mons, jetList) -> 
 (
-    bblog.debug("interpolate call; mons" | toExternalString mons | "; jetList :" | toString jetList);    
+    bblog.debug("--interpolate call; \n --mons : " | toString mons | ";\n --jetList :" | toString jetList);    
     R := ring mons;
     K := coefficientRing R;
     jetsSucceeded := select(jetList, jetP->jetP#"succeeded");
@@ -1105,12 +1113,28 @@ interpolate = (mons, jetList) ->
         error throw new SingularPointException from {"errorMessage"=>"jets not succeed. Point is not smooth?";}
     );
     -- substitute jets into the monomials and take coefficients
+    -- die jets werden in jedes monom eingesetzt. (matrix : #monome x 1 für einen jet.)
+    -- substitutedList := apply(jetList, jetP ->   sub(mons, jetP#"jet"));
+    -- nun haben wir für je einen jet J anstatt n monome n polynome in eps. 
+    -- 'last coefficients' gruppiert die Koeffizienten nach Grad von 'eps', d.h. für jeden Grad von eps 
+    -- haben wir eine Matrix-Zeile mit #monome Einträgen.
+    -- BlackBoxLogger.debug("interpolate, substituded:" | toString substitutedList);
+    -- coeffs := apply(substitutedList, sp-> coefficients sp);    
+    -- BlackBoxLogger.debug("interpolate, coeffs:" | toString coeffs);
     coeffList := apply(jetList,jetP ->  sub(last coefficients sub(mons, jetP#"jet"),K));
-    BlackBoxLogger.debug("interpolate, coeffList:" | toExternalString coeffList);
-    -- find interpolation solution
-    s := syz fold((a,b)->(a||b),coeffList);
+    BlackBoxLogger.debug("interpolate, coeffList:" | toString coeffList);    
+    -- haben wir einen weiteren Jet, so muss die gleiche Linearkombination der Spalten für den ersten
+    -- auch für den zweiten Jet gelten
+    --  => wir hängen die Koeffizientenmatrix für den zweiten eingesetzten jet einfach an die erste Matrix unten dran
+    --    (weitere Zeilen kommen hinzu, Kommando 'fold'; mit || als Konkatenation)
+    folded := fold((a,b)->(a||b),coeffList);
+    BlackBoxLogger.debug("interpolate, folded coefflist" | toString folded);
+    -- nun suchen wir für die Spalten eine Linearkombination, so dass jede Zeile zu 0 wird. (jet auf der Komponente).
+    -- find interpolation solution    
+    s := syz folded; -- todo question: is the syz command necessary here? 
+    BlackBoxLogger.debug("interpolate, syzygies" | toString s);
     -- make polynomials from the solution
-    -- todo maybe mingens is slow
+    -- (jk) todo: is mingens fast enough?
     I := ideal mingens ideal(mons*s);
     I
 )
@@ -1202,17 +1226,26 @@ createInterpolatedIdeal (ZZ, HashTable, Matrix, String) := InterpolatedIdeal => 
 );
 
 
--- should be private, since each blackbox needs an own component calculator.
+-- createSimpleComponentCalculator should be private, since each blackbox needs an own component calculator.
 
 -- or, the jets should be stored in the blackBox
 
 
-createSimpleComponentCalculator = () ->
+-- development remark: we need jets at least per blackbox individually.
+
+
+createSimpleComponentCalculator = (blackBoxParameter) ->
 (
+
+    blackBox := blackBoxParameter;
+
     simpleComponentCalculator := MutableHashTable;
+    
+    -- cached component candidates
     
     componentCandidates := new MutableHashTable; -- should not be a HashTable but a type
 
+    -- cached jets
 
     jets := new MutableHashTable;
 
@@ -1234,12 +1267,15 @@ createSimpleComponentCalculator = () ->
         onComponentPrecision=precision;
     );
 
+    -- todo: rename to isProbablyOnComponent
+    --
     isOnComponent := method();
 
+    
     --
     -- uses a single long jet to test if a point is on a component.
     --
-    isOnComponent (BlackBoxParameterSpace, Ideal, Matrix, ZZ) := Boolean => (blackBox, componentIdeal, point, onComponentPrecisionParam)->
+    isOnComponent ( Ideal, Matrix, ZZ) := Boolean => (componentIdeal, point, onComponentPrecisionParam)->
     (
         if not (jets#?point) then
         (        
@@ -1258,37 +1294,41 @@ createSimpleComponentCalculator = () ->
 
         if jetP#"succeeded" then 
         (
-            print "succeeded";
+            -- check if the point is on the component or not
+            -- print "succeeded";            
+            -- testing throw new SingularPointException from {"errorMessage"=>"jets not succeeded. Point is not smooth?";};
             return (0 == sub( componentIdeal, jetP#"jet" ));
         )
         else
         (
-            print "point not smooth";
-            error "point is not smooth";
+            --print "point not smooth";
+            --error "point is not smooth";
+            throw new SingularPointException from {"errorMessage"=>"jets not succeeded. Point is not smooth?";};
         );
 
     );
 
-    isOnComponent (BlackBoxParameterSpace, Ideal, Matrix) := Boolean => (blackBox, componentIdeal, point)->
+    isOnComponent ( Ideal, Matrix) := Boolean => ( componentIdeal, point)->
     (
-        return (blackBox, componentIdeal, point, onComponentPrecision);
+        return ( componentIdeal, point, onComponentPrecision);
     );
 
-    isOnComponent (String , Matrix, ZZ) := Boolean => (componentId, point, onComponentPrecision)->
+    isOnComponent ( String , Matrix, ZZ) := Boolean => (componentId, point, onComponentPrecision)->
     (
         if (not componentCandidates#?componentId) then error "component does not exist";
-        return isOnComponent(componentCandidates#?componentId,  point, onComponentPrecision) ;
+        return isOnComponent( componentCandidates#?componentId,  point, onComponentPrecision) ;
     );
     
-     isOnComponent (String , Matrix, ZZ) := Boolean => (componentId, point)->
+    isOnComponent ( String , Matrix, ZZ) := Boolean => (componentId, point)->
     (
         if (not componentCandidates#?componentId) then error "component does not exist";
-        return isOnComponent(componentCandidates#?componentId,  point, onComponentPrecision) ;
+        return isOnComponent( componentCandidates#?componentId,  point, onComponentPrecision) ;
     );
 
 
-    simpleComponentCalculator.interpolateComponents  = (blackBox, pointList, interpolationMaxDegree, onComponentPrecision) -> 
+    simpleComponentCalculator.interpolateComponents  = (pointList, interpolationMaxDegree, onComponentPrecision) -> 
     (
+        -- print "InterpolateComponents";
         idealCount := 0;
         localInterpolatedIdeals := {};
 
@@ -1298,8 +1338,7 @@ createSimpleComponentCalculator = () ->
 
         for point in pointList do
         (
-            print "point ";
-            print (toString point);
+            BlackBoxLogger.debug("interpolateComponents: point "| toString point );
 
             --time if bb.isCertainlySingularAt(point) then 
             --(
@@ -1311,47 +1350,50 @@ createSimpleComponentCalculator = () ->
             bIsOnComponent := false;
             for interpolData in localInterpolatedIdeals do
             (
-                try 
-                (  
-                    if  isOnComponent (  interpolData#"ideal", point, 0 ) then
-                        (
-                            if  isOnComponent (  interpolData#"ideal", point, onComponentPrecision ) then
-                            (
-                                bIsOnComponent = true; 
-                                print "bIsOnComponent";
-                                break;
-                            );
-                        ); 
-                )  
-                else 
+                -- at first do a cheap test with precision = 0;
+                isOnComponentPrecision0Result := isOnComponent (  interpolData#"ideal", point, 0 );
+                if ((class isOnComponentPrecision0Result)=== SingularPointException) then
                 (
                     pointIsSingular = true;
                     break;
-                );                        
+                );
+                if isOnComponentPrecision0Result then
+                (
+                    isOnComponentResult := isOnComponent ( interpolData#"ideal", point, onComponentPrecision );
+                    if ((class isOnComponentResult) === SingularPointException) then
+                    (
+                        pointIsSingular = true;
+                        break;
+                    );
+                    if (isOnComponentResult) then
+                    (
+                        bIsOnComponent = true; 
+                        --print "bIsOnComponent";
+                        break;
+                    );
+                ); 
             );
-            if (bIsOnComponent or pointIsSingular) then 
+            if (bIsOnComponent) then 
             (
+                BlackBoxLogger.debug("createInterpolatedIdeal: point "| toString point| " is on component!");
+                continue;
+            );
+            if ( pointIsSingular) then 
+            (
+                BlackBoxLogger.debug("createInterpolatedIdeal: point "| toString point| " was singular");
                 continue;
             );
 
-            err := catch  (
-                localInterpolatedIdeals = localInterpolatedIdeals | { createInterpolatedIdeal (interpolationMaxDegree, blackBox, point, ("ideal_" |toString idealCount ))  };  
-            );
+            localInterpolatedIdealOrError := catch createInterpolatedIdeal (interpolationMaxDegree, blackBox, point, ("ideal_" |toString idealCount ));                     
 
-            idealCount = idealCount +1 ;
-
-            if ( SingularPointException === (class err)) then 
+            if ( SingularPointException === (class localInterpolatedIdealOrError)) then 
             (
-                print "singular point";
-                BlackBoxLogger.debug("createInterpolatedIdeal: point"| toString point| " was singular");
+                BlackBoxLogger.debug("createInterpolatedIdeal: point "| toString point| " was singular");
             )
             else  
-            ( 
-                if (err =!= null) then
-                (
-                        throw "unexpected error2";
-                        print toString err;  
-                );
+            (                       
+                  localInterpolatedIdeals = localInterpolatedIdeals | { localInterpolatedIdealOrError  };  
+                  idealCount = idealCount +1 ;
             );
         );
         -- print "timing for loop", T#0;
@@ -1359,16 +1401,17 @@ createSimpleComponentCalculator = () ->
             apply ( #localInterpolatedIdeals, idx-> (("ideal_" |toString idx ) => localInterpolatedIdeals#idx ) ) ;
 
         simpleComponentCalculator.setComponentCandidates(interpolatedIdeals);
+        return simpleComponentCalculator.componentCandidates();
     );
 
 
 
-    simpleComponentCalculator.componentCandidatesAt = (point)->
+    simpleComponentCalculator.componentCandidatesAt = ( point)->
     (
         candidates := {};
         for componentKey in keys componentCandidates do
         (
-            if ( isOnComponent(componentKey, point, onComponentPrecision)) then
+            if ( isOnComponent( componentKey, point)) then
             (
                 candidates = candidates | { componentKey };
             );
@@ -1996,161 +2039,47 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
 
     );
 
-    componentCandidates := new MutableHashTable; -- should not be a HashTable but a type
-
-
-    jets := new MutableHashTable;
+    -- todo: choose later a different component calculator depending on strategy option
+    
+    
+    
+    componentCalculator := createSimpleComponentCalculator(blackBox);
+    
+    -- better: check component calculator type /interface.
+    blackBox.setComponentCalculator = (componentCalculatorObj)->
+    (
+        componentCalculator = componentCalculatorObj;
+    );
 
     blackBox.setComponentCandidates = (cc)->
     ( 
-        -- jets = new MutableHashTable; -- clear old cache for point jet        
-        componentCandidates = cc;
+        componentCalculator.setComponentCandidates(cc);        
     );
 
     blackBox.componentCandidates = ()->
     (
-        return new HashTable from componentCandidates;
+        return componentCalculator.componentCandidates();
     );
 
-    onComponentPrecision := 5;
-
+    -- TODO well, this should be more generic as different component calculators may 
+    -- have different configuration settings ( so may be another component calculator has no 'onComponentPrecision' property)
+    --
     blackBox.setOnComponentPrecision = (precision)->
     (
-        onComponentPrecision=precision;
+        componentCalculator.setOnComponentPrecision(precision);
     );
-
-    isOnComponent := method();
-
-    --
-    -- uses a single long jet to test if a point is on a component.
-    --
-    isOnComponent (Ideal, Matrix, ZZ) := Boolean => (componentIdeal, point, onComponentPrecision)->
-    (
-        if not (jets#?point) then
-        (        
-            -- we have no cached jets for the given point => compute jets
-            --jetP := jetAt(interpolation.blackBoxIdeal() ,point,onComponentPrecision, 1);
-            jets#point = jetAt( blackBox ,point, onComponentPrecision, 1);
-        );
-        jetP := jets#point;  
-
-        if jetP#"jetLength" < onComponentPrecision then 
-        (
-            -- we have cashed jets, but they are too short.. => compute jets of requested length
-            jets#point = jetAt( blackBox ,point,onComponentPrecision, 1);
-            jetP = jets#point;  
-        );
-
-        if jetP#"succeeded" then 
-        (
-            print "succeeded";
-            return (0 == sub( componentIdeal, jetP#"jet" ));
-        )
-        else
-        (
-            print "point not smooth";
-            error "point is not smooth";
-        );
-
-    );
-
-
-
-    isOnComponent (String , Matrix, ZZ) := Boolean => (componentId, point, onComponentPrecision)->
-    (
-        if (not componentCandidates#?componentId) then error "component does not exist";
-        return isOnComponent(componentCandidates#?componentId,  point, onComponentPrecision) ;
-    );
-
 
     blackBox.interpolateComponents  = (pointList, maxDegree, onComponentPrecision) -> 
     (
-        idealCount := 0;
-        localInterpolatedIdeals := {};
-
-        -- T := timing 
-        
-        err := null;
-
-        for point in pointList do
-        (
-            print "point ";
-            print (toString point);
-
-            --time if bb.isCertainlySingularAt(point) then 
-            --(
-            --   continue;
-            --);
-            pointIsSingular := false;
-
-            -- check if point is already on one of the known components
-            bIsOnComponent := false;
-            for interpolData in localInterpolatedIdeals do
-            (
-                try 
-                (  
-                    if  isOnComponent (  interpolData#"ideal", point, 0 ) then
-                        (
-                            if  isOnComponent (  interpolData#"ideal", point, onComponentPrecision ) then
-                            (
-                                bIsOnComponent = true; 
-                                print "bIsOnComponent";
-                                break;
-                            );
-                        ); 
-                )  
-                else 
-                (
-                    pointIsSingular = true;
-                    break;
-                );                        
-            );
-            if (bIsOnComponent or pointIsSingular) then 
-            (
-                continue;
-            );
-
-            err := catch  (
-                localInterpolatedIdeals = localInterpolatedIdeals | { createInterpolatedIdeal (maxDegree, blackBox, point, ("ideal_" |toString idealCount ))  };  
-            );
-
-            idealCount = idealCount +1 ;
-
-            if ( SingularPointException === (class err)) then 
-            (
-                print "singular point";
-                BlackBoxLogger.debug("createInterpolatedIdeal: point"| toString point| " was singular");
-            )
-            else  
-            ( 
-                if (err =!= null) then
-                (
-                        throw "unexpected error2";
-                        print toString err;  
-                );
-            );
-        );
-        -- print "timing for loop", T#0;
-        interpolatedIdeals := new MutableHashTable from 
-            apply ( #localInterpolatedIdeals, idx-> (("ideal_" |toString idx ) => localInterpolatedIdeals#idx ) ) ;
-
-        blackBox.setComponentCandidates(interpolatedIdeals);
+        return componentCalculator.interpolateComponents( pointList, maxDegree, onComponentPrecision);
     );
-
-
 
     blackBox.componentCandidatesAt = (point)->
     (
-        candidates := {};
-        for componentKey in keys componentCandidates do
-        (
-            if ( isOnComponent(componentKey, point, onComponentPrecision)) then
-            (
-                candidates = candidates | { componentKey };
-            );
-        );
-        return candidates;
+        return componentCalculator.componentCandidatesAt(point);
     );
+    
+    
 
     -- blackBox.registerPointProperty("componentCandidatesAt", componentCandidatesAt);
    

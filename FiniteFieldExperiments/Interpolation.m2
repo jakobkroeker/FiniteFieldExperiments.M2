@@ -86,92 +86,21 @@ createInterpolatedImage(Experiment,Ring, MapHelper) := HashTable => (experiment,
    
     jets := new MutableHashTable;
 
-     -- duplicate code..(otherwise too many parameters...)
      interpolation.isOnComponent = method();
      interpolation.isOnComponent (HashTable,Matrix,ZZ) := Boolean =>  
-                         (interpolationIdeal,point,onComponentPrecision) -> (
-
-         if not (jets#?point) then
-         (        
-             --jetP := jetAt(interpolation.blackBoxIdeal() ,point,onComponentPrecision,1);
-             jets#point = jetAt( bb ,point,onComponentPrecision, 1);
-         );
-         jetP := jets#point;  
-
-         if jetP#"jetLength" < onComponentPrecision then 
-         (
-             jetP = jets#point;  
-             jets#point = jetAt( bb ,point,onComponentPrecision, 1);
-         );
-
-         if jetP#"succeeded" then (
-               0 == sub( interpolationIdeal, ((mapdata#"valueAtJet")(jetP))#"jet" )
-          ) else error "point not smooth"
+                         (interpolationIdeal,point,onComponentPrecision) -> 
+     (
+        return bb.isOnComponent(interpolationIdeal,point,onComponentPrecision);
      );
     interpolatedIdeals := {}; 
     -- better: interpolatedIdeals:= new MutableHashTable; ? but then we do not know if it was initialized??
     interpolation.createAllInterpolatedIdeals  = (maxDegree, onComponentPrecision) -> 
     ( 
-        idealCount := 0;
-        localInterpolatedIdeals := {};
         bb := interpolation.blackBoxIdeal();
-        -- T := timing 
-        for point in (interpolation.experiment()).points() do
-        ( 
-             --time if bb.isCertainlySingularAt(point) then 
-             --(
-             --   continue;
-             --);
-             pointIsSingular := false;
-             --
-             -- check if point is already on one of the known components
-             bIsOnComponent := false;
-             for interpolData in localInterpolatedIdeals do
-             (
-                 try (  
-                        if  interpolation.isOnComponent (  interpolData#"ideal", point, 0 ) then
-                         (
-                             if  interpolation.isOnComponent (  interpolData#"ideal", point, onComponentPrecision ) then
-                             (
-                                  bIsOnComponent = true; 
-                                  break;
-                             );
-                         ); 
-                     )  
-                    else (
-                    print ("pointIsSingular");
-                    pointIsSingular = true;
-                    break;
-                );
-             --       
-             );
-             if (bIsOnComponent or pointIsSingular) then 
-             (
-                 continue;
-             );
-             --debug
-             --print(localInterpolatedIdeals);
-             --print(point);
-             
-             interpolatedIdealOrException := catch createInterpolatedIdeal (maxDegree, interpolation.blackBoxIdeal(), point, ("ideal_" |toString idealCount )) ;          
-             if ( class interpolatedIdealOrException ===  SingularPointException) then
-             (
-                print( interpolatedIdealOrException); --debug
-                FFELogger.debug("createInterpolatedIdeal: point"| toString point| " was singular");
-             )
-             else
-             (
-               interpolatedIdeal := interpolatedIdealOrException;
-               localInterpolatedIdeals = localInterpolatedIdeals | { interpolatedIdeal };             
-               idealCount = idealCount +1 ;
-             );
-        );
-        -- print "timing for loop", T#0;        
-        interpolatedIdeals = new MutableHashTable from 
-           apply ( #localInterpolatedIdeals, idx-> (("ideal_" |toString idx ) => localInterpolatedIdeals#idx ) ) ;           
-       --print ("created interpolatedIdeals");
-       FFELogger.debug("created interpolatedIdeals");
-       return interpolation.interpolatedIdeals();
+        interpolatedIdeals = bb.interpolateComponents( (interpolation.experiment()).points(), maxDegree, onComponentPrecision);
+        --print "here interpolatedIdeals";
+        --print (toString interpolatedIdeals);
+        return interpolation.interpolatedIdeals();       
     );
 
     localMembershipPrecision := 10; -- does this belong to experimentData?
@@ -188,7 +117,7 @@ createInterpolatedImage(Experiment,Ring, MapHelper) := HashTable => (experiment,
     );
 
     interpolation.interpolatedIdealKeys = method();
-    interpolation.interpolatedIdealKeys (Matrix,ZZ) := Thing => (point,prec)->
+    interpolation.interpolatedIdealKeys (Matrix,ZZ) := Thing => (point, prec)->
     (
        numbers := {};
  
@@ -196,9 +125,9 @@ createInterpolatedImage(Experiment,Ring, MapHelper) := HashTable => (experiment,
 
         for key in keys interpolatedIdeals do
         (
-          if  interpolation.isOnComponent (  (interpolatedIdeals#key)#"ideal", point, 0,  ) then
+          if  bb.isOnComponent (  (interpolatedIdeals#key)#"ideal", point, 0,  ) then
           (
-              if  interpolation.isOnComponent (  (interpolatedIdeals#key)#"ideal", point, prec,  ) then
+              if bb.isOnComponent (  (interpolatedIdeals#key)#"ideal", point, prec  ) then
               (
                  numbers = numbers | {key};
               );
@@ -339,7 +268,6 @@ doc ///
         time is used when producing the jets)
     SeeAlso
         interpolate
-        isOnComponent
         createAllInterpolatedIdeals
         createInterpolatedIdeal
         interpolatedIdealKeys      
