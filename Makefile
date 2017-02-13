@@ -53,15 +53,18 @@ uninstallFiniteFieldExperiments:
 manualuninstall: uninstallPadicLift uninstallBlackBoxIdeals uninstallFiniteFieldExperiments uninstallM2Logging
 
 
-checkPadicLift:
+checkPadicLift: checkFFE
 	M2 --script testPadicLift.m2
 	
-check:
+checkFFE:
 	M2 --script testFFexperiments.m2
 
 #	M2 --script testPadicLift.m2
 
-test: check
+check: checkFFE checkPadicLift
+
+
+test: check 
 
 # will not work on mac (or at all? should consider auxiliary files!)
 install:
