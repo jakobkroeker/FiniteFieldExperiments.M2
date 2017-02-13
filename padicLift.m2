@@ -107,30 +107,30 @@ padicLiftExport = ()->
 (
   
     export( "GlobalInternalPadicLiftResultVariable");
-    exportMutable( unchanged);
-    exportMutable( normalized);
-    exportMutable( norms);
-    exportMutable( normalizedNorms);
-    exportMutable( initialLiftDepth);
-    exportMutable( maxLiftDepth);
-    exportMutable( initialLatticeDim);
-    exportMutable( latticeDimIncrementFkt);
-    exportMutable( maxLatticeDim);
-    exportMutable( verbose);
-    exportMutable( minColumnNormDistanceFactor);
-    exportMutable( foundMinPolynomialCandidate);
-    exportMutable( reducedLatticeBasis);
-    exportMutable( latticeBasisVectorNormsList);
-    exportMutable( currentLatticeDim);
-    exportMutable( liftInfo);
-    exportMutable( polynomial);
-    exportMutable( unknown);
-    exportMutable( maxLatticeDimension);
-    exportMutable( requiredLatticeDimension);
-    exportMutable( reductionOpts);
-    exportMutable( liftOptions);
-    exportMutable( tolerance);
-    exportMutable( decimalPrecision);     
+    exportMutable( "unchanged");
+    exportMutable( "normalized");
+    exportMutable( "norms");
+    exportMutable( "normalizedNorms");
+    exportMutable( "initialLiftDepth");
+    exportMutable( "maxLiftDepth");
+    exportMutable( "initialLatticeDim");
+    exportMutable( "latticeDimIncrementFkt");
+    exportMutable( "maxLatticeDim");
+    exportMutable( "verbose");
+    exportMutable( "minColumnNormDistanceFactor");
+    exportMutable( "foundMinPolynomialCandidate");
+    exportMutable( "reducedLatticeBasis");
+    exportMutable( "latticeBasisVectorNormsList");
+    exportMutable( "currentLatticeDim");
+    exportMutable( "liftInfo");
+    exportMutable( "polynomial");
+    exportMutable( "unknown");
+    exportMutable( "maxLatticeDimension");
+    exportMutable( "requiredLatticeDimension");
+    exportMutable( "reductionOpts");
+    exportMutable( "liftOptions");
+    exportMutable( "tolerance");
+    exportMutable( "decimalPrecision");     
 )
 
 -- testing reusage of same symbols in different packages. It seems not to work .
@@ -345,8 +345,10 @@ liftStep = ( systemData, vanishingCoordinates ) ->
     nextLiftDestRing := ZZ[]/nextchar; 
     localVanishingCoordinates := sub( vanishingCoordinates, nextLiftDestRing );
   
-   systemData.unknowns;
+    systemData.unknowns;
 
+    print(" --debug , localVanishingCoordinates: " |toString localVanishingCoordinates);
+    print(" --debug , valuesAt: " |toString systemData.valuesAt(localVanishingCoordinates));
     transposedM2JacobianAtSolution := transpose systemData.jacobianAt(localVanishingCoordinates); -- jacobian without degree information
 
     prime := ( factor currchar)#0#0;
@@ -395,10 +397,10 @@ testLiftStep = ()->
     assert( sub(IFZ, solution1) ==0 );   
     assert( sub(IFZ, solution2 ) ==0);        
 
-    bb := blackBoxIdeal(IFZ);
+    bb := blackBoxIdeal(IFZ,false);
     bb.jacobianAt(solution2);
 
-    nextApprox := nextLift( blackBoxIdeal(IFZ),solution2);
+    nextApprox := nextLift( blackBoxIdeal(IFZ,false),solution2);
     assert (sub (IFZ, nextApprox)==0);       
 
     nonsolution := matrix{ {2_K , 2_K} }; 
@@ -418,7 +420,7 @@ testLiftStep = ()->
     assert( sub(IFZ, solution1) ==0 );   
     assert( sub(IFZ, solution2 ) ==0);        
 
-    nextApprox = nextLift( blackBoxIdeal(IFZ) ,solution2);
+    nextApprox = nextLift( blackBoxIdeal(IFZ,false) ,solution2);
     assert (sub (IFZ, nextApprox)==0);       
 
 )
@@ -445,7 +447,7 @@ nextLift (HashTable, Matrix)  := Matrix=> (systemData , vanishingCoordinates) ->
 nextLift (Ideal, Matrix)  := Matrix=> (equationsIdeal , vanishingCoordinates) ->
 (
         if  ((coefficientRing ring equationsIdeal ) =!= ZZ) then error " nextLift() expects equationsIdeal in ZZ";
-    return nextLift(blackBoxIdeal(equationsIdeal), vanishingCoordinates);
+    return nextLift(blackBoxIdeal(equationsIdeal,false), vanishingCoordinates);
 )
 
 
@@ -499,7 +501,7 @@ doc ///
         Text    
             \break 4. compute next padic approximation
         Example
-            nextApprox = nextLift(blackBoxIdeal(IFZ),vanishingElem2)
+            nextApprox = nextLift(blackBoxIdeal(IFZ,false),vanishingElem2)
             sub (IFZ, nextApprox)
             assert (sub (IFZ, nextApprox)==0);                 
 ///
@@ -517,7 +519,7 @@ liftPoint =method();
 liftPoint (Ideal, Matrix, ZZ)  := Matrix=> (equationsIdeal , vanishingCoordinates,numLiftDepth) ->
 (
         if  ((coefficientRing ring equationsIdeal ) =!= ZZ) then error " liftPoint() expects equationsIdeal in ZZ";
-    return liftPoint(blackBoxIdeal(equationsIdeal), vanishingCoordinates,numLiftDepth);
+    return liftPoint(blackBoxIdeal(equationsIdeal,false), vanishingCoordinates,numLiftDepth);
 )
 
 liftPoint (HashTable, Matrix, ZZ)  := Matrix=>  ( systemData,  vanishingCoordinates , numLiftDepth) -> (
@@ -589,7 +591,7 @@ doc ///
             \break 6. compute the padic approximation  mod p^{2^4}. 
         Example
             liftPrecision := 4;
-            liftResult = liftPoint( blackBoxIdeal(IZZ), point, liftPrecision )
+            liftResult = liftPoint( blackBoxIdeal(IZZ,false), point, liftPrecision )
             sub (IZZ, liftResult)                
 ///
 	
@@ -616,7 +618,7 @@ testLiftPoint = ()->
     assert( sub(IFZ, solution2 ) ==0);        
 
     liftDepth:=10;
-    nextApprox := liftPoint( blackBoxIdeal(IFZ) ,solution2 ,liftDepth);
+    nextApprox := liftPoint( blackBoxIdeal(IFZ,false) ,solution2 ,liftDepth);
     assert (prime^(2^liftDepth)==char ring nextApprox);
 
     assert (sub (IFZ, nextApprox)==0);       
@@ -1201,7 +1203,7 @@ computeSingleMinPolyEx = method (Options=>{"options"=>new LiftOptions});
 computeSingleMinPolyEx (Ideal, Matrix, RingElement,RingElement) := 
 ReducedPadicLiftResult => opts -> ( equationsIdeal, solution, unknown, resultPolynomialVariable )->
 (
-   return computeSingleMinPolyEx( blackBoxIdeal(equationsIdeal), solution, unknown, resultPolynomialVariable ,"options"=>opts#"options");
+   return computeSingleMinPolyEx( blackBoxIdeal(equationsIdeal,false), solution, unknown, resultPolynomialVariable ,"options"=>opts#"options");
 )
 
 computeSingleMinPolyEx (HashTable, Matrix, RingElement,RingElement) := 
@@ -1322,7 +1324,7 @@ testComputeSingleMinPolyEx=()->
 computeMinPolys = method (Options=>{"options"=>new LiftOptions});
 computeMinPolys (Ideal, Matrix, List) := opts->(equationsIdeal, solutionPoint, unknownList)->
 (
-    return computeMinPolys( blackBoxIdeal(equationsIdeal),solutionPoint,unknownList);
+    return computeMinPolys( blackBoxIdeal(equationsIdeal,false),solutionPoint,unknownList);
 )
 
 computeMinPolys (HashTable, Matrix, List) := opts->(systemData, solutionPoint, unknownList)->
@@ -1377,7 +1379,7 @@ computeSingleMinPoly = method (Options=>{"options"=>new LiftOptions});
 
 computeSingleMinPoly (Ideal, Matrix, RingElement) :=  ReducedPadicLiftResult =>  opts->(equationsIdeal, solution, unknown ) ->
 (
-  return computeMinPolys( blackBoxIdeal(equationsIdeal), solution, unknown );
+  return computeMinPolys( blackBoxIdeal(equationsIdeal,false), solution, unknown );
 )
 
 
@@ -1449,7 +1451,7 @@ doc ///
         Text    
             \break do it
         Example          
-            liftResult2 = computeSingleMinPoly ( blackBoxIdeal(IFZ), solution2, (gens ring IFZ)#0 );
+            liftResult2 = computeSingleMinPoly ( blackBoxIdeal(IFZ,false), solution2, (gens ring IFZ)#0 );
         Text
             \break check lifted result correctness
         Example          
@@ -1498,20 +1500,20 @@ testComputeMinPolys = ()->
     -- a test, where startingLatticeDim is to big
     liftOptions := new LiftOptions;
     liftOptions#"initialLatticeDim"=6;
-    result = computeMinPolys( blackBoxIdeal(IFZ), solution, {  x  },"options"=>liftOptions );
+    result = computeMinPolys( blackBoxIdeal(IFZ,false), solution, {  x  },"options"=>liftOptions );
     assert(result#0#x#1==2*x+3);
 
     liftOptions  = new LiftOptions;
     liftOptions#"initialLatticeDim"=3;
-    result = computeMinPolys( blackBoxIdeal(IFZ), solution, {  x  },"options"=>liftOptions );
+    result = computeMinPolys( blackBoxIdeal(IFZ,false), solution, {  x  },"options"=>liftOptions );
     assert(result#0#x#1==2*x+3);
 
 
-    result = computeMinPolys( blackBoxIdeal(IFZ), solution, {    } );
+    result = computeMinPolys( blackBoxIdeal(IFZ,false), solution, {    } );
 
     -- root gluing test:
-    result = approxComplexSolutions( blackBoxIdeal(IFZ), solution  );
-)
+    result = approxComplexSolutions( blackBoxIdeal(IFZ,false), solution  );
+);
 
 
 
@@ -1592,7 +1594,7 @@ doc ///
             \break Compute minimal polynomial for x:
         Example        
             unknown = (gens RZ)#0
-            ( minimalPolynomialsTable , liftInfo )  = computeMinPolys  ( blackBoxIdeal(IFZ), solutionPoint, {unknown} );
+            ( minimalPolynomialsTable , liftInfo )  = computeMinPolys  ( blackBoxIdeal(IFZ,false), solutionPoint, {unknown} );
         Text
             \break The roots of the polynomial {\tt minimalPolynomialsTable#unknown }  are solutions for variable {\tt unknown}. \break
             Compare with factored initial polynomial FZ!

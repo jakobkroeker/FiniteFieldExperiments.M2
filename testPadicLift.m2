@@ -8,9 +8,4 @@ loadPackage("padicLift",Reload =>true)
 
 --viewHelp padicLift
 
-----------
-uninstallPackage"BlackBoxIdeals"
-restart
-loadPackage"BlackBoxIdeals"
-installPackage"BlackBoxIdeals"
-jetAt
+ 

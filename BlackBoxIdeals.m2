@@ -20,7 +20,7 @@ newPackage(
 needsPackage "M2Logging";
 
 
-export {
+export {   
     "clearCoeffDenominators",
     "BlackBoxIdeal",
     "BlackBoxParameterSpace",
@@ -50,7 +50,9 @@ export {
 idealBlackBoxesProtect = ()->
 (
     --protect eps;
-
+    protect withChecks;
+    protect enableChecks;
+    protect disableChecks;
     protect setComponentCandidates;
     protect componentCandidates;
     protect setOnComponentPrecision;
@@ -100,7 +102,9 @@ idealBlackBoxesProtect = ()->
 
 idealBlackBoxesExport = ()->
 (
-    
+    exportMutable("enableChecks");
+    exportMutable("disableChecks");
+    exportMutable("withChecks");
     exportMutable("setComponentCandidates");
     exportMutable("componentCandidates");
     exportMutable("setOnComponentPrecision");
@@ -711,7 +715,11 @@ deduceJacobianAt = ( blackBox, point )->
     numVariables := blackBox.numVariables ;      
 
     -- attention, duplicate code!!!
-    if (not ( blackBox.valuesAt( point )==0))  then  error("point does not belong to the ideal ! ");
+    if (blackBox.withChecks) then
+    (
+        if (not ( blackBox.valuesAt( point )==0))  then  
+            error("point does not belong to the ideal ! ");
+    );
     -- attention, duplicate code!!!
     
     epsRng := getEpsRing(rngPoint, 1);
@@ -763,6 +771,8 @@ testDeduceJacobianAt = ()->
     blackBoxDummy.valuesAt= (point)-> ( return sub(generators I, point); );
 
     blackBoxDummy.numVariables = #(gens R);
+    
+    blackBoxDummy.withChecks = true;
 
     computedJac := deduceJacobianAt( blackBoxDummy, point);
 
@@ -1453,6 +1463,18 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
     blackBox := new MutableHashTable;
     
     blackBox = newClass(resultType, blackBox);
+    
+    blackBox.withChecks = true;
+    
+    blackBox.disableChecks = ()->
+    (
+         blackBox.withChecks = false;
+    );
+    
+    blackBox.enableChecks =  ()->
+    (
+         blackBox.withChecks = true;
+    );
     
     -- public: 
     blackBox.coefficientRing = coeffRing;  
@@ -2227,7 +2249,11 @@ blackBoxIdealInternal := ( equationsIdeal)->
         ( bb, point )->
             (  
                 -- attention, duplicate code!!!
-                if (not ( blackBox.valuesAt( point )==0))  then  error("point does not belong to the ideal ! ");
+                if (blackBox.withChecks) then
+                (
+                    if (not ( blackBox.valuesAt( point )==0))  then  
+                        error("point does not belong to the ideal ! ");
+                );
                 -- attention, duplicate code!!!
                 jacobianM2MatrixAt := sub( blackBox.jacobian , point);
                 return jacobianM2MatrixAt;
@@ -2254,6 +2280,12 @@ blackBoxIdeal (Ideal) := BlackBoxIdeal =>(equationsIdeal)->
    return new BlackBoxIdeal from equationsIdeal;
 )
 
+blackBoxIdeal (Ideal, Boolean) := BlackBoxIdeal =>(equationsIdeal, withChecks)->
+(
+    bb := new BlackBoxIdeal from equationsIdeal;
+    bb.disableChecks();
+    return bb;
+)
 
 
 

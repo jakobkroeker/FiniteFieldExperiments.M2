@@ -159,7 +159,8 @@ testComputeRootsWithGP=()->
     decimalPrecision := 10;
     rootList := computeRootsWithGP(polynomial,decimalPrecision);
     assert(#rootList==2);
-    apply(rootList, el-> assert(sub(polynomial,x=>el)==0));
+    apply(rootList, el-> sub(polynomial,x=>el));
+    apply(rootList, el-> assert(sub(polynomial,x=>el)<10.0^-decimalPrecision));
 
     -- testing  root computation for apolynomial with rational coefficients
     x = null;
@@ -169,7 +170,8 @@ testComputeRootsWithGP=()->
     decimalPrecision = 10;
     rootList = computeRootsWithGP(polynomial,decimalPrecision);
     assert(#rootList==2);
-    apply(rootList, el-> assert(sub(polynomial,x=>el)==0));
+    apply(rootList, el-> sub(polynomial,x=>el));
+    apply(rootList, el-> assert(sub(polynomial,x=>el)<10.0^-decimalPrecision));
 
     -- testing root computation for a polynomial with indexed variable.
     y := null;  y   = symbol y;
@@ -179,7 +181,8 @@ testComputeRootsWithGP=()->
     decimalPrecision = 10;
     rootList = computeRootsWithGP(polynomial,decimalPrecision);
     assert(#rootList==2);
-    apply(rootList, el-> assert(sub(polynomial,y_1=>el)==0));
+    apply(rootList, el-> sub(polynomial,y_1=>el));
+    apply(rootList, el-> assert(sub(polynomial,y_1=>el)<10.0^-decimalPrecision));
 
 )
 

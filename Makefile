@@ -52,6 +52,10 @@ uninstallFiniteFieldExperiments:
 
 manualuninstall: uninstallPadicLift uninstallBlackBoxIdeals uninstallFiniteFieldExperiments uninstallM2Logging
 
+
+checkPadicLift:
+	M2 --script testPadicLift.m2
+	
 check:
 	M2 --script testFFexperiments.m2
 

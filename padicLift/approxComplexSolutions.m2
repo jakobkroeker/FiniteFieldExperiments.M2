@@ -127,7 +127,7 @@ approxComplexSolutions = method (Options=>{"options"=>new LiftOptions,"decimalPr
 
 approxComplexSolutions (Ideal, Matrix) := opts->(inputIdeal, solutionPoint)->
 (   
-	return approxComplexSolutions( blackBoxIdeal(inputIdeal), solutionPoint );
+	return approxComplexSolutions( blackBoxIdeal(inputIdeal,false), solutionPoint );
 )
 
 -- may have problems in case unknownList is different from (gens ring inputIdeal order). Therefore removed the parameter for a moment.
