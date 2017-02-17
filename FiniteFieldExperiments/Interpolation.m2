@@ -32,7 +32,7 @@ TEST ///
   bb = blackBoxIdeal I;     
   -- a point on the line  
   point = matrix{{0,0,1_K}}
-  assert (ideal(x,y) == interpolateBB(1,bb,point))
+  assert (ideal(x,y) == interpolateBB(bb,point,1))
 ///
 
 
@@ -49,16 +49,16 @@ TEST ///
   intersectionPoint = matrix{{0,0,2_K}}
   notApoint = matrix{{1,1,1_K}}
   pointQQ = matrix{{0,0,1_QQ}}
-  assert (ideal(x,y) == interpolateBB(1,bb,pointOnLine))
+  assert (ideal(x,y) == interpolateBB(bb,pointOnLine,1))
   -- no polynomials of degree 1 containing the surface
-  assert (ideal(0_R) == interpolateBB(1,bb,pointOnSurface))
-  assert (ideal(x^2+y^2+z^2+1) == interpolateBB(2,bb,pointOnSurface))
+  assert (ideal(0_R) == interpolateBB(bb,pointOnSurface,1))
+  assert (ideal(x^2+y^2+z^2+1) == interpolateBB(bb,pointOnSurface,2))
   -- a point where the blackBox does not vanish
-  assert (try interpolateBB(1,bb,notApoint) then false else true)
+  assert (try interpolateBB(bb,notApoint,1) then false else true)
   -- a point where the blackBox is not smooth
-  assert (SingularPointException === class catch interpolateBB(1,bb,intersectionPoint))
+  assert (SingularPointException === class catch interpolateBB(bb,intersectionPoint,1))
   -- a point over the wrong field
-  assert (try interpolateBB(1,bb,pointQQ) then false else true) 
+  assert (try interpolateBB(bb,pointQQ,1) then false else true) 
 ///
 
 
@@ -67,8 +67,37 @@ TEST ///
 
 InterpolatedImage = new Type of HashTable;
 
+-- MutableInterpolatedImage = new Type of MutableHashTable;
+
+
+
 createInterpolatedImage = method();
 
+
+
+interpolatedIdeals = method();
+
+interpolatedIdeals (InterpolatedImage) := List => (interpolatedImage)->
+(
+    return interpolatedImage.allInterpolatedIdeals();
+);
+
+interpolatedIdeals (InterpolatedImage, Matrix,ZZ) := Thing => (interpolatedImage,point, prec)->
+(
+        return interpolatedImage.interpolatedIdeals(point, prec);
+);
+    
+interpolatedIdeals (InterpolatedImage, Matrix) := Thing => (interpolatedImage,point)->
+(
+     return interpolatedImage.interpolatedIdeals(point);
+);
+
+bareIdeals = method();
+
+bareIdeals (InterpolatedImage) := List => (interpolatedImage)->
+(
+    return interpolatedImage.bareIdeals();
+);
 
 
 
@@ -100,7 +129,7 @@ createInterpolatedImage(Experiment,Ring, MapHelper) := HashTable => (experiment,
         interpolatedIdeals = bb.interpolateComponents( (interpolation.experiment()).points(), maxDegree, onComponentPrecision);
         --print "here interpolatedIdeals";
         --print (toString interpolatedIdeals);
-        return interpolation.interpolatedIdeals();       
+        return interpolation.allInterpolatedIdeals();       
     );
 
     localMembershipPrecision := 10; -- does this belong to experimentData?
@@ -146,8 +175,36 @@ createInterpolatedImage(Experiment,Ring, MapHelper) := HashTable => (experiment,
 
    --(interpolation.blackBoxIdeal()).rpp("interpolatedIdealKeys", iik);
 
-
-   interpolation.interpolatedIdeals = ()->
+   
+   
+    interpolation.interpolatedIdeals  = method();
+       
+    interpolation.interpolatedIdeals (Matrix,ZZ) := Thing => (point, prec)->
+    (
+        Ideals := {};
+        if (interpolation.blackBoxIdeal()).isCertainlySingularAt(point) then throw new SingularPointException;    
+        for key in keys interpolatedIdeals do
+        (
+          if  bb.isOnComponent (  (interpolatedIdeals#key)#"ideal", point, 0,  ) then
+          (
+              if bb.isOnComponent (  (interpolatedIdeals#key)#"ideal", point, prec  ) then
+              (
+                 Ideals = Ideals | {interpolatedIdeals#key};
+              );
+           );
+        );
+        -- return a copy.
+        ll := apply (keys Ideals, key-> ( key=>new InterpolatedIdeal from Ideals#key ));
+        return new HashTable from ll;
+        --return Ideals; 
+    );
+    
+   interpolation.interpolatedIdeals (Matrix) := Thing => (point)->
+   (
+        return  interpolation.interpolatedIdeals(point, localMembershipPrecision );
+   );
+   
+   interpolation.allInterpolatedIdeals  = ()->
    ( 
        --print (interpolatedIdeals); --debug
        --print (keys interpolatedIdeals); --debug

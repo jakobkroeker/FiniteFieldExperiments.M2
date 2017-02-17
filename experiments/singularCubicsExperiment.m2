@@ -57,13 +57,13 @@ assert (cubicAt(coeffCubicCone) == cubicCone)
 assert (cubicAt(coeffCubicFermat) == cubicFermat)
 
 -- register this function in the BlackBox
-bbC = bbC.registerPointProperty("cubicAt",cubicAt);
-bbC.knownPointProperties()
+bbC = bbC.registerPointProperty cubicAt;
+pointProperties bbC
 -- {cubicAt}
 
 -- calculate singular locus of cubic
 singularLocusAt = (bb,point) -> ideal jacobian bb.cubicAt(point)
-bbC = bbC.registerPointProperty("singularLocusAt",singularLocusAt);
+bbC = bbC.registerPointProperty singularLocusAt;
 
 -- Test: is the multiplicity of the singular locus of the cubic cone correct?
 assert (8==degree bbC.singularLocusAt(coeffCubicCone))
@@ -87,10 +87,7 @@ assert (8==degreeSingularLocusAt(bbC,coeffCubicCone))
 assert (0==degreeSingularLocusAt(bbC,coeffCubicFermat))
 
 -- register this function
-bbC = bbC.registerPointProperty("degreeSingularLocusAt",degreeSingularLocusAt);
--- MANDATORY: It must be possible to register updated versions of properties
--- since when developing registered properties often contain bugs.
--- SOLVED: Use updatePointProperty
+bbC = bbC.registerPointProperty degreeSingularLocusAt;
 
 -- now we can study the distribution of singular cubics in the parameter
 -- space of all cubics:
@@ -104,6 +101,7 @@ e.watchProperty("degreeSingularLocusAt")
 -- now we watch for the degree of the singular locus
 e.watchedProperties()
 -- {degreeSingularLocusAt}
+watchedProperties e
 
 
 -- lets look at 100 cubics
@@ -114,7 +112,7 @@ e.run(100)
 -- {3} => 1
 
 -- lets look at some more
-e.run(100)
+e.run 100
 -- {0} => 160
 -- {1} => 24
 -- {2} => 15
@@ -123,6 +121,7 @@ e.run(100)
 -- what does this mean? Lets try to estimate the stratification of 
 -- the parameter space of cubics by this property:
 e.estimateStratification()
+estimateStratification e
 --
 -- 2.7 <= {3}
 -- 1.3 <= {2}
@@ -168,7 +167,7 @@ assert ({8}==multiplicitiesSingularLocusAt(bbC,coeffCubicCone))
 assert ({}==multiplicitiesSingularLocusAt(bbC,coeffCubicFermat))
 
 -- register this property
-bbC = bbC.registerPointProperty("multiplicitiesSingularLocusAt",multiplicitiesSingularLocusAt);
+bbC = bbC.registerPointProperty multiplicitiesSingularLocusAt;
 
 -- try this out on the collected points
 e.collectedCount()
@@ -186,7 +185,7 @@ e.tryProperty("multiplicitiesSingularLocusAt")
 e.clear() 
 -- this erases statistics
 e.collectedCount()
-e.count()
+e.counts()
 -- NICE TO HAVE: e.clear does not need to erase collected points. They only
 -- need to be reclassified if wached properties are added or removed
 e.watchedProperties()
@@ -228,7 +227,7 @@ e.estimateStratification()
 -- lets do more points
 time e.run(10000)    
 -- used 94.8239 seconds
-e.count()
+e.counts()
 e.estimateStratification()     
 
 -- notice that we only count point on the open stratum corresponding

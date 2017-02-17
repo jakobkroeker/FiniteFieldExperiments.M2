@@ -53,25 +53,25 @@ quickCoRankJacobianAt = (point) -> (
 
 -- make a black box from the evaluation function
 bb = blackBoxIdealFromEvaluation(R,detM);
-bb.knownPointProperties()
+pointProperties bb
 -- register quick Jacobian
 bb = bb.upp("rankJacobianAt",quickCoRankJacobianAt);
-bb.knownPointProperties()
+pointProperties bb
 
 
 -- find points on the determinant
 e = new Experiment from bb;
 e.watchedProperties()
 
-time e.run(10)
+time e.run 10 
 -- !!! manchmal sehr langsam !!!
 -- used 48.6921 seconds (for 10)
 
-point = (e.points())#0
-bb.rankJacobianAt(point)
+point = first points e
+bb.rankJacobianAt point
 
 e.watchedProperties()
-e.count()
+e.counts()
 
 time e.createAllInterpolatedIdeals(4,2)
 

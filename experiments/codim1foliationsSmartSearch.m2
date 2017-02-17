@@ -155,7 +155,6 @@ e.watchProperty("bettiAt")
 time e.run(10)
 -- used 25. seconds (for 4)
 e.trials()
-e.count()
 e.watchedProperties()
 e.tryProperty("isAclosedAt")
 -- no A is closed (because of isInteresting)
@@ -204,7 +203,7 @@ eBetti = new Experiment from bbBetti
 --eBetti.numVariables = #(gens B)
 --eBetti.coefficientRing = K
 --eBetti.property = bb.bettiAt
-eBetti.recordProperty("bettiAt")
+eBetti.watchProperty("bettiAt")
 eBetti.setIsInteresting ( (i)->true)  -- default
 
 time eBetti.run(1000)

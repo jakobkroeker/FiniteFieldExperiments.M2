@@ -21,6 +21,9 @@ needsPackage "M2Logging";
 
 
 export {   
+    "pointProperties",
+    "memberMethods",
+    "attributes",
     "clearCoeffDenominators",
     "BlackBoxIdeal",
     "BlackBoxParameterSpace",
@@ -44,8 +47,22 @@ export {
     "createMapHelper"
 }
 
- 
 
+userDictHasKey = (key)->
+(
+    keyStr := toString key;
+    userKeyList := apply(keys User#"private dictionary", b->toString b);
+    pos := position(userKeyList, (v)->v==keyStr);
+    return (pos =!= null);
+);
+ 
+userDictKey = (key)->
+(
+    keyStr := toString key;
+    userKeyList := apply(keys User#"private dictionary", b->toString b);
+    pos := position(userKeyList, (v)->v==keyStr);
+    return (keys User#"private dictionary")#pos;
+);
 
 idealBlackBoxesProtect = ()->
 (
@@ -66,7 +83,7 @@ idealBlackBoxesProtect = ()->
     protect numVariables;
     protect numGenerators;
     protect isZeroAt;
-    protect pointProperties;
+ 
     protect registerPointProperty;
     protect rpp;
     protect numTrials;
@@ -115,12 +132,13 @@ idealBlackBoxesExport = ()->
     exportMutable("eps");
     exportMutable("jacobianAt");
     exportMutable("rankJacobianAt");
+        
     exportMutable("valuesAt");
+        
     exportMutable("unknownIsValid");                 
     exportMutable("numVariables");  
     exportMutable("numGenerators");
     exportMutable("isZeroAt");      
-    exportMutable("pointProperties");  
     exportMutable("registerPointProperty"); 
     exportMutable("rpp");
     exportMutable("upp");
@@ -177,6 +195,9 @@ undocumented {
     createMapHelper
 } 
 
+--ZZ#0=5
+
+--ZZ#isPrime = (num)->true
 
 -- swith between protect and export - both are not possible!
 
@@ -1159,9 +1180,9 @@ interpolate = (mons, jetList) ->
 
 interpolateBB = method();
 
-interpolateBB(ZZ,BlackBoxParameterSpace,Matrix,MapHelper) := Ideal =>
+interpolateBB(BlackBoxParameterSpace, Matrix, ZZ, MapHelper) := Ideal =>
 --interpolateBB(ZZ,HashTable,Matrix,MapHelper) := Ideal =>  
-             (maxDegree,BB,point,mmap) -> 
+             (BB,point,maxDegree,mmap) -> 
 (
     R := mmap#"imageRing";
     mons := matrix {flatten apply(maxDegree+1,i->flatten entries basis(i,R))};
@@ -1179,19 +1200,19 @@ interpolateBB(ZZ,BlackBoxParameterSpace,Matrix,MapHelper) := Ideal =>
     interpolate(mons,{jetPimage})
 )
 
-interpolateBB(ZZ,BlackBoxParameterSpace,Matrix,Matrix) := Ideal =>
+interpolateBB(BlackBoxParameterSpace,Matrix,ZZ,Matrix) := Ideal =>
 --interpolateBB(ZZ,HashTable,Matrix,Matrix) := Ideal =>  
-             (maxDegree,BB,point,mmap) -> 
+             (BB,point,maxDegree,mmap) -> 
 (
-    interpolateBB(maxDegree,BB,point,new MapHelper from mmap)
+    interpolateBB(BB,point,maxDegree,new MapHelper from mmap)
 )
 
 
-interpolateBB(ZZ,BlackBoxParameterSpace,Matrix) := Ideal =>
+interpolateBB(BlackBoxParameterSpace,Matrix,ZZ) := Ideal =>
 --interpolateBB(ZZ,HashTable,Matrix) := Ideal =>  
-             (maxDegree,BB,point) -> 
+             (BB,point,maxDegree) -> 
 (
-    interpolateBB(maxDegree,BB,point,createMapHelper(vars BB.ring,BB.ring))
+    interpolateBB(BB,point,maxDegree,createMapHelper(vars BB.ring,BB.ring))
 )
 
 
@@ -1213,26 +1234,26 @@ createInterpolatedIdeal = method();
 
 --internal method
 
-createInterpolatedIdeal (ZZ,BlackBoxIdeal,Matrix) := InterpolatedIdeal => (maxDegree, BB, point)->
+createInterpolatedIdeal (BlackBoxIdeal,Matrix,ZZ) := InterpolatedIdeal => ( BB, point, maxDegree)->
 (
-    createInterpolatedIdealObj ( interpolateBB(maxDegree,BB,point), maxDegree, "" )
+    createInterpolatedIdealObj ( interpolateBB(BB,point,maxDegree), maxDegree, "" )
 );
 
-createInterpolatedIdeal (ZZ, HashTable, Matrix) := InterpolatedIdeal => (maxDegree, BB, point)->
+createInterpolatedIdeal (HashTable, Matrix,ZZ ) := InterpolatedIdeal => (BB, point,maxDegree )->
 (
-    createInterpolatedIdealObj ( interpolateBB(maxDegree,BB,point), maxDegree, "" )
-);
-
-
-createInterpolatedIdeal (ZZ,BlackBoxIdeal,Matrix, String) := InterpolatedIdeal => (maxDegree, BB, point, name)->
-(
-    createInterpolatedIdealObj ( interpolateBB(maxDegree,BB,point), maxDegree, name )
+    createInterpolatedIdealObj ( interpolateBB(BB,point,maxDegree), maxDegree, "" )
 );
 
 
-createInterpolatedIdeal (ZZ, HashTable, Matrix, String) := InterpolatedIdeal => (maxDegree, BB, point, name)->
+createInterpolatedIdeal (BlackBoxIdeal, Matrix, ZZ, String) := InterpolatedIdeal => ( BB, point, maxDegree, name)->
 (
-    createInterpolatedIdealObj ( interpolateBB(maxDegree,BB,point), maxDegree, name )
+    createInterpolatedIdealObj ( interpolateBB(BB, point, maxDegree), maxDegree, name )
+);
+
+
+createInterpolatedIdeal ( HashTable, Matrix, ZZ, String) := InterpolatedIdeal => (BB, point, maxDegree,  name)->
+(
+    createInterpolatedIdealObj ( interpolateBB(BB, point, maxDegree), maxDegree, name )
 );
 
 
@@ -1242,6 +1263,29 @@ createInterpolatedIdeal (ZZ, HashTable, Matrix, String) := InterpolatedIdeal => 
 
 
 -- development remark: we need jets at least per blackbox individually.
+
+pointProperties = method();
+
+pointProperties (BlackBoxParameterSpace) := List => (bb)->
+{
+    return bb.knownPointProperties();
+}
+
+
+attributes = method();
+
+attributes (BlackBoxParameterSpace) := List => (bb)->
+{
+    return bb.knownAttributes();
+}
+
+
+memberMethods = method();
+
+memberMethods (BlackBoxParameterSpace) := List => (bb)->
+{
+    return bb.knownMethods();
+}
 
 
 createSimpleComponentCalculator = (blackBoxParameter) ->
@@ -1394,7 +1438,7 @@ createSimpleComponentCalculator = (blackBoxParameter) ->
                 continue;
             );
 
-            localInterpolatedIdealOrError := catch createInterpolatedIdeal (interpolationMaxDegree, blackBox, point, ("ideal_" |toString idealCount ));                     
+            localInterpolatedIdealOrError := catch createInterpolatedIdeal (blackBox , point,interpolationMaxDegree, ("ideal_" |toString idealCount ));                     
 
             if ( SingularPointException === (class localInterpolatedIdealOrError)) then 
             (
@@ -1888,6 +1932,12 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
         return blackBox;
     );
 
+    blackBox.updatePointProperty(Function) := (BlackBoxParameterSpace) => (  propertyMethod )->
+    (
+        propertyName := toString propertyMethod;
+        return updatePointProperty(propertyName, propertyMethod);
+    );
+    
     -- updateBlackBox()
     --
     -- update keys of the blackBox Hashtable in case there are known point properties but no corresponding 
@@ -1955,6 +2005,13 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
     --
     blackBox.registerPointProperty(String, Function) := Thing => ( propertyName, propertyMethod )->
     (
+        propertySymbol :=  getPropertySymbol(propertyName);
+        return blackBox.registerPointProperty(  propertyName, propertySymbol, propertyMethod )
+    );
+    
+    blackBox.registerPointProperty( Function) := Thing => (  propertyMethod )->
+    (
+        propertyName := toString propertyMethod;
         propertySymbol :=  getPropertySymbol(propertyName);
         return blackBox.registerPointProperty(  propertyName, propertySymbol, propertyMethod )
     );
@@ -2955,7 +3012,7 @@ doc ///
             bbC.degreeSingularLocusAt(coeffCubicCone)
             bbC.degreeSingularLocusAt(coeffCubicFermat)
         Text
-            Now the BlackBoxParameterspace hat a number of point properties
+            Now the BlackBoxParameterSpace hat a number of point properties
         Example
             bbC.knownPointProperties()
         Text
@@ -3884,13 +3941,13 @@ doc ///
 doc ///
     Key
         interpolateBB
-        (interpolateBB, ZZ, BlackBoxParameterSpace, Matrix)
-        (interpolateBB, ZZ, BlackBoxParameterSpace, Matrix, MapHelper)
+        (interpolateBB,  BlackBoxParameterSpace, Matrix, ZZ)
+        (interpolateBB,  BlackBoxParameterSpace, Matrix, ZZ , MapHelper)
     Headline
         find polynomials containing a list of jets
     Usage   
-        I = interpolateBB(maxDegree,BlackBox,point)
-        I = interpolateBB(maxDegree,BlackBox,point,map)
+        I = interpolateBB(BlackBox,point,maxDegree)
+        I = interpolateBB(BlackBox,point,maxDegree,map)
     Inputs  
         maxDegree:ZZ 
             the maximal degree of polynomials considered
@@ -3924,8 +3981,8 @@ doc ///
            Now find linear equations containing the respective
            components on which the points lie:
         Example
-           interpolateBB(1,bb,pointOnLine)
-           interpolateBB(1,bb,pointOnPlane)
+           interpolateBB(bb,pointOnLine, 1)
+           interpolateBB(bb,pointOnPlane, 1)
         Text
            \break
            Finding points on the different components can be done

@@ -28,8 +28,8 @@ assert (2==bbI.rankJacobianAt(pointNothing))
 
 
 
-component1 = interpolateBB(2,bbI,point1)     
-component2 = interpolateBB(2,bbI,point2)     
+component1 = interpolateBB(bbI,point1,2)     
+component2 = interpolateBB(bbI,point2,2)     
 
 -- are we finished?
 component1 + bbI.ideal == component1
@@ -50,11 +50,11 @@ e.run(100)
 point1 = (e.pointsByKey({1}))#0
 point2 = (e.pointsByKey({2}))#0
 
-interpolateBB(1,bb2,point1)
+interpolateBB(bb2,point1, 1)
 -- ideal()
-component1 = interpolateBB(2,bb2,point1)
+component1 = interpolateBB(bb2,point1,2)
 -- ideal(x^2+y^2+z^2)
-component2 = interpolateBB(2,bb2,point2)
+component2 = interpolateBB(bb2,point2,2)
 -- ideal (y, x)
 
 assert isOnComponent(bb2,component1,point1,10)
@@ -79,14 +79,14 @@ e.run(100)
 point1 = (e.pointsByKey({1}))#0
 point2 = (e.pointsByKey({2}))#0
 
-interpolateBB(1,bb3,point1)
+interpolateBB(bb3,point1, 1)
 -- ideal()
-component1 = interpolateBB(2,bb3,point1)
+component1 = interpolateBB(bb3,point1, 2)
 -- ideal(x^2+y^2+z^2)
-component2 = interpolateBB(2,bb3,point2)
+component2 = interpolateBB(bb3,point2, 2)
 -- ideal(x)
 -- this is not the complete ideal defining the component containing point2
-interpolateBB(3,bb3,point2)
+interpolateBB(bb3,point2, 3)
 -- ideal(x,z^3+y^2+1)
 -- this would be the complete ideal defining the component
 

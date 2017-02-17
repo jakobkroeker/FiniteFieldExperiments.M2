@@ -106,8 +106,8 @@ codimDegSingularLocusAt = (point) -> (
      )     
 
 -- register this function in the BlackBox
-bbC = bbC.registerPointProperty("codimDegSingularLocusAt",codimDegSingularLocusAt);
-bbC.knownPointProperties()
+bbC = bbC.registerPointProperty codimDegSingularLocusAt
+pointProperties bbC
 -- {codimDegSingularLocusAt}
 
 e = new Experiment from bbC;
@@ -115,7 +115,6 @@ e = new Experiment from bbC;
 e.watchedProperties()
 -- {}
 
--- NICE TO HAVE: e.wachedProperties()
 --e.watchProperty("degreeSingularLocusAt")
 e.watchProperty("codimDegSingularLocusAt")
 -- now we watch for the degree of the singular locus
@@ -139,7 +138,7 @@ time e.run(100)
 -- {(6, 37)} => 40
 
 degComponents = (point) -> sort apply(decompose jerryIdealAt(point),degree)
-bbC = bbC.registerPointProperty("degComponents",degComponents);
+bbC = bbC.registerPointProperty degComponents;
 
 tally apply(primaryDecomposition jerryIdealAt(testPoint),i->(codim i,degree i,degree radical i,betti res i))
 
@@ -153,8 +152,8 @@ codimDegJerryAt = (point) -> (
 codimDegJerryAt(testPoint)
 
 -- look at singular examples found
-bbC = bbC.registerPointProperty("codimDegJerryAt",codimDegJerryAt);
-e.tryProperty("codimDegJerryAt")
+bbC = bbC.registerPointProperty codimDegJerryAt;
+e.tryProperty "codimDegJerryAt"
 -- none of unexpected dimension
 
 eCodim = new Experiment from bbC;

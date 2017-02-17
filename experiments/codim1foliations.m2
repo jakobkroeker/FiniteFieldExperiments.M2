@@ -71,10 +71,9 @@ restart
 load"experiments/codim1foliations.m2"
 
 bbRankM = blackBoxParameterSpace(#(gens B),K)
---bbRankM.registerPointProperty("rankMat",rankMat)
 bbRankM = bbRankM.registerPointProperty("rankJacobianAt",rankMat)
 keys bbRankM
-bbRankM.knownPointProperties()
+pointProperties bbRankM
 -- {rankJacobianAt}
 
 bbRankM.rankJacobianAt --ok
@@ -84,20 +83,25 @@ keys e
 e.setPointsPerComponent(20);
 e.pointsPerComponent() --20
 e.watchProperties {"rankJacobianAt"};
-e.watchedProperties()  -- {rankJAcobianAt}
+watchedProperties e -- {rankJAcobianAt}
 
-time e.run(400)
+time e.run 400
 -- 1.63 seconds for 400
-points = e.pointsByKey({54}) 
+pointPropertyVals = realizedPointProperties e
+--points = e.pointsByKey({54}) 
+
+points = e.pointsByKey(first pointPropertyVals)
 point = points#0
 -- howto apply properties:
-bbRankM.rankJacobianAt(point)
+bbRankM.rankJacobianAt point 
+bbRankM#"rankJacobianAt" point -- safer
 
+counts e
+sort counts e
 
-e.countsByCount()
 -- ?
-e.estimateStratification()
-e.estimateDecomposition()
+estimateStratification e
+estimateDecomposition e
 -- e.stratificationIntervalView() -- (jk) does not work any more, because stratification() method was modified... 
 e.collectedCount()
 e.jacobianAtKey() --null
@@ -107,7 +111,7 @@ keys e
 --tally apply( e.pointKeys(), key ->( #((e.pointLists())#key)=>key))
 -- lieber e.points().
    
-estimateStratification(e)
+estimateStratification e
 
 
 
@@ -151,13 +155,13 @@ bettiAt = (point) -> betti res ideal coeffBat(point)
 --bettiAtEx = (bb,point)->bettiAt(point)
 --bbBetti = blackBoxIdealFromProperties(#(gens B),K,i->(rankMat i, bettiAt i))
 bbBetti = blackBoxParameterSpace(#(gens B),K)
-bbBetti.registerPointProperty("bettiAt",bettiAt)
+bbBetti.registerPointProperty bettiAt
 bettiInteresting = (point) -> (rankMat(point) < #(gens A))
 
 eBetti = new Experiment from bbBetti
 eBetti.setIsInteresting(bettiInteresting)
 eBetti.watchProperties {"bettiAt"}
-time eBetti.run(10000)
+time eBetti.run 10000
 -- used 19.2529 seconds (3 variables)
 -- used 40.5503 seconds (4 variables)
 estimateStratification2(eBetti)
@@ -172,9 +176,9 @@ isAclosedAt = (point) -> (
      if wA===null then null else 0==differentialD wA
      )
 
-bbBetti = bbBetti.rpp("isAclosedAt",isAclosedAt)
+bbBetti = bbBetti.rpp isAclosedAt
 
-eBetti.tryProperty("isAclosedAt")
+eBetti.tryProperty "isAclosedAt"
 
 -- consider only closed 2-forms
 Iclosed = ideal sub(contract(super basis({0,0,d-2,3},ABRD),differentialD(omegaB)),B)
@@ -184,12 +188,12 @@ closedOmegaBat = (point) -> omegaBat(closedPointBat(point))
 closedBettiAt = (point) -> betti res ideal coeffBat(closedPointBat(point))
 closedMat = (point) -> Mat(closedPointBat(point))
 closedRankMat = (point) -> rank closedMat(point)
-bbClosed = bbClosed.rpp("closedRankMat",closedRankMat);
+bbClosed = bbClosed.rpp closedRankMat;
 
 
 bbClosed = blackBoxParameterSpace(rank target basisClosed,K)
 bbClosed.numVariables
-bbClosed.registerPointProperty("closedBettiAt",closedBettiAt)
+bbClosed.registerPointProperty closedBettiAt
 eClosedBetti = new Experiment from bbClosed
 eClosedBetti.setIsInteresting ( (point) -> (closedRankMat(point) < #(gens A)))
 eClosedBetti.watchProperties {"closedBettiAt"}
@@ -215,15 +219,15 @@ estimateStratification(eClosedBetti)
 testPoint = (eClosedBetti.pointsByKey((keys eClosedBetti.pointLists())#0))#0
 
 closedIsAclosedAt = (point) -> isAclosedAt(closedPointBat(point))
-bbClosed = bbClosed.rpp("closedIsAclosedAt",closedIsAclosedAt)
+bbClosed = bbClosed.rpp closedIsAclosedAt
 
-eClosedBetti.watchedProperties()
-time eClosedBetti.run(10000) 
+watchedProperties eClosedBetti
+time eClosedBetti.run 10000 
 -- used 424.527 seconds
-eClosedBetti.estimateStratification()
+estimateStratification eClosedBetti
 
-eClosedBetti.tryProperty("closedIsAclosedAt")
-eClosedBetti.tryProperty("closedRankMat")
+eClosedBetti.tryProperty closedIsAclosedAt
+eClosedBetti.tryProperty closedRankMat
 
 -------------------------
 -- reworked up to here --
@@ -285,13 +289,13 @@ eBetti = new Experiment from bbBetti
 --eBetti.numVariables = #(gens B)
 --eBetti.coefficientRing = K
 --eBetti.property = bb.bettiAt
-eBetti.recordProperty("bettiAt")
+eBetti.watchProperty "bettiAt"
 eBetti.setIsInteresting ( (i)->true)  -- default
 
-time eBetti.run(1000)
+time eBetti.run 1000
 -- used 9.11658 seconds on my old ThinkPad
-time eBetti.run(10000)
+time eBetti.run 10000
 
-time eBetti.run(100000)
+time eBetti.run 100000
 --eBetti.estimateStratification()
-estimateStratification2(eBetti)
+estimateStratification2 eBetti

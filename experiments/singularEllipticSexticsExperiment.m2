@@ -98,24 +98,24 @@ codimDegSingularLocusAt = (point) -> (
      )     
 
 -- register this function in the BlackBox
-bbC = bbC.registerPointProperty("codimDegSingularLocusAt",codimDegSingularLocusAt);
-bbC.knownPointProperties()
+bbC = bbC.registerPointProperty codimDegSingularLocusAt;
+pointProperties bbC
 -- {codimDegSingularLocusAt}
 
 e = new Experiment from bbC;
 -- so far nothing is observed:
-e.watchedProperties()
+watchedProperties e
 -- {}
 
 --e.watchProperty("degreeSingularLocusAt")
-e.watchProperty("codimDegSingularLocusAt")
+e.watchProperty "codimDegSingularLocusAt"
 -- now we watch for the degree of the singular locus
-e.watchedProperties()
+watchedProperties e
 
 -- lets look at 100 curves
-time e.run(1)
-time e.run(10) -- 30 sec on T42
-time e.run(100)
+time e.run 1
+time e.run 10 -- 30 sec on T42
+time e.run 100
 -- {(4,  1)} => 10   
 -- {(4,  2)} => 4
 -- {(5,  1)} => 493
@@ -128,7 +128,7 @@ time e.run(100)
 degComponents = (point) -> sort apply(decompose tomIdealAt(point),degree)
 bbC = bbC.registerPointProperty("degComponents",degComponents);
 
-e.tryProperty("degComponents")
+e.tryProperty "degComponents" 
 point = (e.pointsByKey({(5,2)}))#0
 
 -- find example with non expected codimension
@@ -141,7 +141,7 @@ codimDegTomAt = (point) -> (
 codimDegTomAt(testPoint)
 
 -- look at singular examples found
-bbC = bbC.registerPointProperty("codimDegTomAt",codimDegTomAt);
+bbC = bbC.registerPointProperty codimDegTomAt;
 e.tryProperty("codimDegTomAt")
 -- none of unexpected dimension
 

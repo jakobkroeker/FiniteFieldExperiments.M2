@@ -39,7 +39,7 @@ bbI = blackBoxIdeal I;
 -- experiment to find points on the components
 e = new Experiment from bbI;
 
-time e.run(1000)
+time e.run 1000
 -- used 0.584484 seconds (1000)
 -- used 4.87354 seconds (2000, m=2, {2,5,5})
 e.estimateDecomposition()
@@ -70,7 +70,7 @@ interpolProjection.bareIdeals()
 
 P = (e.pointLists())#({2})
 
-time DbbI = unique apply(1,i->time interpolateBB(2,bbI,P#i));#DbbI
+time DbbI = unique apply(1,i->time interpolateBB(bbI,P#i,2));#DbbI
 -- used 92.6583 seconds (4)
 
 -- used 12.5595 seconds (m=2,d=2)

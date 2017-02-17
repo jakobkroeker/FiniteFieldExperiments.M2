@@ -14,7 +14,6 @@ bb = blackBoxIdeal I;
 e = new Experiment from bb;
 time e.run(300)
 -- used 0.150134 seconds
-e.count()
 
 -- project into IP^2, forgetting the forth variable
 S = K[a,b,c]
@@ -73,7 +72,7 @@ bb = blackBoxIdeal I;
 e = new Experiment from bb;
 time e.run(300)
 -- used 0.150134 seconds
-e.count()
+sort counts e
 
 -- a point on the curve
 point = (e.pointsByKey({2}))#0

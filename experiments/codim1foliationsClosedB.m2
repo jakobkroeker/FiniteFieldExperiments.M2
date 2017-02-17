@@ -132,7 +132,7 @@ bb = blackBoxParameterSpace(rank target basisClosed,K)
 
 -- number of parameters
 bb.numVariables
-bb.registerPointProperty("closedBettiAt",closedBettiAt);
+bb.registerPointProperty closedBettiAt;
 e  = new Experiment from bb;
 -- only look at B's that have a nontrivial A
 closedIsAclosedAt = (point) -> isAclosedAt(closedPointBat(point))
@@ -169,10 +169,10 @@ e.estimateStratification()
 testPoint = (e.pointsByKey((keys e.pointLists())#0))#0
 
 
-bb = bb.rpp("closedIsAclosedAt",closedIsAclosedAt);
-bb = bb.rpp("closedIsAclosedAt2",closedIsAclosedAt2);
+bb = bb.rpp closedIsAclosedAt;
+bb = bb.rpp closedIsAclosedAt2;
 both = (point) ->(closedIsAclosedAt(point),closedIsAclosedAt2(point))
-bb = bb.rpp("both",both);
+bb = bb.rpp both;
 
 e.tryProperty("both")
 e.tryProperty("closedIsAclosedAt2")
@@ -196,7 +196,7 @@ closedRankJacobiAt = (point) -> (
      rank tangentB + rank(basisClosed) - rank (tangentB | transpose basisClosed) 
      )
 bb.rpp("jacobiAt",closedRankJacobiAt);
-bb.knownPointProperties()
+pointProperties bb
 
 e.tryProperty("jacobiAt")
 time eClosedBetti.run(100000) 
