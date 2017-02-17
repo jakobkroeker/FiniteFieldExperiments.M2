@@ -119,6 +119,7 @@ idealBlackBoxesProtect = ()->
 
 idealBlackBoxesExport = ()->
 (
+    exportMutable("isOnComponent");
     exportMutable("enableChecks");
     exportMutable("disableChecks");
     exportMutable("withChecks");
@@ -1322,13 +1323,13 @@ createSimpleComponentCalculator = (blackBoxParameter) ->
 
     -- todo: rename to isProbablyOnComponent
     --
-    isOnComponent := method();
+    simpleComponentCalculator.isOnComponent = method();
 
     
     --
     -- uses a single long jet to test if a point is on a component.
     --
-    isOnComponent ( Ideal, Matrix, ZZ) := Boolean => (componentIdeal, point, onComponentPrecisionParam)->
+    simpleComponentCalculator.isOnComponent ( Ideal, Matrix, ZZ) := Boolean => (componentIdeal, point, onComponentPrecisionParam)->
     (
         if not (jets#?point) then
         (        
@@ -1361,21 +1362,21 @@ createSimpleComponentCalculator = (blackBoxParameter) ->
 
     );
 
-    isOnComponent ( Ideal, Matrix) := Boolean => ( componentIdeal, point)->
+    simpleComponentCalculator.isOnComponent ( Ideal, Matrix) := Boolean => ( componentIdeal, point)->
     (
         return ( componentIdeal, point, onComponentPrecision);
     );
 
-    isOnComponent ( String , Matrix, ZZ) := Boolean => (componentId, point, onComponentPrecision)->
+    simpleComponentCalculator.isOnComponent ( String , Matrix, ZZ) := Boolean => (componentId, point, onComponentPrecision)->
     (
         if (not componentCandidates#?componentId) then error "component does not exist";
-        return isOnComponent( componentCandidates#?componentId,  point, onComponentPrecision) ;
+        return simpleComponentCalculator.isOnComponent( componentCandidates#?componentId,  point, onComponentPrecision) ;
     );
     
-    isOnComponent ( String , Matrix, ZZ) := Boolean => (componentId, point)->
+    simpleComponentCalculator.isOnComponent ( String , Matrix, ZZ) := Boolean => (componentId, point)->
     (
         if (not componentCandidates#?componentId) then error "component does not exist";
-        return isOnComponent( componentCandidates#?componentId,  point, onComponentPrecision) ;
+        return simpleComponentCalculator.isOnComponent( componentCandidates#?componentId,  point, onComponentPrecision) ;
     );
 
 
@@ -1404,7 +1405,7 @@ createSimpleComponentCalculator = (blackBoxParameter) ->
             for interpolData in localInterpolatedIdeals do
             (
                 -- at first do a cheap test with precision = 0;
-                isOnComponentPrecision0Result := isOnComponent (  interpolData#"ideal", point, 0 );
+                isOnComponentPrecision0Result := simpleComponentCalculator.isOnComponent (  interpolData#"ideal", point, 0 );
                 if ((class isOnComponentPrecision0Result)=== SingularPointException) then
                 (
                     pointIsSingular = true;
@@ -1412,7 +1413,7 @@ createSimpleComponentCalculator = (blackBoxParameter) ->
                 );
                 if isOnComponentPrecision0Result then
                 (
-                    isOnComponentResult := isOnComponent ( interpolData#"ideal", point, onComponentPrecision );
+                    isOnComponentResult := simpleComponentCalculator.isOnComponent ( interpolData#"ideal", point, onComponentPrecision );
                     if ((class isOnComponentResult) === SingularPointException) then
                     (
                         pointIsSingular = true;
@@ -1464,7 +1465,7 @@ createSimpleComponentCalculator = (blackBoxParameter) ->
         candidates := {};
         for componentKey in keys componentCandidates do
         (
-            if ( isOnComponent( componentKey, point)) then
+            if ( simpleComponentCalculator.isOnComponent( componentKey, point)) then
             (
                 candidates = candidates | { componentKey };
             );
@@ -2127,7 +2128,10 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
     blackBox.setComponentCalculator = (componentCalculatorObj)->
     (
         componentCalculator = componentCalculatorObj;
+        blackBox.isOnComponent = componentCalculator.isOnComponent;
     );
+    
+    blackBox.isOnComponent = componentCalculator.isOnComponent;
 
     blackBox.setComponentCandidates = (cc)->
     ( 

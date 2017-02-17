@@ -134,7 +134,7 @@ time e.run(1000)
 -- {1} => 385
 -- {2} => 57
 -- the same information can be accessed via
-e.count()
+e.counts()
 -- these are the number of points found most of these are immedeately forgotten
 
 -- some points with these properties
