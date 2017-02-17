@@ -313,8 +313,12 @@ doc ///
            If we also want to find the quadratic polynomial,
            we have to interpolate up to degree 2
         Example
-           i.createAllInterpolatedIdeals(2,1);
+           intIdeals = i.createAllInterpolatedIdeals(2,1)
+           I0 = (intIdeals#("ideal_0"))#"ideal"
            i.bareIdeals()
+           point = (e.pointsByKey({2}))#0
+           i.isOnComponent(I0,point,2)
+           -- i.isOnComponent("ideal_0",point,2)
     Caveat
         This function does not work with multigraded rings.
         At the moment this has to be done by hand with @TO interpolate @. 
