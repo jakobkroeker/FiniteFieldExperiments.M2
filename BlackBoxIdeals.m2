@@ -508,7 +508,6 @@ doc ///
         : Ideal
              ideal with integer coefficients with the same zero set over QQ as the input ideal
     Description
-        Example          
         Text
            \break  Example:  convert an ideal with coefficients in QQ to an ideal with   coefficients in ZZ
         Example          

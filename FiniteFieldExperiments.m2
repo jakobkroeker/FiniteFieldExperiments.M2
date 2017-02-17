@@ -465,7 +465,7 @@ toExternalString(ExperimentData) := String=> (ed)->
 ( 
    return "createExperimentData " | "(" 
    | toExternalString ed.coefficientRing | ", \n "
-   | toString (new HashTable from ed.points) | ", \n"
+   | toExternalString (new HashTable from ed.points) | ", \n" -- HC:introduced External
    | toExternalString ed.countData | ",\n"
    | toExternalString ed.trials | ",\n"
    | toExternalString ed.propertyList | ",\n"
@@ -880,10 +880,36 @@ estimateStratification =  (experiment) -> (
      orderK := experiment.coefficientRingCardinality(); -- this must be read from the experimentdata
      -- (jk): need more advice. Did we want to use a different ring for search that the ideal coefficient ring? If so, 
 
+     -- if there are not enough points for a specific key, no reliable
+     -- estimate can be made. More precisely:
+     --
+     -- Let n be the number of points found and t the number of trials.
+     -- the error in the number of points is about 2\sqrt(n). So the maximum
+     -- estimate within this error range is
+     --
+     -- log_p((n+2\sqrt(n))/t) 
+     --  = log_p(n+2\sqrt(n)) - log_p(t)
+     --  = log_p(n[1+2/\sqrt(n)) - log_p(t)
+     --  = log_p(n) + log_p(1+2/\sqrt(n)) - log_p(t)
+     --
+     -- so the error in the estimated codimension is in the order of
+     --      log_p(1+2/\sqrt(n))
+     -- we want this error to be at most 0.2 so we get
+     --
+     --       log_p(1+2/\sqrt(n)) < 0.2
+     --            (1+2/\sqrt(n)) < p^0.2
+     --               2/\sqrt(n)  < p^0.2 - 1
+     --               2/(p^0.2-1) < \sqrt(n)
+     --               (2/(p^0.2-1))^2 < n
+     --
+     minPoints := (2/(orderK^0.2 - 1))^2;
      countData := experiment.count();
 
      -- sort keys by number of occurence
      sortedKeysByOccurence := apply(reverse sort apply(keys countData,k->(countData#k,k)), i->i#1);
+     -- remove keys that have not enough points
+     sortedKeysByOccurence = select(sortedKeysByOccurence,k->countData#k>minPoints);
+     
 
      --apply(sortedKeysByOccurence,k->(
      --      --print (net((log(trials)-log(i#0))/log(charK))|" <= "|net(i#1)));
@@ -1722,7 +1748,6 @@ TEST ///
 --           i->print (net i#0|" => "|net i#1)
 --           )
 --     )
-
 
 
 doc ///
@@ -3561,20 +3586,22 @@ doc ///
             Now we want to implement the stratification by singularity type.
             For this we first determine the singular locus of a cubic surface:
         Example
-            singularLocusAt = (bb,point) -> ideal jacobian bb.cubicAt(point)
+            singularLocusAt = (point) -> ideal jacobian cubicAt(point)
             bbC = bbC.rpp("singularLocusAt",singularLocusAt);
             bbC.knownPointProperties()
             bbC.singularLocusAt(coeffCubicCone)   
             bbC.singularLocusAt(coeffCubicFermat)
         Text
             As a first approximation of the singularity type we use
-            the degree of the singular locus
+            the number of points in the singular locus (counted with multiplicity)
         Example
-            degreeSingularLocusAt = (bb,point) -> (
-                 s := bb.singularLocusAt(point);
+            numPoints = (s) -> (
                  if dim s == 0 then return 0;                
                  if dim s == 1 then return degree s;                 
                  if dim s >= 2 then return infinity;
+                 );
+            degreeSingularLocusAt = (point) -> (
+                 numPoints singularLocusAt(point)
               )
             bbC = bbC.rpp("degreeSingularLocusAt",degreeSingularLocusAt);
             bbC.knownPointProperties()
@@ -3589,17 +3616,146 @@ doc ///
             bbC.knownPointProperties()
         Text
             These properties can now be used in a finite field experiment
-            that studies the statification of our parameter space. Here is a
-            simple minded version of such an experiment:
+            that studies the statification of our parameter space. 
         Example
-            tally apply(100,i->bbC.degreeSingularLocusAt(random(K^1,K^20))) 
+            e = new Experiment from bbC;
         Text
-            We see that there is an open stratum of smooth cubics. The
-            largest closed stratum consists of those cubics with a A1 singularity.
-            The package finiteFieldExperiments helps to do the bookkeeping 
-            for such experiments and also provides more detailed interpretation
-            of the results.
-
+            We are interested in the degree of the singular Locus of our
+            cubics so we ask the experiment to watch this property
+        Example
+            e.watchProperty("degreeSingularLocusAt")
+            e.run(200) 
+        Text
+            We see that there is an open stratum of smooth cubics. 
+            Lets estimate the codimension of the other strata. This is
+            done by assuming that the number of points in each stratum
+            is irreducible an therefore the fraction of points on
+            a codimension c stratum is approximately 1/p^c:
+        Example
+            e.estimateStratification()
+        Text
+            We see that the stratum of degree 1 singularities seems to
+            be a divisor. The codimension of the strata are not yet estimated,
+            since we have not found enough points on them to make the
+            estimation precise enough.
+            
+            Lets find more points
+        Example
+            time e.run(700)
+            e.estimateStratification()
+        Text
+            This is strange. The experiment feels that we have enough
+            points to estimate the codimension, but it is neither 1 or 2.
+            This can happen if our assumption that the strata are irreducible
+            is not satisfied. Lets now assume more generally, that the
+            statum of cubics with degree 2 singularities is irreducible with
+            d components of codimension c. In this case the fraction of 
+            points on this stratum would be about d/p^c. Taking -log_p
+            of this (as the estimation procedure does) gives
+            
+            c - log_p(d)
+            
+            so the estimation is somewhat smaller than the true codimension.
+            In our case p=7 and we have
+            
+            log_7(2) = 0.35
+            log_7(3) = 0.56
+            log_7(4) = 0.72
+            
+            And 2-log_7(2) = 1.65. So it seems as if we have 2 irreducible
+            strata of degree 2 singularities.
+            
+            To figure out what these two strata might be we can look
+            at some examples the experiment has collected for us:
+        Example
+            e.collectedCount()            
+            e.pointsByKey({2})
+        Text
+            The experiment does not save all points it encounters, since
+            this would quickly lead to memory problems. Rather it tries to
+            collects 10 points per stratum:
+        Example
+            e.pointsPerComponent()
+        Text
+            Lets now look at the singularities of these examples in
+            more detail. One idea might be to look at the support 
+            of the singular locus:
+        Example
+            apply(e.pointsByKey({2}),i->radical (bbC#"singularLocusAt")(i))
+        Text
+            or maybe the degrees of the support:
+        Example
+            apply(e.pointsByKey({2}),i->degree radical (bbC#"singularLocusAt")(i))
+        Text
+            It seems that about half of the points have support in one point
+            and the other half has support in 2 points. So half have 2 nodal
+            singularities and halb have 1 cuspidal singularity. So maybe
+            a more precise invariant to distunguish irreducible strata
+            in our statification would be the degrees of the irreducible 
+            components of our singularity. Lets make a property for this.
+            
+            This has to be a little more involved than expected since
+            macaulay calculates the primary decomposition of an ideal
+            over the finite field F_7 and not over its algebraic closure.
+        Example
+            partitionSingularLocusAt = (point) -> (
+                 pI := primaryDecomposition(singularLocusAt(point));
+                 sort flatten apply(pI,i->(   
+                      d := numPoints i;
+                      if d==0 then return {};
+                      if d==infinity then return {infinity};
+                      r := numPoints radical i;
+                      -- the number of support point in this
+                      -- component is r. Therefore 
+                      -- the multiplicities of these points 
+                      -- must be d/r.
+                      return toList(r:(d/r))
+                      ))
+                 )            
+            bbC = bbC.rpp("partitionSingularLocusAt",partitionSingularLocusAt);                     
+            bbC.knownPointProperties()
+        Text
+            Lets try out what this property gives on the collected points:
+        Example
+            e.tryProperty("partitionSingularLocusAt")
+        Text
+            This looks interesting, so lets restart the experiment and
+            watch for this property.
+        Example
+            e.clear()
+            e.watchProperty("partitionSingularLocusAt")
+            e.watchedProperties()
+            time e.run(300)
+            e.estimateStratification()
+        Text
+            This takes much longer, but still lets find more points
+            to see what we find in the degree 2 strata
+        Example
+            time e.run(2000)
+        Text
+            It seems that indeed we have several strata of similar size
+            for each degree. Lets estimate their codimensions
+        Example
+            e.estimateStratification()
+        Text
+            To get good estimates for the degree 3 partitions one
+            would have to run through another 10.000 random points. 
+            (do this on your machine. It takes a couple of minutes).
+            
+            For good estimates of degree 4 partitions about 50.000
+            have to be evaluated (do this also...). In degree 4 the
+            pattern breaks down and the partition {4} seem again 
+            to have two components. Some further analysis might
+            show that these components belong to A_4 and D_4 singularities
+            respectively.
+            
+            Given enough time and energy one might in this way rediscover
+            the beautiful classical theorem about singularities of cubic surfaces
+            Namely that the irreducible strata of singular cubic
+            surfaces are parametrized by sub-Dynkin-diagramms of the
+            E_7 Dynkin diagramm. (see the Chapter on singularities of cubic surfaces in
+            Dolgachev's Book "Topics in Classical Algebraic Geometry"). 
+///
  
 ///
 end
@@ -3612,7 +3768,7 @@ quit -- F11 F11 F12
 path = append(path,"/Users/bothmer/Desktop/projekte/strudel/Jakob2010/GitHub/padicLiftM2/")
 
 uninstallPackage"FiniteFieldExperiments"
-installPackage"FiniteFieldExperiments"
+time installPackage"FiniteFieldExperiments"
 
 viewHelp FiniteFieldExperiments
 viewHelp BlackBoxIdeals
