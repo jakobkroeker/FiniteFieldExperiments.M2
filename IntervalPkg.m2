@@ -137,7 +137,8 @@ Interval * QQ := (I,scalingFactor) -> (
 
 
 
--- problem: Sortierung nicht ohne weiteres austauschbar -> Wrappertyp müsste eingeführt werden, der eine andere Sortierung implementiert
+-- problem: Sortierung nicht ohne weiteres austauschbar 
+-- => Wrappertyp müsste eingeführt werden, der eine andere Sortierung implementiert
 -- und alle Objekte müssen in den Wrappertyp konvertiert werden.
 
 

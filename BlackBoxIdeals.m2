@@ -4,7 +4,7 @@ newPackage(
      Date => "20.09.2015",
      Authors => {{
            Name => "Jakob Kroeker", 
-           Email => "jakobkroeker@academic.spaceship-earth.net", 
+           Email => "jakobkroeker.academic@spaceship-earth.net", 
            HomePage => "http://www.crcg.de/wiki/User:Kroeker"},{
            Name => "Hans-Christian Graf v. Bothmer", 
            Email => "bothmer@math.uni-hannover.de", 
@@ -20,7 +20,16 @@ newPackage(
 needsPackage "M2Logging";
 
 
-export {   
+export { 
+    "locus",
+    "joinJetSets",
+    "firstElem",
+    "JetSet",
+    "AddElement",
+    "compatible",
+    "isDerivedFrom",
+    "Point",
+    "Jet",
     "pointProperties",
     "memberMethods",
     "attributes",
@@ -32,7 +41,12 @@ export {
     "blackBoxIdealFromEvaluation",
     "BlackBoxLogger",
     "getEpsRing",
+    "bestJetAt",
+    "worstJetAt",
     "jetAt",
+    "jetAtWithException",
+    "jetAtWithInfo",
+    "jetAtWithNull",
     "isCertainlySingularAt",
     "isProbablySmoothAt",
     "keysWithoutSymbols",    
@@ -44,6 +58,7 @@ export {
     "MapHelper",
     "InterpolatedIdeal",
     "SingularPointException",
+    "PointNotOnBlackBox",
     "createMapHelper"
 }
 
@@ -196,9 +211,6 @@ undocumented {
     createMapHelper
 } 
 
---ZZ#0=5
-
---ZZ#isPrime = (num)->true
 
 -- swith between protect and export - both are not possible!
 
@@ -328,6 +340,9 @@ TEST ///
 SingularPointException = new Type of HashTable;
 
 
+PointNotOnBlackBox = new Type of HashTable;
+
+
 
 savedEpsRings := new MutableHashTable;
 
@@ -379,32 +394,66 @@ getPropertySymbols(String) := List => (propertyName)->
 --
 -- package-global symbol for "eps"
 --
-geps := getSymbol "eps"; 
+--geps := getSymbol "eps";
 
-getEpsRing = method();
+geps := symbol eps;
 
--- todo: get rid of duplicate code in getEpsRing()...
+isDerivedFrom = method();
 
-getEpsRing(Ring, InfiniteNumber) := Ring => (coeffring, epsDim)->
+isDerivedFrom (Thing, Type) := Boolean => (testee, expectedType)->
 (
-    leps := geps;
-   
+    if (class testee===expectedType) then return true;
+    
+    parentClass := parent class testee;
+    
+    while (parentClass =!= Thing) do
+    (
+        if (parentClass===expectedType) then return true;
+        parentClass = parent parentClass;
+    );
+    if (parentClass===expectedType) then return true;    
+    return false;
+)
+
+getEpsRingFunction := (coeffring, epsDim)->
+(
+    assert (isDerivedFrom(coeffring,Ring));
+    assert (isDerivedFrom(epsDim,ZZ) or isDerivedFrom(epsDim,InfiniteNumber));
+    
+    if isDerivedFrom(epsDim,InfiniteNumber) then
+    (
+       if epsDim=!=infinity then error ("epsDim " | toString epsDim |"not supported");
+    );
+    if isDerivedFrom(epsDim,ZZ) then
+    (
+        if (epsDim<0) then error("expected epsDim>0 ");
+    );
+    
+    leps := geps;   
     epsRng := null;
+    eps := null;
+    
     if not (savedEpsRings#?(coeffring,epsDim) ) then 
     (
-        polRing:=coeffring[leps];
-        leps=(gens(polRing))#0;
+        polRing := coeffring[leps];
+        leps = first gens(polRing);
         if epsDim===infinity then 
-            savedEpsRings#(coeffring,epsDim) = polRing            
-        else
-            error "epsDim not supported";
-        epsRng = savedEpsRings#(coeffring, epsDim);
-        eps = (gens epsRng)#0;
-        for symb in getPropertySymbols("eps") do 
         (
-           assert(symb=!=null);
-           (savedEpsRings#(coeffring,epsDim))#symb  = eps;
+            savedEpsRings#(coeffring,epsDim) = polRing            
         )
+        else
+        (
+            savedEpsRings#(coeffring,epsDim) = polRing/(leps^(epsDim+1));            
+        );
+        epsRng = savedEpsRings#(coeffring, epsDim);
+        eps = first gens epsRng;
+        (savedEpsRings#(coeffring,epsDim))#"eps" = eps;
+        (savedEpsRings#(coeffring,epsDim)).eps = eps;        
+        --for symb in getPropertySymbols("eps") do 
+        -- (
+        --   assert(symb=!=null);
+        --   (savedEpsRings#(coeffring,epsDim))#symb  = eps;
+        --)
     ); 
     epsRng = savedEpsRings#(coeffring, epsDim);
     eps = (gens epsRng)#0;
@@ -412,32 +461,20 @@ getEpsRing(Ring, InfiniteNumber) := Ring => (coeffring, epsDim)->
 )
 
 
+
+getEpsRing = method();
+
+-- todo: get rid of duplicate code in getEpsRing()...
+
+getEpsRing(Ring, InfiniteNumber) := Ring => (coeffring, epsDim)->
+(
+    return getEpsRingFunction(coeffring, epsDim);   
+)
+
+
 getEpsRing(Ring, ZZ) := Ring => (coeffring, epsDim)->
 (
-    leps := geps;
- 
-    if (epsDim<0) then error("expected epsDim>0 ");
-    
-    epsRng := null;
-    if not (savedEpsRings#?(coeffring,epsDim) ) then 
-    (
-        polRing:=coeffring[leps];
-        leps=(gens(polRing))#0;
-        if epsDim===infinity then 
-            savedEpsRings#(coeffring,epsDim) = polRing            
-        else
-            savedEpsRings#(coeffring,epsDim) = polRing/(leps^(epsDim+1));    
-        epsRng = savedEpsRings#(coeffring, epsDim);
-        eps = (gens epsRng)#0;
-        for symb in getPropertySymbols("eps") do 
-        (
-           assert(symb=!=null);
-           (savedEpsRings#(coeffring,epsDim))#symb  = eps;
-        )
-    ); 
-    epsRng = savedEpsRings#(coeffring, epsDim);
-    eps = (gens epsRng)#0;
-    return epsRng
+    return getEpsRingFunction(coeffring, epsDim);
 )
 
 
@@ -739,7 +776,10 @@ deduceJacobianAt = ( blackBox, point )->
     if (blackBox.withChecks) then
     (
         if (not ( blackBox.valuesAt( point )==0))  then  
-            error("point does not belong to the ideal ! ");
+        (
+            --error("point does not belong to the ideal ! ");
+            throw new PointNotOnBlackBox from {"errorMessage" => "deduceJacobianAt: point " | toString point | "does not belong to the object! "}
+        )
     );
     -- attention, duplicate code!!!
     
@@ -819,6 +859,67 @@ TEST ///
 BlackBoxParameterSpace = new Type of  MutableHashTable;
 
 
+Point = new Type of HashTable;
+
+pointObject = method();
+pointObject (Thing, Matrix) := Point =>(parent, point)->
+(
+    resultPoint := new HashTable from {("parent", parent),
+                                       ("point", point)};
+    resultPoint 
+)
+
+
+-- parent is needed for coercion
+
+
+Jet = new Type of HashTable;
+
+jetObject := method();
+
+jetObject( Thing, Thing, Thing, ZZ) := Jet=>(parent, point, value, jetLength)->
+(
+      jetObj := new HashTable from { ("value",value),
+                                     ("jetLength",jetLength),                                   
+                                     ("parent",parent),
+                                     ("point",point),
+                                   };
+    jetObj = newClass (Jet, jetObj);
+    return jetObj;
+);
+
+net (Jet) := Net =>(jet)->
+(
+    sss :=  { --( net( "parent")  | " <= " | net ( class jet#"parent") ),
+              --( net( "point")  | " <= " | net (jet#"point") ), 
+              ( "(" | net (jet#"jetLength") |") " | net (jet#"value") )
+              --( net( "length")  | " = " | net (jet#"jetLength") )              
+            } ;    
+    return net stack sss;
+)
+
+locus = method();
+
+locus (Jet) := ZZ =>(jet)->
+(
+    return jet#"point";
+);
+
+
+length (Jet) := ZZ =>(jet)->
+(
+    return jet#"jetLength";
+);
+
+sub (Ideal, Jet ) := Thing =>(I,jet)->
+(
+    return (sub(I,jet#"value"));
+)
+
+-- question: what is a (succeeded) jet of length 1 at a singular point??
+
+
+
 
 -- jetAtSingleTrial(): 
 --
@@ -842,6 +943,41 @@ BlackBoxParameterSpace = new Type of  MutableHashTable;
 
 --
 
+
+jetAtResultFunction := (bestJet, failedJetLength)->
+(    
+    assert(class bestJet === Jet);
+    jet := null;
+    if (failedJetLength === null) then 
+    (
+        jet = bestJet;
+    )
+    else
+    (
+        assert(class failedJetLength===ZZ);
+        assert(  failedJetLength>=0);
+    );
+    
+    return new HashTable from {    "jet"            => jet, 
+                                   "bestJet"        => bestJet, 
+                                   "failedJetLength"=> failedJetLength,
+                                   "succeeded"      => failedJetLength === null
+                              };
+);
+
+jetAtResult := method();
+jetAtResult ( Jet, ZZ ) := HashTable => (bestJet, failedJetLength)->
+(    
+    return jetAtResultFunction(bestJet, failedJetLength);
+);
+
+-- special case for null...
+jetAtResult ( Jet, Nothing ) := HashTable => (bestJet, failedJetLength)->
+(
+     return jetAtResultFunction(bestJet, failedJetLength);
+);
+
+ 
 jetAtSingleTrial = method();
 
 -- jetAtSingleTrial():
@@ -852,94 +988,113 @@ jetAtSingleTrial = method();
 -- For black-Box-Jacobi-Matrices we might not have high precision Jacobi-Matrices
 -- todo question: what do we mean by high precision Jacobi-Matrices?
 --
---jetAtSingleTrial( BlackBoxParameterSpace, Matrix, ZZ ) := MutableHashTable => ( blackBox,  point, jetLength )  ->
-jetAtSingleTrial( HashTable, Matrix, ZZ ) := MutableHashTable => ( blackBox,  point, jetLength )  ->
+jetAtSingleTrial( BlackBoxParameterSpace, Matrix, ZZ ) := HashTable => ( blackBox,  point, jetLength )  ->
+--jetAtSingleTrial( HashTable, Matrix, ZZ ) := HashTable => ( blackBox,  point, jetLength )  ->
 (
 
-    -- if not (blackBox.isZeroAt(point)) then error(" function is not zero at the point ");
-    retVal := null;
-    if not (blackBox.isZeroAt(point))  then
+    assert ( jetLength >= 0 );
+    
+    if not (blackBox.isZeroAt(point)) then 
     (
-        retVal = new HashTable from { "succeeded" => false, "jet" => null, "failedJetLength" =>0 , "jetLength" => jetLength};
-        return retVal;
+        --error(" point is not on BlackBox ");
+        throw new PointNotOnBlackBox from {"errorMessage" => "jetAtSingleTrial: point " | toString point | "does not belong to the object! "}
     );
+    
 
     liftingFailed := false;
     failedJetLength := null;
     jet := point;
+    
+    jetObj := null;
 
+    succeededJetLength := 0;    
     jacobianM2Transposed := transpose blackBox.jacobianAt(point) ;
     
-    jtColumns := numColumns jacobianM2Transposed ;
-    jtRows    :=  numRows jacobianM2Transposed ;
+    if (jetLength==0) then 
+    (
+        jetObj = jetObject (blackBox,  point, jet, succeededJetLength);      
+        return  jetAtResult(jetObj, failedJetLength);
+    );
+     
 
     jacobianKernel := generators kernel jacobianM2Transposed ; -- syz would also work
 
-    epsRng := getEpsRing( blackBox.coefficientRing,  1 );
-    eps = (gens epsRng)#0;
+    epsPrecision := 1;  
+      
+    epsRng := getEpsRing( blackBox.coefficientRing,  epsPrecision );
+    eps := (gens epsRng)#0;
 
-    coeffRng := (blackBox.coefficientRing); -- we need the braces !!!
+    coeffRng := (blackBox.coefficientRing); -- we need the braces here !!!
 
      
-    rnd := random( coeffRng^(numColumns(jacobianKernel)), coeffRng^1 );
+    rnd := random( coeffRng^(numColumns(jacobianKernel)), coeffRng^epsPrecision );
     if (numColumns(jacobianKernel)>0) then 
     (   
         while  zero(rnd) do
         (
-            rnd = random( coeffRng^(numColumns(jacobianKernel)), coeffRng^1 );
+            rnd = random( coeffRng^(numColumns(jacobianKernel)), coeffRng^epsPrecision );
         );
     );
 
 
     lengthOneLift := sub(point,epsRng) + transpose(sub( jacobianKernel*rnd, epsRng) *eps);
-
-    jet = lengthOneLift;
-
-    epsPrecision := 1;     -- first lift should succeed for a smooth point! 
-    lastJetNr    := epsPrecision ; 
     
- 
-
-    for  epsPrecision in 2..jetLength do 
+    -- first lift will always succeed!
+    if ( blackBox.valuesAt(jet)!=0 ) then 
+    (      
+        liftingFailed = true;
+        failedJetLength = epsPrecision;
+    )
+    else
     (
-        epsRng = getEpsRing( coeffRng, epsPrecision);
-        eps = (gens epsRng)#0;
-  
-        jet =  sub(jet,epsRng);
-
-        valuesAtJet := blackBox.valuesAt(jet );
-
-        rightHandSide := matrix mutableMatrix( coeffRng, numColumns valuesAtJet ,1 );
-        
-        -- notwendig:
-   
-        if not zero(valuesAtJet) then 
-        (
-            rightHandSide = transpose last coefficients (valuesAtJet, Monomials=>{ eps^epsPrecision });
-            -- one could also use contract since eps^epsPrec is the highest possible degree
-        );
- 
-        rightHandSide = sub(rightHandSide,coeffRng);
-    
-        if not (0==rightHandSide % jacobianM2Transposed ) then 
-        (
-            failedJetLength = epsPrecision;
-            liftingFailed=true; break; 
-        );
-
-        x := rightHandSide // jacobianM2Transposed ;
-        x = x + jacobianKernel* random(coeffRng^(numColumns(jacobianKernel)), coeffRng^1 );
-        x = transpose x;
- 
-        jet2 := sub (jet, epsRng ) - sub( x, epsRng ) * eps^epsPrecision;
-        assert ( 0 == blackBox.valuesAt(jet2) );
-        jet = jet2;
+        succeededJetLength = 1;
+        jet = lengthOneLift;
     );
-    -- todo: create a datatype or a hashTable for the return value.
+    
+ 
+    if (not liftingFailed) then 
+    (
+        for  epsPrecision in 2..jetLength do 
+        (
+            epsRng = getEpsRing( coeffRng, epsPrecision);
+            eps = (gens epsRng)#0;
+    
+            jet =  sub(jet,epsRng);
 
-    retVal = new HashTable from { "succeeded" => not liftingFailed, "jet" => jet, "failedJetLength" =>failedJetLength , "jetLength" => jetLength };
-    return retVal;
-)
+            valuesAtJet := blackBox.valuesAt(jet );
+
+            rightHandSide := matrix mutableMatrix( coeffRng, numColumns valuesAtJet ,1 );
+            
+                
+            if not zero(valuesAtJet) then 
+            (           
+                rightHandSide = transpose last coefficients (valuesAtJet, Monomials=>{ eps^epsPrecision });
+                -- one could also use contract since eps^epsPrec is the highest possible degree
+            );
+    
+            rightHandSide = sub(rightHandSide,coeffRng);
+        
+            if not (0==rightHandSide % jacobianM2Transposed ) then 
+            (
+                failedJetLength = epsPrecision;
+                liftingFailed = true;
+                break; 
+            );
+            succeededJetLength := epsPrecision;
+            x := rightHandSide // jacobianM2Transposed ;
+            x = x + jacobianKernel* random(coeffRng^(numColumns(jacobianKernel)), coeffRng^1 );
+            x = transpose x;
+    
+            jet2 := sub (jet, epsRng ) - sub( x, epsRng ) * eps^epsPrecision;
+            assert ( 0 == blackBox.valuesAt(jet2) ); -- debug
+            jet = jet2;
+        );
+    );
+
+    bestJetObject := jetObject (blackBox,  point, jet, succeededJetLength);
+    
+    return  jetAtResult(bestJetObject, failedJetLength);
+);
 
 
 
@@ -951,29 +1106,150 @@ jetAtSingleTrial( HashTable, Matrix, ZZ ) := MutableHashTable => ( blackBox,  po
 --   for the returned result and input restrictions see 'jetAtSingleTrial'
 --
 
-jetAt = method();
 
-jetAt( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials )  ->
---jetAt( HashTable, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials )  ->
+
+bestJetAt= method();
+
+bestJetAt( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := Jet  => ( blackBox,  point, jetLength, numTrials )  ->
 (
     if ( numTrials<1 ) then error "jetAt: expected numTrials >=1 ";
-    bestJet := jetAtSingleTrial ( blackBox,  point, jetLength);
+    
+    jetResult := jetAtSingleTrial ( blackBox,  point, jetLength);    
 
-    if (bestJet#"succeeded") then (   return bestJet;   );
+    if  jetResult#"succeeded"  then  return jetResult#"jet"; 
+    
+    bestJet := jetResult#"bestJet";
 
     for i in 2..numTrials do
     (
-        jetTrialResult := jetAtSingleTrial ( blackBox,  point, jetLength);
+        newJetResult  := jetAtSingleTrial ( blackBox,  point, jetLength);
 
-        if (jetTrialResult#"succeeded") then ( return jetTrialResult;   );
+        if  newJetResult#"succeeded"  then return  newJetResult#"jet"; 
 
-        if ( bestJet#"failedJetLength"< jetTrialResult#"failedJetLength" ) then
+        if ( length bestJet  < length  newJetResult#"bestJet"  ) then
         ( 
-            bestJet = jetTrialResult;
+            bestJet =  newJetResult#"bestJet";
         );       
     );
     return bestJet;
-)
+);
+
+worstJetAt = method();
+
+worstJetAt( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := Jet => ( blackBox,  point, jetLength, numTrials )  ->
+(
+    if ( numTrials<1 ) then error "jetAt: expected numTrials >=1 ";
+    
+    jetResult  := jetAtSingleTrial ( blackBox,  point, jetLength);      
+    
+    worstJet := jetResult#"bestJet";
+    
+    for i in 2..numTrials do
+    (
+        newJetResult := jetAtSingleTrial ( blackBox,  point, jetLength);
+
+        if ( length worstJet > length newJetResult#"bestJet" ) then
+        ( 
+            worstJet = newJetResult#"bestJet";
+        );       
+    );
+    return worstJet;
+);
+
+
+jetAtWithException = method();
+
+-- throws an exception if one trial fails or returns the last computed jet otherwise.
+jetAtWithException( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := Jet => ( blackBox,  point, jetLength, numTrials )  ->
+(
+    if ( numTrials<1 ) then error "jetAt: expected numTrials >=1 ";
+    
+    jetResult  := jetAtSingleTrial ( blackBox,  point, jetLength);      
+    
+    if (jetResult#"jet"=== null) then 
+    (
+       throw new SingularPointException from {"errorMessage"=>"Point is not smooth",
+                                              "failedJetLength" => jetResult#"failedJetLength",
+                                              "failedJet" => jetResult#"bestJet",                                            
+                                                };
+    );        
+    
+    for i in 2..numTrials do
+    (
+        jetResult = jetAtSingleTrial ( blackBox,  point, jetLength);
+         if (jetResult#"jet"=== null) then 
+         (
+                throw new SingularPointException from {"errorMessage"=>"Point is not smooth",
+                                                   "failedJetLength" => jetResult#"failedJetLength",
+                                                    "failedJet" => jetResult#"bestJet"                                              
+                                              }
+         );
+    );
+    return jetResult#"jet";
+);
+
+
+jetAtWithException( BlackBoxParameterSpace, Matrix, ZZ) := Jet => ( blackBox,  point, jetLength )  ->
+(
+    return jetAtWithException( blackBox,  point, jetLength, 1 );
+);
+
+
+
+-- returns null if one of the numTrials failed or the jet from the last trial.
+
+jetAtWithNull = method();
+jetAtWithNull( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := Jet => ( blackBox,  point, jetLength, numTrials )  ->
+(
+   if ( numTrials<1 ) then error "jetAtWithNull: expected numTrials >=1 ";
+    
+    jetResult  := jetAtSingleTrial ( blackBox,  point, jetLength);      
+    
+    if (jetResult#"jet"=== null) then   return jetResult#"jet";
+    
+    for i in 2..numTrials do
+    (
+        jetResult = jetAtSingleTrial ( blackBox,  point, jetLength);
+        if (jetResult#"jet"=== null) then break;
+    );
+    return jetResult#"jet";
+);
+
+
+jetAtWithNull( BlackBoxParameterSpace, Matrix, ZZ) := Jet => ( blackBox,  point, jetLength )  ->
+(
+    return jetAtWithNull( blackBox,  point, jetLength, 1 );
+);
+
+
+-- returns the first failed jet or the last jet in case no trial failed.
+jetAtWithInfo = method();
+jetAtWithInfo( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := Jet => ( blackBox,  point, jetLength, numTrials )  ->
+(
+   if ( numTrials<1 ) then error "jetAtWithNull: expected numTrials >=1 ";
+    
+    jetResult  := jetAtSingleTrial ( blackBox,  point, jetLength);      
+    
+    if (jetResult#"jet"=== null) then   return jetResult;
+    
+    for i in 2..numTrials do
+    (
+        jetResult = jetAtSingleTrial ( blackBox,  point, jetLength);
+        if (jetResult#"jet"=== null) then break;
+    );
+    return jetResult;
+);
+
+
+jetAtWithInfo( BlackBoxParameterSpace, Matrix, ZZ) := Jet => ( blackBox,  point, jetLength )  ->
+(
+    return jetAtWithInfo( blackBox,  point, jetLength, 1 );
+);
+
+
+-- use the exception variant as default for jetAt, because computation at a singular point should hurt.
+jetAt = jetAtWithException;  
+
 
 
 
@@ -985,14 +1261,21 @@ isCertainlySingularAt( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := MutableHashTab
     
     for i in 1..numTrials do
     (
-        worstJet := jetAtSingleTrial ( blackBox,  point, jetLength);
-        if (not worstJet#"succeeded") then 
+        jetOrError := catch jetAt( blackBox,  point, jetLength);
+        if (class jetOrError === SingularPointException) then 
         (
             return true;
+        );
+        if (class jetOrError =!= Jet) then 
+        (
+            return jetOrError; -- it is a different error 
         );
     );
     return false;
 );
+
+
+
 
 isCertainlySingularAt( BlackBoxParameterSpace, Matrix, HashTable) := MutableHashTable => ( blackBox,  point, options ) ->
 --isCertainlySingularAt( HashTable, Matrix, HashTable) := MutableHashTable => ( blackBox,  point,  options ) ->
@@ -1081,17 +1364,13 @@ createMapHelper = (mapMatrix, imageRing) ->
     );
    
     mapData#"valueAtJet" = method();
-    mapData#"valueAtJet" (HashTable) := HashTable => (jet) -> 
+    mapData#"valueAtJet" (Jet) := Jet => (jet) -> 
     (
-        return new HashTable from {
-           "failedJetLength" => jet#"failedJetLength",
-           "jet" => (mapData#"valueAt")(jet#"jet"),
-           "succeeded" => jet#"succeeded"
-        };
+        return jetObject(jet#"parent", jet#"point", (mapData#"valueAt")(jet#"value"), jet#"jetLength");                  
     );
    
     return new MapHelper from mapData
-)
+);
 
 new MapHelper from Matrix := (XXX, mapMatrix) -> 
 (
@@ -1135,29 +1414,36 @@ new InterpolatedIdeal from List :=  (InterpolatedIdealAncestor,l)->
 --
 interpolate = (mons, jetList) -> 
 (
-    bblog.debug("--interpolate call; \n --mons : " | toString mons | ";\n --jetList :" | toString jetList);    
+    bblog.debug("--interpolate call;");
+    bblog.debug("--interpolate call; \n --mons : " | toString mons );
+    bblog.debug("--interpolate call;--jetList :" | toString jetList);
+    bblog.debug("--interpolate call ok");    
     R := ring mons;
     K := coefficientRing R;
-    jetsSucceeded := select(jetList, jetP->jetP#"succeeded");
-    if #jetsSucceeded != #jetList then 
+    failedJets := select(jetList, jetP->jetP===null);    
+    if #failedJets >0 then 
     ( 
         error throw new SingularPointException from {"errorMessage"=>"jets not succeed. Point is not smooth?";}
     );
+    --
     -- substitute jets into the monomials and take coefficients
     -- die jets werden in jedes monom eingesetzt. (matrix : #monome x 1 für einen jet.)
-    -- substitutedList := apply(jetList, jetP ->   sub(mons, jetP#"jet"));
+    -- substitutedList := apply(jetList, jetP ->   sub(mons, jetP#"value"));
     -- nun haben wir für je einen jet J anstatt n monome n polynome in eps. 
     -- 'last coefficients' gruppiert die Koeffizienten nach Grad von 'eps', d.h. für jeden Grad von eps 
     -- haben wir eine Matrix-Zeile mit #monome Einträgen.
     -- BlackBoxLogger.debug("interpolate, substituded:" | toString substitutedList);
     -- coeffs := apply(substitutedList, sp-> coefficients sp);    
     -- BlackBoxLogger.debug("interpolate, coeffs:" | toString coeffs);
-    coeffList := apply(jetList,jetP ->  sub(last coefficients sub(mons, jetP#"jet"),K));
+    --
+    coeffList := apply(jetList,jetP ->  sub(last coefficients sub(mons, jetP#"value"),K));
     BlackBoxLogger.debug("interpolate, coeffList:" | toString coeffList);    
+    --
     -- haben wir einen weiteren Jet, so muss die gleiche Linearkombination der Spalten für den ersten
     -- auch für den zweiten Jet gelten
     --  => wir hängen die Koeffizientenmatrix für den zweiten eingesetzten jet einfach an die erste Matrix unten dran
     --    (weitere Zeilen kommen hinzu, Kommando 'fold'; mit || als Konkatenation)
+    --
     folded := fold((a,b)->(a||b),coeffList);
     BlackBoxLogger.debug("interpolate, folded coefflist" | toString folded);
     -- nun suchen wir für die Spalten eine Linearkombination, so dass jede Zeile zu 0 wird. (jet auf der Komponente).
@@ -1167,7 +1453,7 @@ interpolate = (mons, jetList) ->
     -- make polynomials from the solution
     -- (jk) todo: is mingens fast enough?
     I := ideal mingens ideal(mons*s);
-    I
+    return I;
 )
 
 
@@ -1178,30 +1464,49 @@ interpolate = (mons, jetList) ->
 -- this is the most basic simple minded implementation where only one very long jet is considered.
 --
 
+
+createInterpolatedIdealObj = method();
+createInterpolatedIdealObj( Ideal, ZZ, Thing, String ) := InterpolatedIdeal => 
+                       (I,maxDegree, witness, description)->
+(
+    result := new InterpolatedIdeal from {
+        "ideal" => I,
+        "maxDegree" => maxDegree,
+        "witness" => witness,
+        "description" => description
+    };
+    return result;
+);
+
+createInterpolatedIdealObj( Ideal, ZZ, String ) := InterpolatedIdeal => 
+                       (I,maxDegree,  description)->
+(
+    return createInterpolatedIdealObj (I,maxDegree, null, description);
+);
+
+
+
 interpolateBB = method();
 
-interpolateBB(BlackBoxParameterSpace, Matrix, ZZ, MapHelper) := Ideal =>
---interpolateBB(ZZ,HashTable,Matrix,MapHelper) := Ideal =>  
+interpolateBB(BlackBoxParameterSpace, Matrix, ZZ, MapHelper) := InterpolatedIdeal =>
              (BB,point,maxDegree,mmap) -> 
 (
     R := mmap#"imageRing";
-    mons := matrix {flatten apply(maxDegree+1,i->flatten entries basis(i,R))};
+    mons := matrix {flatten apply(maxDegree+1, currentDegree->flatten entries basis(currentDegree,R))};
     -- find one jet with precision 10 more then number of monomials
-    jetP := jetAt(BB,point,rank source mons+10,2);
+    jetP := jetAtWithException(BB,point,rank source mons+10,2);
     -- !!!this heuristic must be tested!!!
     -- Test: see if interpolated polynomials are in at least one
     -- irreducible component of the BlackBoxIdeal.
     jetPimage :=  (mmap#"valueAtJet")(jetP);
-    --new HashTable from {
-    --      "failedJetLength" => jetP#"failedJetLength",
-    --      "jet" => (mmap#"valueAt")(jetP#"jet"),
-    --      "succeeded" => jetP#"succeeded"
-    --      };
-    interpolate(mons,{jetPimage})
+    bareIdeal:= interpolate(mons,{jetPimage});
+   
+    idealWitness := new JetSet from jetP;
+    interpolatedIdeal := createInterpolatedIdealObj(bareIdeal, maxDegree, idealWitness, "");
+    return interpolatedIdeal;
 )
 
 interpolateBB(BlackBoxParameterSpace,Matrix,ZZ,Matrix) := Ideal =>
---interpolateBB(ZZ,HashTable,Matrix,Matrix) := Ideal =>  
              (BB,point,maxDegree,mmap) -> 
 (
     interpolateBB(BB,point,maxDegree,new MapHelper from mmap)
@@ -1209,7 +1514,6 @@ interpolateBB(BlackBoxParameterSpace,Matrix,ZZ,Matrix) := Ideal =>
 
 
 interpolateBB(BlackBoxParameterSpace,Matrix,ZZ) := Ideal =>
---interpolateBB(ZZ,HashTable,Matrix) := Ideal =>  
              (BB,point,maxDegree) -> 
 (
     interpolateBB(BB,point,maxDegree,createMapHelper(vars BB.ring,BB.ring))
@@ -1217,45 +1521,9 @@ interpolateBB(BlackBoxParameterSpace,Matrix,ZZ) := Ideal =>
 
 
 
-createInterpolatedIdealObj = method();
-createInterpolatedIdealObj( Ideal,ZZ,String ) := InterpolatedIdeal => 
-                       (I,maxDegree, description)->
-(
-    result := new InterpolatedIdeal from {
-        "ideal" => I,
-        "maxDegree" => maxDegree,
-        "description" => description
-    };
-    return result;
-);
-
-
 createInterpolatedIdeal = method();
 
 --internal method
-
-createInterpolatedIdeal (BlackBoxIdeal,Matrix,ZZ) := InterpolatedIdeal => ( BB, point, maxDegree)->
-(
-    createInterpolatedIdealObj ( interpolateBB(BB,point,maxDegree), maxDegree, "" )
-);
-
-createInterpolatedIdeal (HashTable, Matrix,ZZ ) := InterpolatedIdeal => (BB, point,maxDegree )->
-(
-    createInterpolatedIdealObj ( interpolateBB(BB,point,maxDegree), maxDegree, "" )
-);
-
-
-createInterpolatedIdeal (BlackBoxIdeal, Matrix, ZZ, String) := InterpolatedIdeal => ( BB, point, maxDegree, name)->
-(
-    createInterpolatedIdealObj ( interpolateBB(BB, point, maxDegree), maxDegree, name )
-);
-
-
-createInterpolatedIdeal ( HashTable, Matrix, ZZ, String) := InterpolatedIdeal => (BB, point, maxDegree,  name)->
-(
-    createInterpolatedIdealObj ( interpolateBB(BB, point, maxDegree), maxDegree, name )
-);
-
 
 -- createSimpleComponentCalculator should be private, since each blackbox needs an own component calculator.
 
@@ -1331,13 +1599,20 @@ createSimpleComponentCalculator = (blackBoxParameter) ->
     --
     simpleComponentCalculator.isOnComponent ( Ideal, Matrix, ZZ) := Boolean => (componentIdeal, point, onComponentPrecisionParam)->
     (
+        bblog.debug ("enter simpleComponentCalculator.isOnComponent");
         if not (jets#?point) then
         (        
             -- we have no cached jets for the given point => compute jets
-            --jetP := jetAt(interpolation.blackBoxIdeal() ,point, onComponentPrecisionParam, 1);
             jets#point = jetAt( blackBox ,point, onComponentPrecisionParam, 1);
+            -- here we could also update statistic if the jet succeeded or not...
         );
         jetP := jets#point;  
+        
+        if (jetP === null) then
+        (
+            bblog.debug ("leave 1 simpleComponentCalculator.isOnComponent");
+            throw new SingularPointException from {"errorMessage"=>"jets not succeeded. Point "|  toString point | "is not smooth?";};
+        );
 
         if jetP#"jetLength" < onComponentPrecisionParam then 
         (
@@ -1346,17 +1621,18 @@ createSimpleComponentCalculator = (blackBoxParameter) ->
             jetP = jets#point;  
         );
 
-        if jetP#"succeeded" then 
+        --if jetP#"succeeded" then 
+        if (jetP =!= null) then
         (
             -- check if the point is on the component or not
             -- print "succeeded";            
             -- testing throw new SingularPointException from {"errorMessage"=>"jets not succeeded. Point is not smooth?";};
-            return (0 == sub( componentIdeal, jetP#"jet" ));
+            bblog.debug ("leave 3 simpleComponentCalculator.isOnComponent");
+            return (0 == sub( componentIdeal, jetP#"value" ));
         )
         else
         (
-            --print "point not smooth";
-            --error "point is not smooth";
+            bblog.debug ("leave 2 simpleComponentCalculator.isOnComponent");
             throw new SingularPointException from {"errorMessage"=>"jets not succeeded. Point is not smooth?";};
         );
 
@@ -1379,10 +1655,10 @@ createSimpleComponentCalculator = (blackBoxParameter) ->
         return simpleComponentCalculator.isOnComponent( componentCandidates#?componentId,  point, onComponentPrecision) ;
     );
 
-
+    -- should return smooth point list and eventually singular point list.
     simpleComponentCalculator.interpolateComponents  = (pointList, interpolationMaxDegree, onComponentPrecision) -> 
     (
-        -- print "InterpolateComponents";
+        bblog.debug("enter InterpolateComponents");
         idealCount := 0;
         localInterpolatedIdeals := {};
 
@@ -1438,19 +1714,26 @@ createSimpleComponentCalculator = (blackBoxParameter) ->
                 continue;
             );
 
-            localInterpolatedIdealOrError := catch createInterpolatedIdeal (blackBox , point,interpolationMaxDegree, ("ideal_" |toString idealCount ));                     
+            -- separate compute from 
+            localInterpolatedIdealOrError := catch interpolateBB (blackBox , point,interpolationMaxDegree);                     
+            
 
-            if ( SingularPointException === (class localInterpolatedIdealOrError)) then 
+            if (  isDerivedFrom(localInterpolatedIdealOrError,SingularPointException)) then 
             (
                 BlackBoxLogger.debug("createInterpolatedIdeal: point "| toString point| " was singular");
             )
             else  
-            (                       
+            (                                         
                   localInterpolatedIdeals = localInterpolatedIdeals | { localInterpolatedIdealOrError  };  
                   idealCount = idealCount +1 ;
             );
         );
         -- print "timing for loop", T#0;
+        -- TODO HERE: 
+        -- 1. remove all components at Singular points. 
+        -- 2. for all smooth points assigned to singular components repeat the interpolation loop !
+        
+        
         interpolatedIdeals := new MutableHashTable from 
             apply ( #localInterpolatedIdeals, idx-> (("ideal_" |toString idx ) => localInterpolatedIdeals#idx ) ) ;
 
@@ -2312,7 +2595,10 @@ blackBoxIdealInternal := ( equationsIdeal)->
                 if (blackBox.withChecks) then
                 (
                     if (not ( blackBox.valuesAt( point )==0))  then  
-                        error("point does not belong to the ideal ! ");
+                    (
+                        --error("point does not belong to the ideal ! ");
+                        throw new PointNotOnBlackBox from {"errorMessage" => " Point " |toString point|" not on Black box"};
+                    );
                 );
                 -- attention, duplicate code!!!
                 jacobianM2MatrixAt := sub( blackBox.jacobian , point);
@@ -3253,14 +3539,12 @@ doc ///
           bbI.isProbablySmoothAt(otherPoint)
         Text
           If the point is not on the vanishing set defined by
-          the black box ideal, "is certainly singular" is always
-          returned. (This is usefull when this property is watched
-          in a finite field experiment.)
+          the black box ideal, an exception PointNotOnBlackBox is thrown
         Example
           pointNotOnCurve = matrix{{4,5_QQ}}
           bbI.isZeroAt(pointNotOnCurve)
-          bbI.isCertainlySingularAt(pointNotOnCurve)
-          jetAt(bbI,pointNotOnCurve,1,1)
+          catch bbI.isCertainlySingularAt(pointNotOnCurve)
+          catch jetAt(bbI,pointNotOnCurve,1,1)
     SeeAlso
        setSingularityTestOptions
        jetAt
@@ -3312,22 +3596,22 @@ doc ///
         Text
           The defining equations of the ideal indeed vanish on the jet:
         Example
-          sub(I,j#"jet")
+          sub(I,j)
         Text
           At the origin the nodal cubic is singular. Short jets can be found,
           but not long ones:
         Example
           origin = matrix{{0,0_Fp}}
-          jetAt(bbI,origin,1,1)  
-          jetAt(bbI,origin,2,1)  
-          jetAt(bbI,origin,3,1)  
+          catch jetAt(bbI,origin,1,1)  
+          catch jetAt(bbI,origin,2,1)  
+          catch jetAt(bbI,origin,3,1)  
         Text
           Notice that the search for fails at length 2 most of the time,
           since the singularity has multiplicity 2. If one tries
           long enough a longer jet can be found (lying on one
           of the branches at the origin):
         Example        
-            jetAt(bbI,origin,3,200) 
+            catch jetAt(bbI,origin,3,200) 
     SeeAlso
         isProbablySmoothAt
         isCertainlySingularAt
@@ -3854,12 +4138,13 @@ doc ///
           of jets can be found the point property @TO{isProbablySmoothAt}@ has the
           value true.
         Example
-          R = QQ[x,y]
-          I = ideal(x^5-y^7);
+          K = QQ
+          R = QQ[x,y,z]      
+          I = ideal (x*z,y*z)
           bbI = blackBoxIdeal I;
-          smoothPoint = matrix{{8,4_QQ}}
-          bbI.isProbablySmoothAt(smoothPoint)
-          origin = matrix{{0,0_QQ}}
+          pointOnLine = matrix{{0,1,0_K}}
+          bbI.isProbablySmoothAt(pointOnLine)
+          origin = matrix{{0,0, 0_K}}
           bbI.isProbablySmoothAt(origin)
           bbI.isCertainlySingularAt(origin)
         Text
@@ -4039,8 +4324,9 @@ TEST ///
     bb.singularityTestOptions()
     bb.setSingularityTestOptions(5,5);
     point = matrix{{0_coeffRing, 1_coeffRing}}
-    bb.isCertainlySingularAt(point)
-    bb.isProbablySmoothAt(point)
+    bb.valuesAt (point)
+    catchOrResult = bb.isCertainlySingularAt(point)
+    assert (class catchOrResult === PointNotOnBlackBox)
 ///
 
 TEST ///
@@ -4049,7 +4335,9 @@ TEST ///
     I = ideal(x^5-y^7);
     bbI = blackBoxIdeal I;
     smoothPoint = matrix{{8,4_QQ}}
-    bbI.isProbablySmoothAt(smoothPoint)
+    bbI.valuesAt(smoothPoint)
+        
+    try  (bbI.isProbablySmoothAt(smoothPoint)) then (assert(false)) else ()
     origin = matrix{{0,0_QQ}}
     bbI.isProbablySmoothAt(origin)
     bbI.isCertainlySingularAt(origin)
@@ -4073,7 +4361,9 @@ TEST ///
     bb.jacobianAt(P)
     P = matrix{{1_coeffRing, 1_coeffRing}}
     valuesAt(bb,P);
-    try ( bb.jacobianAt(P) ) then (error " bb.jacobianAt(point) should gove an error , becaues the point is not on the variety"  ) else ( );
+    
+    --bb.jacobianAt(point) should throw an  PointNotOnBlackBox exception
+    assert (PointNotOnBlackBox === class catch  bb.jacobianAt(P) )     
 
     valuesAt = ( point)-> matrix {{sub(  x^2, point )}};
     valuesAt(P);
@@ -4082,31 +4372,160 @@ TEST ///
     P = matrix{{0_coeffRing, 0_coeffRing}}
     bbE.jacobianAt(P)
     P = matrix{{1_coeffRing, 1_coeffRing}}
-    try ( bbE.jacobianAt(P) ) then (error " bbE.jacobianAt(point) should gove an error , becaues the point is not on the variety"  ) else ( );
-
+    --bbE.jacobianAt(point) should throw an  PointNotOnBlackBox exception
+    assert (PointNotOnBlackBox === class catch  bbE.jacobianAt(P) ) 
+    
+    
     C = QQ;
     R = QQ[x];
     bbI = new BlackBoxIdeal from ideal x;
     point = matrix{{1_QQ}};
-    try ( bbI.jacobianAt(point) ) then (error " bbI.jacobianAt(point) should gove an error , becaues the point is not on the variety"  ) else ( );
+    
+    -- bbI.jacobianAt(point) should gove an error , becaues the point is not on the variety
+    assert(PointNotOnBlackBox === class catch  bbI.jacobianAt(point) )      
+    
 
 ///
 
 
 TEST ///
     -- test issue #35
-    C = QQ;
-    R = QQ[x];
-    bbI = new BlackBoxIdeal from ideal x;
-    point = matrix{{1_QQ}};
+    K = QQ;
+    R = K[x,y];
+    bbI = new BlackBoxIdeal from ideal x*y;
+    point = matrix{{1_QQ, 1_QQ}};
 
-    jet =  jetAt(bbI,point,1,10)
-    assert(jet#"succeeded" == false)
-    jet =  jetAt(bbI,point,1,1)
-    assert(jet#"succeeded" == false)
+    -- not on black box throws error
+    jetOrError = catch jetAt(bbI,point,1,10)
+    assert (class jetOrError === PointNotOnBlackBox)
+    
+    point = matrix{{0_QQ, 0_QQ}};
+    jet =  jetAt(bbI,point,1,10)    
+    assert(jet =!= null)
+    assert(length jet == 1)
     jet =  jetAt(bbI,point,0,1)
-    assert(jet#"succeeded" == false)
+    assert(length jet == 0)
 ///
+
+
+JetSet = new Type of MutableHashTable;
+ 
+
+new JetSet from Thing := ( E, thing) -> 
+(
+    error "creating JetSet from  type " | toString E | " not implemented or not possible ";
+);
+
+
+new JetSet from Jet := ( E, thing) -> 
+(
+   mht := new MutableHashTable;
+   
+   mht#"list" = new List from {thing};
+   return mht;
+);
+
+firstElem = method();
+
+firstElem (JetSet) := Jet => (jetset)->
+(
+    return first jetset#"list";
+);
+
+locus  (JetSet) := Thing => (jetSet )->
+(
+    return locus firstElem jetSet;
+);
+
+compatible = method();
+
+
+compatible (Jet,Jet) := Boolean => (jet1, jet2 )->
+(    
+    if  ( jet1#"parent"===jet2#"parent" and 
+          jet1#"point" ===jet2#"point"      ) then
+         (
+            return true;
+         );
+         return false;        
+);
+
+compatible (JetSet,JetSet) := Boolean => (jetSet1, jetSet2 )->
+(    
+    if (0== length jetSet1 or 0== length jetSet2 ) then   return true;   
+    return compatible(firstElem jetSet1, firstElem jetSet2);
+);
+
+length (JetSet) := ZZ =>(jetset)->
+(
+    return #(jetset#"list");
+)
+
+
+-- probablySameComponent; certainlyDifferentComponent
+
+AddElement = method();
+
+AddElement (JetSet,Jet) := JetSet => (jetSet, jet)->
+(
+    if ( length jetSet===0 or
+         compatible(firstElem jetSet, jet) 
+       ) then
+        (
+            jetSet#"list" = append(jetSet#"list",jet);            
+            return jetSet;
+        );
+    error ("JetSet and Jet are probably incompatible");
+)
+
+joinJetSets = method();
+
+joinJetSets (JetSet,JetSet) := JetSet => (jetSet1, jetSet2 )->
+(
+    if (compatible (jetSet1, jetSet2)) then 
+    (
+        result := new JetSet;
+        result#"list" = unique join (jetSet1#"list",jetSet2#"list");
+        return result;
+    )
+    else
+    (
+        error ("jet sets probably not compatible");
+    );
+);
+
+
+
+
+TEST ///
+    -- restart 
+    -- loadPackage "BlackBoxIdeals"
+    K = QQ;
+    R = K[x,y];
+    bbI = new BlackBoxIdeal from ideal x*y;
+    
+    
+    point = matrix{{0_QQ, 0_QQ}};
+    
+    jet =  jetAt(bbI,point,1,10)
+    
+    locus jet
+    jet2 =  jetAt(bbI,point,1,10)   
+    
+    compatible(jet,jet2) 
+    
+    jetSet = new JetSet from jet
+    
+    locus jetSet      
+    compatible(jetSet,jetSet)    
+    
+    AddElement(jetSet,jet2)
+    
+    joinJetSets(jetSet,jetSet);    
+    -- unique: not im    
+///
+
+
 
 end
 
@@ -4165,5 +4584,66 @@ jetAtWrapper( BlackBoxParameterSpace, Matrix )  := MutableHashTable => opts -> (
 
 
 --        (clearCoeffDenominators, Ideal )    
+
+
+
+Point := new Type of HashTable;
+
+
+pointObject (Thing, Matrix) := (thing, point)->
+(
+    if not (thing.hasElement(point)) then 
+        error(" point is not on parent ");
+    pointObject = new HashTable from {("parent",thing),
+                                      ("point",point)
+                                     }
+    return pointObject;
+);
+
+
+BlackBoxPoint := new Type of Point
+{
+    parent is of type BlackBoxParameterSpace or derived
+    point is a Matrix?
+}
+
+blackBoxPointObject (BlackBoxParameterSpace, Matrix) := (blackBox, point)->
+(
+    if not (blackBox.isZeroAt(point)) then error(" point is not on BlackBox ");
+    pointObject = new HashTable from {("parent",blackBox),
+                                      ("point",point)
+                                     }
+    return pointObject;
+);
+
+-- single trial returns 
+
+(jet, bestJet, failedJetLength)
+
+
+
+
+
+JetInfoAt 
+(
+    bestJet
+    worstJet
+    Tally failedJetLength=> count
+    targetLength
+)
+
+-- or even better, JetInfoAt contains pairs length -> list of jets with that length.
+
+-- 
+ 
+-- and now we can pass the black box and the point ! (we have free another two parameters)
+
+-- we could do precision Jet and then check  first "jetLength", then 'precision ring jet'.
+
+
+InterpolatedIdeal: parent is JetSet
+
+Jet: parent is Point ? (or black box and point)
+
 
 

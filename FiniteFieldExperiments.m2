@@ -2,8 +2,8 @@
 
 newPackage(
      "FiniteFieldExperiments",
-     Version => "0.1", 
-     Date => "25.09.2014",
+     Version => "0.2", 
+     Date => "17.02.2017",
      Authors => {{
                  Name => "Hans-Christian Graf v. Bothmer", 
            Email => "bothmer@math.uni-hannover.de", 
@@ -129,7 +129,7 @@ FiniteFieldExperimentsProtect = ()->
 
     protect experimentData; 
     protect isRandom;
-    protect compatible;
+    --protect compatible;
     protect membershipPrecision;
     protect setMembershipPrecision;
     --protect createMapHelper;
@@ -219,7 +219,7 @@ FiniteFieldExperimentsExport  = ()->
     exportMutable("estimateStratification2");
     exportMutable("experimentData");
     exportMutable("isRandom");
-    exportMutable("compatible");
+    --exportMutable("compatible");
 
     exportMutable("createExperimentData");
 );
@@ -238,7 +238,7 @@ points,                        --a list of all points not sorted into list.
                                --not used anymore since tryProperty has
                                --been implemented
 reset,                         --iterator
-compatible,           --internal method
+--compatible,           --internal method
 
 estimateNumberOfComponents,    --internal
 estimateCodim,      --deprecated
@@ -1188,7 +1188,7 @@ Experiment + Experiment := Experiment => (re1, re2)->
     bb1 := re1.blackBoxIdeal();
     bb2 := re2.blackBoxIdeal();
 
-    if  re1.compatible(re2)    then
+    if  re1#"compatible"(re2)    then
     (
         re := copy re1;
         re.merge(re2);
@@ -1376,8 +1376,8 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
 
 --   experiment.estimateStratification2 = () -> ( estimateStratification2(experiment) );
 
-    experiment.compatible = method();
-    experiment.compatible (Experiment) := Boolean =>(re2)->
+    experiment#"compatible" = method();
+    experiment#"compatible" (Experiment) := Boolean =>(re2)->
     (
         bb1 := experiment.blackBoxIdeal();
         bb2 := re2.blackBoxIdeal();
@@ -1404,7 +1404,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
         if (experimentData==re.experimentData() ) then 
             error ("attempt to merge with itself");
 
-        if   experiment.compatible(re) then 
+        if   experiment#"compatible"(re) then 
         experimentData = experimentData + re.experimentData()
         else
         error ("experiments not compatible!");
@@ -1471,8 +1471,8 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
         jet := null;
         for point in plist do
         (
-                jet = jetAt(blackBoxIdeal,point,precision,trials);
-                if (jet#"succeeded") then
+                jetOrException := catch jetAt(blackBoxIdeal,point,precision,trials);
+                if isDerivedFrom(jetOrException, Jet) then
                 (
                     smothPoints = smothPoints | {point};
                 );

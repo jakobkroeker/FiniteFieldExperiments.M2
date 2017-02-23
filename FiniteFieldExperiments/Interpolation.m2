@@ -54,7 +54,7 @@ TEST ///
   assert (ideal(0_R) == interpolateBB(bb,pointOnSurface,1))
   assert (ideal(x^2+y^2+z^2+1) == interpolateBB(bb,pointOnSurface,2))
   -- a point where the blackBox does not vanish
-  assert (try interpolateBB(bb,notApoint,1) then false else true)
+  assert (PointNotOnBlackBox === class catch interpolateBB(bb,notApoint,1))
   -- a point where the blackBox is not smooth
   assert (SingularPointException === class catch interpolateBB(bb,intersectionPoint,1))
   -- a point over the wrong field
@@ -123,14 +123,20 @@ createInterpolatedImage(Experiment,Ring, MapHelper) := HashTable => (experiment,
      );
     interpolatedIdeals := {}; 
     -- better: interpolatedIdeals:= new MutableHashTable; ? but then we do not know if it was initialized??
-    interpolation.createAllInterpolatedIdeals  = (maxDegree, onComponentPrecision) -> 
+    interpolation#"createAllInterpolatedIdeals"  = (maxDegree, onComponentPrecision) -> 
     ( 
         bb := interpolation.blackBoxIdeal();
-        interpolatedIdeals = bb.interpolateComponents( (interpolation.experiment()).points(), maxDegree, onComponentPrecision);
+        print ("createAllInterpolatedIdeals: bb"); print (bb);
+        points :=  (interpolation.experiment()).points();
+        print ("createAllInterpolatedIdeals:  points"); print (points);
+        print ("createAllInterpolatedIdeals:  onComponentPrecision"); print (onComponentPrecision);
+        interpolatedIdeals = bb.interpolateComponents(points, maxDegree, onComponentPrecision);
+        assert (interpolatedIdeals =!=null);
         --print "here interpolatedIdeals";
         --print (toString interpolatedIdeals);
         return interpolation.allInterpolatedIdeals();       
     );
+    interpolation.createAllInterpolatedIdeals = interpolation#"createAllInterpolatedIdeals";
 
     localMembershipPrecision := 10; -- does this belong to experimentData?
 

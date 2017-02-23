@@ -73,7 +73,7 @@ assert (2== bbI.rankJacobianAt(matrix{{0,0,1_K}}))
 assert (1== bbI.rankJacobianAt(matrix{{1,2,0_K}}))
 assert (0== bbI.rankJacobianAt(matrix{{0,0,0_K}}))
 -- this is a point where the ideal does not vanish.
-try (bbI.rankJacobianAt(matrix{{1,1,1_K}})) then (error "should fail") else();
+assert(PointNotOnBlackBox===class catch bbI.rankJacobianAt(matrix{{1,1,1_K}})) 
 
 assert (bbI.isZeroAt(matrix{{0,0,1_K}}))
 assert (bbI.isZeroAt(matrix{{1,2,0_K}}))
@@ -188,7 +188,8 @@ decomposeResult := apply(keys e.pointLists(),k->(
 	  L = e.pointsByKey(k);
      	  unique flatten apply(unique L,P->(
 	  	    rank bbI.jacobianAt(P);
-	  	    time jetP = jetAt(bbI,P,20,1);
+	  	    time jetP = jetAtWithNull(bbI,P,20,1);
+	  	    if (not jetP===null) then 
 		    if not isCertainlySingularAt(bbI,P,20,1) then
 	  	    {interpolate(mons,{jetP})}
 	  	    ))
