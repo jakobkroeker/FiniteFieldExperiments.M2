@@ -16,6 +16,7 @@ newPackage(
      PackageExports => {"BlackBoxIdeals", "IntervalPkg" },
      Headline => "finite field experiments for explicit and implicitly given ideals and parameter spaces",
      DebuggingMode => false,
+     CacheExampleOutput => true,
      AuxiliaryFiles=>true
 )
 
@@ -380,7 +381,7 @@ TEST ///
 
 Experiment = new Type of MutableHashTable;
 
-load "./FiniteFieldExperiments/Interpolation.m2";
+--load "./FiniteFieldExperiments/Interpolation.m2";
 
 --
 -- ExperimentData is the data part of an Experiment. 
@@ -2430,7 +2431,7 @@ TEST ///
     e.watchedProperties()
     e.rankJacobianAtKey()
 
-    bbRankM.knownPointProperties()
+    bbRankM.pointProperties()
 
     -- e.stratificationIntervalView() -- test fails here; d
 
@@ -3451,7 +3452,7 @@ doc ///
         Example
            rankAllways5At = (point) -> 5;
            bb = bb.rpp("rankAllways5At",rankAllways5At);
-           bb.knownPointProperties()
+           bb.pointProperties()
         Text
            \break Now make an experiment from the blackbox:
         Example        
@@ -3520,7 +3521,7 @@ doc ///
         Example
            rankAllways5At = (point) -> 5;
            bb = bb.rpp("rankAllways5At",rankAllways5At);
-           bb.knownPointProperties()
+           bb.pointProperties()
         Text
            \break Now make an experiment from the blackbox:
         Example        
@@ -3877,7 +3878,7 @@ doc ///
             in 4 variables has 20 coefficients.
         Example
             bbC = blackBoxParameterSpace(20,K);
-            bbC.knownPointProperties()
+            bbC.pointProperties()
         Text
             We now build the cubics from the coefficents, i.e. we
             construct the member of the universal familiy over 
@@ -3889,7 +3890,7 @@ doc ///
             register this function in the black box 
         Example
             bbC = bbC.registerPointProperty("cubicAt",cubicAt);
-            bbC.knownPointProperties()
+            bbC.pointProperties()
         Text
             Lets test this functionality with some special cubics.
             The first example is the cubic cone. It is singular
@@ -3910,7 +3911,7 @@ doc ///
         Example
             singularLocusAt = (point) -> ideal jacobian cubicAt(point)
             bbC = bbC.rpp("singularLocusAt",singularLocusAt);
-            bbC.knownPointProperties()
+            bbC.pointProperties()
             bbC.singularLocusAt(coeffCubicCone)   
             bbC.singularLocusAt(coeffCubicFermat)
         Text
@@ -3926,7 +3927,7 @@ doc ///
                  numPoints singularLocusAt(point)
               )
             bbC = bbC.rpp("degreeSingularLocusAt",degreeSingularLocusAt);
-            bbC.knownPointProperties()
+            bbC.pointProperties()
         Text
             Calculate the degree of the singular locus for our examples
         Example
@@ -3935,7 +3936,7 @@ doc ///
         Text
             Now the BlackBoxParameterspace hat a number of point properties
         Example
-            bbC.knownPointProperties()
+            bbC.pointProperties()
         Text
             These properties can now be used in a finite field experiment
             that studies the statification of our parameter space. 
@@ -4035,7 +4036,7 @@ doc ///
                       ))
                  )            
             bbC = bbC.rpp("partitionSingularLocusAt",partitionSingularLocusAt);                     
-            bbC.knownPointProperties()
+            bbC.pointProperties()
         Text
             Lets try out what this property gives on the collected points:
         Example

@@ -40,13 +40,13 @@ bbI = blackBoxIdeal I;
 bbI = new BlackBoxIdeal from I;  -- same as above
 
 
-print bbI.knownPointProperties()
+print bbI.pointProperties()
 bbI.knownPointPropertiesAsSymbols()
 -- {jacobianAt, rankJacobianAt, isZeroAt, valuesAt, bareJacobianAt}
 
 
 print bbI.knownMethods()
--- { knownMethods, knownAttributes, knownPointProperties, 
+-- { knownMethods, knownAttributes, pointProperties, 
 --   knownPointPropertiesAsSymbols, hasPointProperty, pointProperty, 
 --   registerPointProperty, updatePointProperty }
 
@@ -91,7 +91,7 @@ e.watchedProperties()
 
 -- register new property
 bbI.registerPointProperty("rankJacobianAtDup",(bb,point)->(rank bb.jacobianAt(point)))
-bbI.knownPointProperties()
+bbI.pointProperties()
 -- rankJacobianAtDup is registered
 -- bbI.rankJacobianAtDup(matrix{{0,0,1_K}})
 -- stdio:73:4:(3): error: key not found in hash table
@@ -188,7 +188,7 @@ decomposeResult := apply(keys e.pointLists(),k->(
 	  L = e.pointsByKey(k);
      	  unique flatten apply(unique L,P->(
 	  	    rank bbI.jacobianAt(P);
-	  	    time jetP = jetAtWithNull(bbI,P,20,1);
+	  	    time jetP = jetAtOrNull(bbI,P,20,1);
 	  	    if (not jetP===null) then 
 		    if not isCertainlySingularAt(bbI,P,20,1) then
 	  	    {interpolate(mons,{jetP})}
