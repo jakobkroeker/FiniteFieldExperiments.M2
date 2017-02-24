@@ -3025,42 +3025,66 @@ doc ///
    Key
         blackBoxIdealFromEvaluation        
    Headline
-        create a  BlackBoxIdeal  describing an ideal  with integer coefficient ring
+        create a  BlackBoxIdeal  from an evaluation method
    Usage   
-        blackBoxIdealFromEvaluation( rng, evaluationMethod )
-        blackBoxIdealFromEvaluation( variableNumber, coeffRing, evaluationMethod)
+        blackBoxIdealFromEvaluation( R, evaluationMethod )
    Inputs  
-        rng:Ring
-             with integer coefficients
-        variableNumber:ZZ
-             number of parameter variables
-        coeffRing:Ring
-             ring to whicht the parameter variables belong to.
+        R:Ring
+             that contains the implicitly given Ideal
         evaluationMethod:Function
-             function which accepts a point given as a row matrix and returns the evaluation at this point as a row matrix.
+             accepting a point given as a row matrix 
+             (with the same number of entries as the number of
+             variables of R)
+             and returns 
+             the evaluation of the generators of the ideal 
+             at this point as a row matrix.
    Outputs
         : BlackBoxIdeal
    Description   
         Text    
            Creates a blackbox describing an implicitly given ideal from an evaluation method \break
-           \break  Example:  create an {\tt BlackBoxIdeal } object from an evaluation:
-        Example          
-            RQ := QQ[x];
-            IFQ := ideal { 1/3*x^2-100/3, 1/5*x+2 };        
-            evaluation := (point)-> (return sub( gens IFQ, point) );
-            bbI := blackBoxIdealFromEvaluation( RQ, evaluation );
+           A BlackBoxIdeal is a special @TO BlackBoxParameterSpace @.
+           
+           This is useful when the generators of an ideal are
+           to big to write down, but an algorithm evaluating the generators
+           of at a point is known.
+           
+           A trivial example is the determinant of a n x n matrix. 
+           The explicit polynomial has n! terms. For big enough n
+           it is impossible to even store the n! terms of it. 
+           But for a given point in K^{n*n}, the
+           matrix has entries in a field and the Gauss-Algorithm can 
+           be used to evaluate the determinant. This takes only O(n^3) steps:
+           
+           Make an n x n matrix from a vector of length n^2:
+        Example
+           K = ZZ/11
+           n = 10;
+           matrixAt = point -> matrix apply(n,i->apply(n,j->point_(i*n+j)_0))              
+           testPoint = random(K^1,K^(n*n));          
+           matrixAt(testPoint)
         Text
-            \break Now access some ideal propeties via the black box interface:
-        Example          
-            -- keys bbI
-            bbI.knownAttributes()
-            bbI.unknowns
-            point := matrix { {1_QQ } };
-            bbI.pointProperties()
-            bbI.valuesAt(point)
-
-            point = matrix { {-10_QQ } };
-            bbI.jacobianAt(point)            
+           Now take the determinant. To be able to take this
+           as an evaluation method of a BlackBoxIdeal it has to
+           take a 1 x n^2 matrix and has to return a 1 x m matrix
+           (in this case m=1).
+        Example
+           detAt = point -> matrix{{det matrixAt(point)}};
+           detAt(testPoint)
+        Text
+           Now make a BlackBox from this evaluation method:
+        Example
+           R = K[a_(0,0)..a_(n-1,n-1)];
+           bbDet = blackBoxIdealFromEvaluation(R,detAt);
+        Text
+           Evaluate the BlackBox at the test point:
+        Example
+           bbDet.valuesAt(testPoint) == det(matrixAt(testPoint))
+        Text
+           Using the Package FiniteFieldExperiments
+           heuristic information about the irreducible components
+           of a variety defined by an black box
+           can be obtained.
    Caveat
         may have problems if the coefficient ring is something obscure? Rationals and integers as coefficient ring should be ok.
 ///
@@ -3072,36 +3096,26 @@ doc ///
    Headline
         create a {\tt BlackBoxIdeal } 
    Usage   
-        blackBoxIdeal(anIdeal)
+        blackBoxIdeal(I)
    Inputs  
-        anIdeal:Ideal
+        I:Ideal
    Outputs
         : BlackBoxIdeal
    Description      
         Text
-           Creates a blackbox describing an ideal \break \break
-           See also @TO blackBoxIdealFromEvaluation@  \break
-           \break  Example:  create an {\tt BlackBoxIdeal } object from an ideal:
-        Example          
-            RQ := QQ[x];
-            IFQ := ideal { 1/3*x^2-100/3, 1/5*x+2 };        
-            IFZ := clearCoeffDenominators(IFQ)
-            bbI := blackBoxIdeal(IFZ);
-        Text
-            \break Now access some ideal propeties via the black box interface:
-        Example          
-            -- keys bbI
-            bbI.knownAttributes()
-            bbI.ideal
-            bbI.unknowns
-            bbI.equations
-            bbI.jacobian
-            point := matrix { {1_QQ} };
-            bbI.pointProperties()
-            bbI.valuesAt(point)
-            point = matrix { {-10_QQ} };
-            bbI.valuesAt(point)
-            bbI.jacobianAt(point)            
+
+          Sometimes one wants to use the algorithms implemented
+          for black box ideals even though explicit generators
+          of the ideal are known. In this case one can create
+          a BlackBoxIdeal from an ordinary ideal:
+        Example
+          K = ZZ/11;
+          R = K[x,y,z]
+          bb = blackBoxIdeal(ideal(x*y,x*z));
+          -- this defines a plane x=0 and a line y=z=0
+          bb.isZeroAt(matrix{{0,1,1_K}})          
+          bb.isProbablySmoothAt(matrix{{0,1,1_K}})
+          bb.isCertainlySingularAt(matrix{{0,0,0_K}})
    Caveat
         does not check if the ideal ring is a quotient ring (not supported?)
 ///
@@ -3306,103 +3320,75 @@ TEST ///
 -- blackBoxParameterSpace(ZZ,Ring) ?
 
 
-doc ///
-   Key
-        blackBoxParameterSpace
-   Headline
-        create (3) a BlackBoxParameterSpace  describing an parameter space
-   Usage   
-        blackBoxParameterSpace(rng)
-        blackBoxParameterSpace( variableNumber, coeffRing)
-   Inputs  
-        rng:Ring
-             a polynomial ring 
-        variableNumber:ZZ
-             number of parameter variables
-        coeffRing:Ring
-             ring to which the parameter variables belong to; 
-
-   Outputs
-        : BlackBoxParameterSpace
-   Description  
-        Text    
-           Creates (4) a blackbox describing an parameter space    \break            
-           \break  Example:  create an {\tt BlackBoxParameterSpace } object :
-        Example     
-            coeffRing := ZZ/3;
-            numVariables := 5;
-            bbParamSpace = blackBoxParameterSpace( numVariables , coeffRing );
-            rankMat := (blackBox, point)->55;
-            bbParamSpace.knownMethods()
-            bbParamSpace = bbParamSpace.registerPointProperty("rankJacobianAt", rankMat );
-        Text
-            \break Now access some propeties via the black box interface:
-        Example          
-            -- keys bbParamSpace
-            bbParamSpace.knownAttributes()
-            bbParamSpace.coefficientRing
-            bbParamSpace.knownPointProperties()
-            point := matrix { {1,2,3,4,5} };
-            point = sub( point, coeffRing); 
-            bbParamSpace.rankJacobianAt(point)
-            rankMatNew := (blackBox, point)->6;
-            bbParamSpace = bbParamSpace.updatePointProperty("rankJacobianAt", rankMatNew );
-            bbParamSpace.rankJacobianAt(point)
-///
 
 doc ///
     Key
+        blackBoxParameterSpace
         BlackBoxParameterSpace
-        (NewFromMethod,BlackBoxParameterSpace,Ring)
         (NewFromMethod,BlackBoxParameterSpace,Thing)
     Headline
-          black boxes for parameter spaces
+        create a BlackBoxParameterSpace.
+    Usage   
+        blackBoxParameterSpace(d,K)
+    Inputs  
+        d: ZZ 
+         the (affine) dimension of the parameter space
+        K: Ring
+             a field
+    Outputs
+        : BlackBoxParameterSpace
     Description
         Text
             A black box parameter space is used to implement parameter spaces
-            with their universal families in a pointwise fashion.
-            
-          
-      
-            Implements an unified interface for some explicit and implicit given ideals. \break
-            See also @TO BlackBoxIdeal @
-            \break             \break
-
-            { \bf QuickStart } \break \break 
+            with their universal families in a pointwise fashion.                      
+    
             For a quick start see the @TO "Singularities of cubic surfaces" @-tutorial
             \break \break
-            { \bf Design } \break \break 
-            The simplest parameter space black box  implements  \break \break 
-            Attributes:\break 
-            \,\, \bullet \,{\tt numVariables }: number of variables in the parameter space. \break
-            \,\, \bullet \,{\tt coefficientRing }: the ring the parameter variables belong to (or embeddable to) \break
             
-            Methods:\break 
-            \,\, \bullet \,  @TO pointProperties@() : returns a list of all known properties at a point for a blackbox \break
-            \,\, \bullet \,  @TO  knownMethods@() : returns a list of all known methods of the blackbox \break 
-            \,\, \bullet \,  @TO knownAttributes@() : returns a list of all known attributes  \break 
-            \,\, \bullet  \, @TO registerPointProperty@(propertyName, propertyMethod) : \break 
-            \,\, \, \, register a new point property for a BlackBox, e.g. evaluation at a point. \break
-            \,\, \, \, expected Interface of {\tt propertyMethod} is: \break  
-            \,\, \, \, \, (  {\tt blackBox }: @TO BlackBoxParameterSpace @,  {\tt point }: @TO Matrix@ )  \break 
-            \break
-            Special point property names:
-            \,\, \, \, There are several special property names:  @TO valuesAt@, @TO jacobianAt@. \break 
-            \,\, \, \,  If one of this properties is registered or updated, it triggers update of dependent properties \break
-            \,\, \, \,  e.g. registering evaluation @TO valuesAt@  will implicitly \break 
-            \,\, \, \, construct   @TO isZeroAt@, @TO numGenerators@,  @TO jacobianAt@, @TO rankJacobianAt@ \break 
-            \,\, \, \,  registering evaluation @TO jacobianAt@  will implicitly \break 
-            \,\, \, \, construct  @TO rankJacobianAt@ \break 
-            \break
-            \,\, \bullet  \, @TO updatePointProperty@(propertyName, propertyMethod) }: update an existing point property for a BlackBox. \break
-            \break \break  
-
-            In addition, if the black box was created from an ideal () or an evaluation (), it has additional methods and attributes,
-            see @TO BlackBoxIdeal @ 
-
-            The blackbox interface allows implementation of some algorithms e.g. padic lifting. 
+            A more trivial example is the parameter space of 2x2 matrices
+            with entries in a finite field. This is
+            an affine 4 dimensional space:
+            
+        Example
+            K = ZZ/11;
+            bb = blackBoxParameterSpace(4,K);
         Text
-           \break  For usage example see @TO blackBoxParameterSpace@
+            For each point in this parameter space we have a 2x2-matrix:
+        Example
+            matrixAt = (point) -> matrix{{point_0_0,point_1_0},{point_2_0,point_3_0}};
+            bb = bb.rpp("matrixAt",matrixAt);
+            bb.matrixAt(matrix{{1,2,3,4_K}})
+        Text
+            Properties of the parametrized objects can also be store in
+            the Black box. Maybe one is especially interested in the rank
+            filtration of the parameter space:
+        Example
+            rankAt = (point) -> rank matrixAt(point)
+            bb = bb.rpp("rankAt",rankAt);
+            rankAt(matrix{{1,1,1,1_K}})
+            rankAt(matrix{{1,2,3,4_K}})
+        Text
+            The black box parameter space keeps track of all such properties
+            defined:
+        Example
+            bb.pointProperties()
+        Text
+            How such properties stratify the parameter space can be systematically
+            evaluated by using the package FiniteFieldExperiments.
+    Caveat
+            There are several special property names: 
+            
+            If  @TO valuesAt@ is registered or updated, this will
+            will implicitly construct   
+            @TO isZeroAt@, @TO numGenerators@,  @TO jacobianAt@,
+             @TO rankJacobianAt@, @TO isCertainlySingularAt@ and @TO isProbablySmoothAt@.
+
+            This happens automatically if the BlackBox is created using
+            @TO blackBoxIdealFromEvaluation@.
+            
+            If  @TO jacobianAt@ is registered or updated, this will
+            will implicitly construct   
+             @TO rankJacobianAt@, @TO isCertainlySingularAt@ and @TO isProbablySmoothAt@.
 ///
             
 doc ///
@@ -3498,7 +3484,7 @@ doc ///
         Text
             We see that there is an open stratum of smooth cubics. The
             largest closed stratum consists of those cubics with a A1 singularity.
-            The package finiteFieldExperiments helps to do the bookkeeping 
+            The package FiniteFieldExperiments helps to do the bookkeeping 
             for such experiments and also provides more detailed interpretation
             of the results.
 
@@ -3508,31 +3494,39 @@ doc ///
     Key
         BlackBoxIdeals
     Headline
-          black boxes for explicit and implicitly given ideals
+          black boxes for implicitly given ideals
     Description
         Text
-            Implements an unified interface for some explicit and implicit given ideals \break  
-            \break
-            Purpose: use a unified interface for finite field experiments; see FiniteFieldExperiments and padicLift package
-            \break
-            Currently three BlackBox constructors are available:\break
-            \,\,  \bullet \,   @TO blackBoxParameterSpace@  \break
-            \,\,  \bullet \,   @TO blackBoxIdeal@  \break
-            \,\,  \bullet \,  @TO blackBoxIdealFromEvaluation@  \break \break
+            The BlackBoxes of this Package come in two flavors:
+            
+            1) @TO BlackBoxParameterSpace@
+            
+            This represents a family of algebraic objects over
+            an affine space K^n in a pointwise fashion. Together with 
+            the package FiniteFieldExperiments this can be
+            used to study the stratification of the  parameter
+            space K^n with respect to various properties of the algebraic
+            objects parametrized. For a quick start look at the
+            @TO "Singularities of cubic surfaces" @-tutorial.
+            
+            2) @TO BlackBoxIdeal@
+             
+            A BlackBoxIdeal is a special BlackBoxParameterSpace.
+            Here equations for a specific stratum of the
+            parameter space are known at least implicitly.
+            
+            Together with 
+            the package FiniteFieldExperiments this stratum can
+            then be studied much more precisely. For example
+            heuristic estimates on the number and codimension
+            of its reduced components can be obtained. If one
+            is lucky, even equations for the different components
+            can be found. For a quick start look at the ?????-Tutorial.
 
-            All black boxes implement the interface of @TO BlackBoxParameterSpace @ \break
-            If the black box was created from an ideal or an evaluation, it has additional properties, see  @TO BlackBoxIdeal @ 
-            \break  \break
-            {\bf QuickStart } \break \break
-            For a tutorial see @TO "Singularities of cubic surfaces" @
-                        
-      
     Caveat
-         The black box properties are write-protected to prevent accidental modification  by the user; \break 
-         however implementing write-protection leads to undesired code compexity and at the same time it is still possible to overcome the  protection. \break
-         Currently adding properties to the blackBox with more than one parameter (point) is not implemented (e.g. jet computation ). \break
-         Also not done yet is the implementation of the {\tt Observable } interface for the various black boxes ({\tt FiniteFieldExperiment } which will be  {\tt Observers }) \break
-         Finally, the package is probably not threadsafe.
+            Currently adding properties to the blackBox with more than one parameter (point) is not implemented (e.g. jet computation ). \break
+            Also not done yet is the implementation of the {\tt Observable } interface for the various black boxes ({\tt FiniteFieldExperiment } which will be  {\tt Observers }) \break
+            Finally, the package is probably not threadsafe.
          
          
 ///
@@ -3683,8 +3677,8 @@ doc ///
         Text
           Checks for smoothness of a point on the
           vanishing set of the black box ideal, by
-          trying to find a @TO2{jetAt,"jet"}@ starting at the point
-          using 
+          trying to find a @TO2{jetAt,"jet"}@ starting at the point.
+          
           If the point is smooth on the vanishing
           set of the black box ideal, arbitray jets
           can always be found. If one or more jets are found
@@ -3909,7 +3903,7 @@ doc ///
           for 'rankJacobianAt'.  
     Caveat
           This works only with black box ideals, since they contain an algorithm
-          that can evaluate the generators of the black box ideal. A black box parameter spaces
+          that can evaluate the generators of the black box ideal. A black box parameter space
           might contain only an algorithm that checks whether all generators vanish. 
           This happens for example if one considers the moduli space of singular cubics. 
           One can check whether a
@@ -4714,6 +4708,13 @@ TEST ///
 
 
 end
+
+uninstallPackage"BlackBoxIdeals"
+installPackage"BlackBoxIdeals"
+check BlackBoxIdeals
+
+
+
 
 -- Todo: introduce force mode option for registerPointProperty? (overwriting registered property?)
 -- todo: introduce for all known properties a precomposition with checkInputPoint
