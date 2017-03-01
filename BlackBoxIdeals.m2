@@ -22,7 +22,15 @@ newPackage(
 needsPackage "M2Logging";
 
 
+
 export { 
+    "refineInterpolation",
+    "maximalConditions",
+    "monomialBasisSize",
+    "basicJetLengthHeuristic",
+    "constantJetLengthHeuristic",
+    "setBlackBoxLogLevel",
+    --"compatible",
     "continueJet",
     "continueJetOrException",
     "JetLengthHeuristic",
@@ -32,18 +40,15 @@ export {
     "BasicInterpolationMonomialDegreeHeuristic",
     "ConstantInterpolationMonomialDegreeHeuristic",
     "sameComponentAt",     
-    "setComponentName",
     "componentNamesAt",
     "bare",
     "jetStatsAt",
     --"locus",
-    "joinJetSets",
+    --"joinJetSets",
     "firstElem",
     "JetSet",
     "addElement",
-    "compatible",
     "isDerivedFrom",
-    "Point",
     "Jet",
     "pointProperties",
     "memberMethods",
@@ -100,11 +105,7 @@ idealBlackBoxesProtect = ()->
     protect withChecks;
     protect enableChecks;
     protect disableChecks;
-    protect setComponentCandidates;
-    protect componentCandidates;
-    protect setOnComponentPrecision;
     protect interpolateComponents;
-    
     protect jacobianAt;
     protect rankJacobianAt;
     protect valuesAt;
@@ -112,21 +113,19 @@ idealBlackBoxesProtect = ()->
     protect numVariables;
     protect numGenerators;
     protect isZeroAt;
- 
     protect registerPointProperty;
     protect rpp;
     protect numTrials;
     protect setSingularityTestOptions;
     protect singularityTestOptions;
     protect updateSingularityTest;
-    
     protect setPointProperty;
     protect setValuesAt;
     protect checkInputPoint;
     protect deduceNumGenerators;
     protect setIsZeroAt;
   
-    protect type;
+     
     protect unknowns;
     protect pointProperty;
     protect updatePointProperty;
@@ -134,19 +133,22 @@ idealBlackBoxesProtect = ()->
     protect equations;
 
     protect hasPointProperty;
-    protect knownPointPropertiesAsSymbols;
+    protect pointPropertiesAsSymbols;
     --protect memberMethods;
     --protect attributes;
     --protect knownProperties;
     --protect createMapHelper;
     protect updateBlackBox;
-    protect setComponentCalculator;
+    protect setInterpolator;
 );
 
 --todo: fix dublicate code,  -  padicLiftProtect and padicLiftExport
 
 idealBlackBoxesExport = ()->
 (
+    exportMutable("reset");
+    exportMutable("resetInterpolation");
+    exportMutable("setInterpolator");
     exportMutable("setMonomialDegreeHeristic");
     exportMutable("componentsAt");
     exportMutable("interpolationTargetJetLength");
@@ -180,10 +182,8 @@ idealBlackBoxesExport = ()->
     exportMutable("isOnComponent");
     exportMutable("enableChecks");
     exportMutable("disableChecks");
-    exportMutable("withChecks");
-    exportMutable("setComponentCandidates");
-    exportMutable("componentCandidates");
-    exportMutable("setOnComponentPrecision");
+    exportMutable("withChecks");  
+   
     exportMutable("interpolateComponents");
  
     exportMutable("eps");
@@ -204,7 +204,7 @@ idealBlackBoxesExport = ()->
     exportMutable("checkInputPoint");
     exportMutable("deduceNumGenerators");
     exportMutable("setIsZeroAt");
-    exportMutable("type");
+    
     exportMutable("unknowns");
     exportMutable("pointProperty");
     exportMutable("updatePointProperty");
@@ -212,7 +212,7 @@ idealBlackBoxesExport = ()->
     exportMutable("equations");
 
     exportMutable("hasPointProperty");
-    exportMutable("knownPointPropertiesAsSymbols");
+    exportMutable("pointPropertiesAsSymbols");
     --exportMutable("memberMethods");
     --exportMutable("attributes");
     exportMutable("numTrials");
@@ -220,7 +220,7 @@ idealBlackBoxesExport = ()->
     exportMutable("updateSingularityTest");
     exportMutable("singularityTestOptions");
     exportMutable("updateBlackBox");
-    exportMutable("setComponentCalculator");
+    
 )
 
 
@@ -582,7 +582,12 @@ if BlackBoxIdeals#Options#DebuggingMode then
 
 bblog := BlackBoxLogger; --shortcut
 
--- bblog.setLogLevel(LogLevel.DEBUG);
+--if BlackBoxIdeals#Options#DebuggingMode then bblog.setLogLevel(LogLevel.DEBUG);
+
+setBlackBoxLogLevel = (level)->
+(
+    BlackBoxLogger.setLogLevel(level);
+);
 
 
 
@@ -950,19 +955,6 @@ TEST ///
 BlackBoxParameterSpace = new Type of  MutableHashTable;
 
 
-Point = new Type of HashTable;
-
-pointObject = method();
-pointObject (Thing, Matrix) := Point =>(parent, point)->
-(
-    resultPoint := new HashTable from {("parent", parent),
-                                       ("point", point)};
-    resultPoint 
-)
-
-
--- parent is needed for coercion
-
 
 
 -- question: what is a (succeeded) jet of length 1 at a singular point??
@@ -1202,6 +1194,7 @@ jetAtOrException( BlackBoxParameterSpace, Matrix, ZZ) := Jet => ( blackBox,  poi
     
     if (jetResult#"jet"=== null) then 
     (
+       --error ("point is not smooth"); -- is better 
        throw new SingularPointException from {"errorMessage"=>"Point is not smooth",
                                               "failedJetLength" => jetResult#"failedJetLength",
                                               "failedJet" => jetResult#"bestJet",                                            
@@ -1327,7 +1320,7 @@ isCertainlySingularAt( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := MutableHashTab
     for i in 1..numTrials do
     (
         jetOrError := catch jetAt( blackBox,  point, jetLength);
-        if (class jetOrError === SingularPointException) then 
+        if isDerivedFrom(jetOrError,SingularPointException) then 
         (
             return true;
         );
@@ -1450,6 +1443,133 @@ new MapHelper from Matrix := (XXX, mapMatrix) ->
 
 
 
+JetSet = new Type of MutableHashTable;
+ 
+
+new JetSet from Thing := ( E, thing) -> 
+(
+    error "creating JetSet from  type " | toString E | " not implemented or not possible ";
+);
+
+
+new JetSet from Jet := ( E, thing) -> 
+(
+   mht := new MutableHashTable;
+   
+   mht#"jets" = new List from {thing};
+   mht#"point" = thing#"point";
+   return mht;
+);
+
+net (JetSet) := Net => (jetSet)->
+(
+    result := net "JetSet{ point: " |net jetSet#"point" | net ", jets{.."| net size jetSet | net "..}}";
+    return result;
+);
+
+firstElem = method();
+
+firstElem (JetSet) := Jet => (jetset)->
+(
+    return first jetset#"jets";
+);
+
+maximalConditions = method();
+maximalConditions( JetSet ) := ZZ => (jetSet)->
+(
+    return 1+sum apply(jetSet#"jets", jet->length jet);
+)
+
+
+-- how to hide compatible?
+compatible = method();
+
+
+compatible (Jet,Jet) := Boolean => (jet1, jet2 )->
+(    
+    if  ( jet1#"parent"===jet2#"parent" and 
+          jet1#"point" ===jet2#"point"      ) then
+         (
+            return true;
+         );
+         return false;        
+);
+
+compatible (JetSet,JetSet) := Boolean => (jetSet1, jetSet2 )->
+(    
+    if (0== size jetSet1 or 0== size jetSet2 ) then   return true;   
+    return compatible(firstElem jetSet1, firstElem jetSet2);
+);
+
+size (JetSet) := ZZ =>(jetset)->
+(
+    return #(jetset#"jets");
+)
+
+
+-- probablySameComponent; certainlyDifferentComponent
+
+addElement = method();
+
+addElement (JetSet,Jet) := JetSet => (jetSet, jet)->
+(
+    if ( size jetSet===0 or
+         compatible(firstElem jetSet, jet) 
+       ) then
+        (
+            jetSet#"jets" = append(jetSet#"jets",jet);            
+            return jetSet;
+        );
+    error ("JetSet and Jet are probably incompatible");
+)
+
+joinJetSets = method();
+
+joinJetSets (JetSet,JetSet) := JetSet => (jetSet1, jetSet2 )->
+(
+    if (compatible (jetSet1, jetSet2)) then 
+    (
+        result := new JetSet;
+        result#"jets" = unique join (jetSet1#"jets",jetSet2#"jets");
+        return result;
+    )
+    else
+    (
+        error ("jet sets probably not compatible");
+    );
+);
+
+
+
+
+TEST ///
+    -- restart 
+    -- loadPackage "BlackBoxIdeals"
+    debug BlackBoxIdeals --otherwise we have no 'compatible()'
+    K = QQ;
+    R = K[x,y];
+    bbI = new BlackBoxIdeal from ideal x*y;
+    
+    
+    point = matrix{{0_QQ, 0_QQ}};
+    
+    jet =  jetAt(bbI,point,1)
+    
+    --locus jet
+    jet2 =  jetAt(bbI,point,1)   
+    
+    compatible(jet,jet2) 
+    
+    jetSet = new JetSet from jet
+    
+    --locus jetSet      
+    compatible(jetSet,jetSet)    
+    
+    addElement(jetSet,jet2)
+    
+    joinJetSets(jetSet,jetSet);    
+    -- unique: not im    
+///
 
 
 load "./BlackBoxIdeals/Interpolation.m2";
@@ -1617,7 +1737,7 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
     );
 
 
-    -- 'knownPointPropertiesAsSymbols' : 
+    -- 'pointPropertiesAsSymbols' : 
     --  returns a list of all registered point properties (as Symbols)
     --
 
@@ -1634,7 +1754,7 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
         return propertySymbol;
     );
 
-    blackBox.knownPointPropertiesAsSymbols = ()->
+    blackBox.pointPropertiesAsSymbols = ()->
     (   
         return apply( blackBox.pointProperties(), propertyName-> getPropertySymbol(propertyName) );
     );
@@ -1926,7 +2046,16 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
     --          a point property is registered in a different package
     -- 
 
-    
+    blackBox.setPointProperty = method();
+
+    blackBox.setPointProperty(String, Function) := (BlackBoxParameterSpace) => ( propertyName, propertyMethod )->
+    (
+        propertySymbol := getPropertySymbol(propertyName);
+        assert(propertySymbol=!=null);
+        outerSetPointProperty( propertySymbol, propertyMethod );
+        blackBox.updateBlackBox();
+        return blackBox;
+    );
 
     --  updatePointProperty()
     --
@@ -1940,15 +2069,14 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
     (
         if  (  bbPointProperties#?propertyName ) then
         (  
-            propertySymbol := getPropertySymbol(propertyName);
-            assert(propertySymbol=!=null);
-            
-            outerSetPointProperty( propertySymbol, propertyMethod );
+            return  blackBox.setPointProperty( propertyName, propertyMethod );
         ) 
-        else ( error ("point property "| toString propertyName | " does not exist.") );
-        blackBox.updateBlackBox();
-        return blackBox;
+        else 
+        (
+            error ("point property "| toString propertyName | " does not exist.") 
+        );
     );
+   
 
     blackBox.updatePointProperty(Function) := (BlackBoxParameterSpace) => (  propertyMethod )->
     (
@@ -2048,7 +2176,7 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
         methods:= { getGlobalSymbol( BlackBoxIdeals.Dictionary, "memberMethods" ) ,
                     getGlobalSymbol( BlackBoxIdeals.Dictionary, "attributes" ) ,
                     getGlobalSymbol( BlackBoxIdeals.Dictionary, "pointProperties" ),
-                    getGlobalSymbol( BlackBoxIdeals.Dictionary, "knownPointPropertiesAsSymbols" ),
+                    getGlobalSymbol( BlackBoxIdeals.Dictionary, "pointPropertiesAsSymbols" ),
                     getGlobalSymbol( BlackBoxIdeals.Dictionary, "hasPointProperty" ),
                     --getGlobalSymbol( BlackBoxIdeals.Dictionary, "pointProperty" ),
                     getGlobalSymbol( BlackBoxIdeals.Dictionary, "registerPointProperty" ),
@@ -2061,7 +2189,7 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
     --  methods:= {   memberMethods,
     --                attributes,
     --                pointProperties,
-    --                knownPointPropertiesAsSymbols,
+    --                pointPropertiesAsSymbols,
     --                hasPointProperty,
     --                pointProperty,
     --                registerPointProperty, 
@@ -2079,7 +2207,7 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
     -- attributes()
     --
     -- returns a list of known attributes. 
-    -- (computed as 'keys blackBox which are not Functions' \ {knownPointPropertiesAsSymbols() }
+    -- (computed as 'keys blackBox which are not Functions' \ {pointPropertiesAsSymbols() }
     --
     blackBox.attributes = ()->
     (
@@ -2088,7 +2216,7 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
         kM := kPP := kPS := {};
         -- kM =  blackBox.memberMethods();
         -- kPP =  blackBox.pointProperties();
-        kPS  =  blackBox.knownPointPropertiesAsSymbols();
+        kPS  =  blackBox.pointPropertiesAsSymbols();
         toRemove := kM | kPP |kPS;
         for symb in toRemove do
         all = delete(symb,all);
@@ -2138,86 +2266,43 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
 
     -- todo: choose later a different component calculator depending on strategy option
     
-    
-    
-    blackBox.interpolator = createSimpleInterpolator(blackBox);
-    
-    blackBox.componentNameInUse = (name)->
-    (
-        return blackBox.interpolator.componentNameInUse(name);
-    );
-    
     -- better: check component calculator type /interface.
-    blackBox.setComponentCalculator = (componentCalculatorObj)->
+    blackBox.setInterpolator = (interpolatorParam)->
     (
-        blackBox.interpolator = componentCalculatorObj;
-        blackBox.isOnComponent = blackBox.interpolator.isOnComponent;
+        blackBox.interpolator   = interpolatorParam;
+        blackBox.resetInterpolation   = interpolatorParam.reset;
+        blackBox.isOnComponent  = interpolatorParam.isOnComponent;
+        blackBox.components     =  interpolatorParam.components;
+        blackBox.componentNames  =  interpolatorParam.componentNames;
+        blackBox.componentNameInUse  =  interpolatorParam.componentNameInUse;
+        blackBox.componentByName = interpolatorParam.componentByName;
+        blackBox.renameComponent =  interpolatorParam.renameComponent;
+         -- todo: when we change the interpolator, this will stop to work:
+        blackBox.interpolateComponents  = interpolatorParam.interpolateComponents;    
+        blackBox.refineInterpolation  = interpolatorParam.refineInterpolation;    
+        blackBox.interpolateAt      =  interpolatorParam.interpolateAt;
+        blackBox.components         =   interpolatorParam.components;   
+        blackBox.setPointProperty("componentsAt", interpolatorParam.componentsAt);    
+        blackBox.setPointProperty("componentNamesAt", interpolatorParam.componentNamesAt);
+                
+        -- TODO well , setSameComponentPrecision should be more generic as different component calculators may 
+        -- have different configuration settings ( so may be another component calculator has no 'onComponentPrecision' property)
+        --blackBox.setSameComponentPrecision =  interpolatorParam.setSameComponentPrecision;
     );
     
-    blackBox.isOnComponent = blackBox.interpolator.isOnComponent;
-
-    blackBox.componentCandidates = ()->
-    (
-        return blackBox.interpolator.componentCandidates();
-    );
-    
-    
-    -- well, that are in fact interpolatedComponents
-    blackBox.componentByName = (componentName)->
-    (
-        return blackBox.interpolator.componentByName(componentName);
-    );
-    
-    
-    blackBox.renameComponent = (componentName, newComponentName)->
-    (
-        return blackBox.interpolator.renameComponent(componentName, newComponentName);
-    );
-    
-    
-    -- nextNameNotInUse
-    --blackBox.nextFreeComponentName = ()->
-    --(
-    --    return blackBox.interpolator.nextFreeComponentName();
-    --);
-    
-    -- well, that are in fact interpolatedComponents, what about 'interpolatedComponentNamesAt' ?
-    blackBox.componentNamesAt = (point)->
-    (
-        return blackBox.interpolator.componentNamesAt(point);
-    );
-    
-
+    blackBox.setInterpolator( createSimpleInterpolator(blackBox) );
+ 
     -- TODO well, this should be more generic as different component calculators may 
     -- have different configuration settings ( so may be another component calculator has no 'onComponentPrecision' property)
     --
-    blackBox.setOnComponentPrecision = (precision)->
-    (
-        blackBox.interpolator.setOnComponentPrecision(precision);
-    );
+    --blackBox.setSameComponentPrecision = (precision)->
+    --(
+    --    blackBox.interpolator.setSameComponentPrecision(precision);
+    --);
 
-    blackBox.interpolateComponents  = (pointList, maxDegree, onComponentPrecision) -> 
-    (
-        return blackBox.interpolator.interpolateComponents( pointList, maxDegree, onComponentPrecision);
-    );
-    
-    blackBox.interpolateAt  =  method();
-    
-    blackBox.interpolateAt  (Matrix, ZZ, ZZ) :=  Thing => (point, maxDegree, onComponentPrecision) -> 
-    (
-        return blackBox.interpolator.interpolateAt( point, maxDegree, onComponentPrecision);
-    );
-    
-    blackBox.interpolateAt  (Matrix, ZZ) :=  Thing => (point, maxDegree) -> 
-    (
-        return blackBox.interpolator.interpolateAt( point, maxDegree);
-    );
-
-    blackBox.registerPointProperty("componentsAt", blackBox.interpolator.componentsAt);
    
-    -- store the current type of the black box
-    blackBox.type = BlackBoxParameterSpace;
-
+    
+    
     -- a user should not call this method...
 
     return blackBox;
@@ -2225,7 +2310,6 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
 
 TEST ///
   -- test interpolateComponents
-  
   kk := ZZ
   R := ZZ[x,y]
   I:= ideal (x*y*(x^2-y^2))
@@ -2233,9 +2317,8 @@ TEST ///
   point1 = matrix {{1,1_ZZ}}
   point2 = matrix {{1,0_ZZ}}
   pointList = {point1,point2}
-  maxDegree:= 4
-  onComponentPrecision :=3
-  bb.interpolateComponents(pointList, maxDegree, onComponentPrecision);
+  maxDegree := 4
+  bb.interpolateComponents(pointList, maxDegree);
 ///
  
 
@@ -2274,7 +2357,7 @@ listToStack := (L)->
 
 net (BlackBoxParameterSpace) := Net =>(bb)->
 (
-    L := {"--" | toString bb.type};
+    L := {"--" | toString class bb};
     L = L | {"--"};
     L = L | {"-- attributes:"};
     L = L | {"-- "} | listToStack bb.attributes();
@@ -2301,7 +2384,6 @@ new BlackBoxParameterSpace from Ring := (E, pRing )->
 (
     blackBox := blackBoxParameterSpaceInternal(BlackBoxParameterSpace, pRing);
    
-    blackBox.type = BlackBoxParameterSpace;   
     return blackBox;
 )
 
@@ -2342,7 +2424,6 @@ new BlackBoxIdeal from Ideal := (E, equationsIdeal)->
 (
      blackBox :=  blackBoxParameterSpaceInternal( BlackBoxIdeal, ring equationsIdeal );
     
-    blackBox.type = BlackBoxIdeal;
     
     -- maybe blackBox.addProperty( ideal, equationsIdeal)
     blackBox.ideal = equationsIdeal;      
@@ -2483,7 +2564,6 @@ blackBoxIdealFromEvaluation( Ring, Function ) := HashTable => ( pRing, pValuesAt
 (
 
    blackBox := blackBoxParameterSpaceInternal(BlackBoxIdeal, pRing );
-   blackBox.type = BlackBoxIdeal;
    blackBox.registerPointProperty ("valuesAt", (bb,point)->pValuesAt(point) ); --sets isZeroAt, jacobianAt, rankJacobianAt and numGenerators
 
    check := ()->
@@ -2553,7 +2633,6 @@ doc ///
    Key
         BlackBoxIdeal
         (NewFromMethod, BlackBoxIdeal, Ideal)
-        (NewFromMethod, BlackBoxIdeal, Thing)
    Headline
         an unified interface to a black box ideal
    Usage   
@@ -2893,7 +2972,6 @@ doc ///
     Key
         blackBoxParameterSpace
         BlackBoxParameterSpace
-        (NewFromMethod,BlackBoxParameterSpace,Thing)
     Headline
         create a BlackBoxParameterSpace.
     Usage   
@@ -3681,7 +3759,7 @@ doc ///
           bbI.jacobian
           bbI.numVariables
           bbI.ring
-          bbI.type
+          class bbI
         Text
           The type can also be "BlackBoxParameterSpace"  
         Example
@@ -3742,8 +3820,7 @@ doc ///
     SeeAlso
          hasPointProperty
          attributes
-         pointProperties
-         knownPointPropertiesAsSymbols
+         pointProperties         
          registerPointProperty
          rpp
          setSingularityTestOptions
@@ -3753,7 +3830,7 @@ doc ///
 
 doc ///
     Key
-        "pointProperties"
+        "pointProperties"        
     Headline
         list the pointProperties of a black box 
     Usage   
@@ -4040,126 +4117,6 @@ TEST ///
 ///
 
 
-JetSet = new Type of MutableHashTable;
- 
-
-new JetSet from Thing := ( E, thing) -> 
-(
-    error "creating JetSet from  type " | toString E | " not implemented or not possible ";
-);
-
-
-new JetSet from Jet := ( E, thing) -> 
-(
-   mht := new MutableHashTable;
-   
-   mht#"jets" = new List from {thing};
-   mht#"point" = thing#"point";
-   return mht;
-);
-
-net (JetSet) := Net => (jetSet)->
-(
-    result := net "JetSet{ point: " |net jetSet#"point" | net ", jets{.."| net size jetSet | net "..}}";
-    return result;
-);
-
-firstElem = method();
-
-firstElem (JetSet) := Jet => (jetset)->
-(
-    return first jetset#"jets";
-);
-
-
-
-compatible := method();
-
-
-compatible (Jet,Jet) := Boolean => (jet1, jet2 )->
-(    
-    if  ( jet1#"parent"===jet2#"parent" and 
-          jet1#"point" ===jet2#"point"      ) then
-         (
-            return true;
-         );
-         return false;        
-);
-
-compatible (JetSet,JetSet) := Boolean => (jetSet1, jetSet2 )->
-(    
-    if (0== size jetSet1 or 0== size jetSet2 ) then   return true;   
-    return compatible(firstElem jetSet1, firstElem jetSet2);
-);
-
-size (JetSet) := ZZ =>(jetset)->
-(
-    return #(jetset#"jets");
-)
-
-
--- probablySameComponent; certainlyDifferentComponent
-
-addElement = method();
-
-addElement (JetSet,Jet) := JetSet => (jetSet, jet)->
-(
-    if ( size jetSet===0 or
-         compatible(firstElem jetSet, jet) 
-       ) then
-        (
-            jetSet#"jets" = append(jetSet#"jets",jet);            
-            return jetSet;
-        );
-    error ("JetSet and Jet are probably incompatible");
-)
-
-joinJetSets := method();
-
-joinJetSets (JetSet,JetSet) := JetSet => (jetSet1, jetSet2 )->
-(
-    if (compatible (jetSet1, jetSet2)) then 
-    (
-        result := new JetSet;
-        result#"jets" = unique join (jetSet1#"jets",jetSet2#"jets");
-        return result;
-    )
-    else
-    (
-        error ("jet sets probably not compatible");
-    );
-);
-
-
-
-
-TEST ///
-    -- restart 
-    -- loadPackage "BlackBoxIdeals"
-    K = QQ;
-    R = K[x,y];
-    bbI = new BlackBoxIdeal from ideal x*y;
-    
-    
-    point = matrix{{0_QQ, 0_QQ}};
-    
-    jet =  jetAt(bbI,point,1)
-    
-    --locus jet
-    jet2 =  jetAt(bbI,point,1)   
-    
-    compatible(jet,jet2) 
-    
-    jetSet = new JetSet from jet
-    
-    --locus jetSet      
-    compatible(jetSet,jetSet)    
-    
-    addElement(jetSet,jet2)
-    
-    joinJetSets(jetSet,jetSet);    
-    -- unique: not im    
-///
 
 -- JK we have to put the undocumented statement at the end, because undocumented checks, if the 
 -- functions or symbols are already defined!
@@ -4170,6 +4127,12 @@ TEST ///
 -- at least there should be a comment note inside this package.
 -- 
 undocumented { 
+    setJetLengthHeuristic,
+    setMonomialDegreeHeuristic,
+    setName,   
+    enableChecks,
+    disableChecks,
+    withChecks,
     (net,Jet),
     (net,JetSet),
     (net,InterpolatedIdeal),
@@ -4180,11 +4143,11 @@ undocumented {
     setPointProperty, -- internal   
     --(deduceNumGenerators), -- internal   
     dropDegreeInfo,      -- internal   
+    updateBlackBox,  --internal
     equations,
     keysWithoutSymbols,
     checkInputPoint,
-    knownPointPropertiesAsSymbols,
-    type,
+    pointPropertiesAsSymbols,
     unknownIsValid,
     unknowns,
     numTrials,
@@ -4194,16 +4157,16 @@ undocumented {
     createMapHelper,
     JetLengthHeuristic,
     ConstantJetLengthHeuristic,
+    constantJetLengthHeuristic,
     BasicJetLengthHeuristic,
+    basicJetLengthHeuristic,
     InterpolationMonomialDegreeHeuristic,
     BasicInterpolationMonomialDegreeHeuristic,
     ConstantInterpolationMonomialDegreeHeuristic,
     setMonomialDegreeHeristic,
     interpolationTargetJetLength,
     setJetLength,
-    setAdditionalJetLength,
-    setJetLengthHeuristic,
-    setMonomialDegreeHeuristic,
+    setAdditionalJetLength,   
     targetMonomialDegree,
     clearCache,
     minComponentDegree,
@@ -4217,33 +4180,31 @@ undocumented {
     sameComponentTargetJetLength,
     additionalJetLength,
     interpolator,
-    componentByName,
-    renameComponent,
     componentNameInUse,
     componentNamesInUse,
     jetSet,
-    setName,   
-    isOnComponent,
-    enableChecks,
-    disableChecks,
-    withChecks,
-    setComponentCandidates,
-    componentCandidates,
-    setOnComponentPrecision,
-    "new JetLengthHeuristic from Thing",
-    "new BasicInterpolationMonomialDegreeHeuristic from Thing",
-    "new BasicJetLengthHeuristic from Thing",  
-    "new BlackBoxParameterSpace from Ring",
-    "new ConstantInterpolationMonomialDegreeHeuristic from Thing",
-    "new ConstantJetLengthHeuristic from Thing",
-    "new InterpolatedIdeal from Thing",
-    "new InterpolationMonomialDegreeHeuristic from Thing",
     
+    maximalConditions,    
+    "InterpolatedIdeal ? InterpolatedIdeal", -- implemented comparison by name for sorting purposes. probably not a good idea, since the order holds for the names but not for the ideals !!
+    -- purpose of overriding new from Thing is to disallow arbitrary HashTables as objects
+    (NewFromMethod, JetSet, Thing),
+    (NewFromMethod, BlackBoxIdeal, Thing),
+    (NewFromMethod, BlackBoxParameterSpace, Thing),
+    (NewFromMethod, JetLengthHeuristic, Thing),
+    (NewFromMethod, BasicInterpolationMonomialDegreeHeuristic, Thing),
+    (NewFromMethod, BasicJetLengthHeuristic, Thing),
+    (NewFromMethod, ConstantInterpolationMonomialDegreeHeuristic, Thing),
+    (NewFromMethod, ConstantJetLengthHeuristic, Thing),
+    (NewFromMethod, InterpolatedIdeal, Thing),
+    (NewFromMethod, InterpolationMonomialDegreeHeuristic, Thing),
+    (NewFromMethod, MapHelper, Matrix)
 } 
 
 
 
 end
+
+-- undocumented: "compatible"
 
 
 uninstallPackage"BlackBoxIdeals"
@@ -4311,6 +4272,19 @@ jetAtWrapper( BlackBoxParameterSpace, Matrix )  := MutableHashTable => opts -> (
 --        (clearCoeffDenominators, Ideal )    
 
 
+-- dient dazu, an einen Punkt die BlackBox mit anzuheften.
+Point = new Type of HashTable;
+
+pointObject = method();
+pointObject (Thing, Matrix) := Point =>(parent, point)->
+(
+    resultPoint := new HashTable from {("parent", parent),
+                                       ("point", point)};
+    resultPoint 
+)
+
+
+-- parent is needed for coercion
 
 Point := new Type of HashTable;
 

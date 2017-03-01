@@ -3,6 +3,45 @@
 bblog := BlackBoxLogger;
 -- InterpolatedIdeal = new Type of MutableHashTable;
 
+BlackBoxInterpolator = new Type of HashTable;
+
+eassert = method();
+
+eassert(Boolean,String) := Nothing =>(statement, errorMessage)->
+(
+    if (not statement) then 
+        error errorMessage;
+);
+
+monomialBasisSize = method();
+
+monomialBasisSize (ZZ, ZZ , Ring) := ZZ => (minDegree, maxDegree, ring)->
+(
+    eassert(maxDegree>=0, "maxDegree was smaller 0");
+    eassert(minDegree>=0, "minDegree was smaller 0");
+    eassert(minDegree<=maxDegree, "maxDegree was smaller minDegree");
+    degrees := apply(maxDegree-minDegree+1, i->minDegree+i);
+    basisSize := sum apply(degrees, deg->rank source super basis(deg,ring) );
+    return basisSize;
+);
+
+monomialBasisSize (ZZ , Ring) := ZZ => ( maxDegree,ring)->
+(
+     eassert(maxDegree>=0, "maxDegree was smaller 0");
+    minDegree := 0;
+    return monomialBasisSize(minDegree, maxDegree,ring);
+);
+
+
+
+TEST ///
+    R = ZZ[x,y]
+    monomialMaxDegree = 4;
+    mons = matrix {flatten apply(monomialMaxDegree+1, currentDegree->flatten entries basis(currentDegree,R))};
+    assert (rank source mons == monomialBasisSize(4,R));
+   
+///
+
 InterpolatedIdeal = new Type of HashTable;
 
 new InterpolatedIdeal from Thing :=  (InterpolatedIdealAncestor,l)->
@@ -78,7 +117,8 @@ netInterpolatedIdeal = (II)->
 --
 
 interpolate = method();
-interpolate = (mons, jetList) -> 
+
+interpolate (Matrix, List) := Ideal => (mons, jetList) -> 
 (
     bblog.debug("--interpolate call;");
     bblog.debug("--interpolate call; \n --mons : " | toString mons );
@@ -243,10 +283,13 @@ new ConstantJetLengthHeuristic from Thing := (E,thing)->
 (
     error "not supported";
 );
-
-constantJetLengthHeuristic = (targetJetLength)->
+constantJetLengthHeuristic = method();
+constantJetLengthHeuristic (BlackBoxInterpolator, ZZ):= ConstantJetLengthHeuristic => (interpolatorP, targetJetLength)->
 (
+    interpolator := interpolatorP;
+    
     jetLengthEstimator:= new MutableHashTable;
+    
     jetLengthEstimator.setJetLength = (newTargetJetLength)->
     (
         targetJetLength = newTargetJetLength;
@@ -257,36 +300,26 @@ constantJetLengthHeuristic = (targetJetLength)->
      
     -- for interpolating at a point
     --
-    jetLengthEstimator.interpolationTargetJetLength ( BlackBoxParameterSpace,
-                                                      BlackBoxInterpolator, 
-                                                      Matrix,
-                                                      ZZ                      ) :=  ZZ =>
-        ( blackBox, 
-          interpolator, 
-          point,      
-          monomialDegree )->
+    jetLengthEstimator.interpolationTargetJetLength ( Matrix, ZZ ) :=  ZZ => 
+        (   point, monomialDegree )->
     (
         return targetJetLength;
     );
     
-    jetLengthEstimator.interpolationTargetJetLength ( BlackBoxParameterSpace,
-                                                      BlackBoxInterpolator, 
-                                                      InterpolatedIdeal,
-                                                      ZZ                      ) :=  ZZ =>
-        ( blackBox, 
-          interpolator, 
-          interpolatedIdeal,      
-          monomialDegree )->
+    -- probably we do not need this one
+    jetLengthEstimator.interpolationTargetJetLength (InterpolatedIdeal, Matrix ) :=  ZZ => 
+        ( interpolatedIdeal, point )->
     (
         return targetJetLength;
     );
     
-    jetLengthEstimator.interpolationTargetJetLength ( BlackBoxParameterSpace,
-                                                      BlackBoxInterpolator,                                                    
-                                                      ZZ                      ) :=  ZZ =>
-        ( blackBox, 
-          interpolator, 
-          monomialDegree )->
+     jetLengthEstimator.interpolationTargetJetLength ( InterpolatedIdeal,  ZZ  ) :=  ZZ =>
+        ( interpolatedIdeal, monomialDegree )->
+    (
+        return targetJetLength;
+    );
+    
+    jetLengthEstimator.interpolationTargetJetLength (  ZZ  ) :=  ZZ =>( monomialDegree )->
     (
         return targetJetLength;
     );
@@ -295,16 +328,16 @@ constantJetLengthHeuristic = (targetJetLength)->
     jetLengthEstimator.sameComponentTargetJetLength = method();
     -- component, point (check if point on component)
     --
-    jetLengthEstimator.sameComponentTargetJetLength (BlackBoxParameterSpace, 
-                                                     BlackBoxInterpolator, 
-                                                     InterpolatedIdeal, 
-                                                     Matrix                )     :=  ZZ => 
-        (blackBox, 
-         interpolator, 
-         component, 
-         point)->
+    jetLengthEstimator.sameComponentTargetJetLength (InterpolatedIdeal, Matrix)  :=  ZZ => 
+        ( component, point)->
     (
         return targetJetLength;
+    );
+    
+     jetLengthEstimator.sameComponentTargetJetLength (InterpolatedIdeal, Matrix, ZZ)  :=  ZZ => 
+        ( component, point, maxMonomialDegreeP)->
+    (
+        return max(targetJetLength,maxMonomialDegreeP);
     );
     
     result := newClass(ConstantJetLengthHeuristic, jetLengthEstimator);
@@ -320,11 +353,17 @@ new BasicJetLengthHeuristic from Thing := (E,thing)->
     error "not supported";
 );
 
-basicJetLengthHeuristic = ()->
+basicJetLengthHeuristic = method();
+basicJetLengthHeuristic (BlackBoxInterpolator) := BasicJetLengthHeuristic => (interpolatorP)->
 (
+    interpolator := interpolatorP;
+    blackBox := interpolator.blackBox;
+    
     jetLengthEstimator := new MutableHashTable;
     
     localAdditionalJetLength := 10;
+    
+    
     
     jetLengthEstimator.setAdditionalJetLength = (additionalJetLengthParam)->
     (
@@ -339,27 +378,52 @@ basicJetLengthHeuristic = ()->
           
     jetLengthEstimator.interpolationTargetJetLength = method();
     
-     jetLengthEstimator.interpolationTargetJetLength (BlackBoxParameterSpace,BlackBoxInterpolator,ZZ) :=  ZZ =>
-        (blackBox, interpolator, monomialDegree)->
+     jetLengthEstimator.interpolationTargetJetLength (ZZ) :=  ZZ =>( maxMonomialDegree)->
     (
-        return rank super basis(monomialDegree, blackBox.coefficientRing) + localAdditionalJetLength;
+        basisSize := monomialBasisSize(maxMonomialDegree,blackBox.ring);
+        return  basisSize + localAdditionalJetLength;
     );
     
      
-    jetLengthEstimator.interpolationTargetJetLength (BlackBoxParameterSpace,BlackBoxInterpolator, Matrix,ZZ) :=  ZZ =>
-        (blackBox, interpolator, point, monomialDegree)->
-    (
-        return rank super basis(monomialDegree, blackBox.coefficientRing) + localAdditionalJetLength;
+    jetLengthEstimator.interpolationTargetJetLength (Matrix,ZZ) :=  ZZ =>( point, maxMonomialDegree)->
+    ( 
+          basisSize := monomialBasisSize(maxMonomialDegree,blackBox.ring);
+          return basisSize + localAdditionalJetLength;
     );
+    
+    jetLengthEstimator.interpolationTargetJetLength (InterpolatedIdeal, Matrix) :=  ZZ =>
+         ( interpolatedIdeal, point)->
+    (
+         maxMonomialDegree := interpolatedIdeal#"maxDegree";        
+         basisSize := monomialBasisSize(maxMonomialDegree,blackBox.ring);
+         return basisSize + localAdditionalJetLength;
+    );
+    
+    jetLengthEstimator.interpolationTargetJetLength ( InterpolatedIdeal, ZZ) :=  ZZ =>
+         (interpolatedIdeal, maxMonomialDegree)->
+    (
+        basisSize := monomialBasisSize(maxMonomialDegree,blackBox.ring);
+        return basisSize + localAdditionalJetLength;
+    );
+    
     
     jetLengthEstimator.sameComponentTargetJetLength = method();
     
      -- component, point (check if point on component)
-    jetLengthEstimator.sameComponentTargetJetLength (BlackBoxParameterSpace, BlackBoxInterpolator, InterpolatedIdeal, Matrix) :=  ZZ => 
-        (blackBox, interpolator, component, point)->
+    jetLengthEstimator.sameComponentTargetJetLength ( InterpolatedIdeal, Matrix) :=  ZZ => 
+        ( component, point)->
     (
-        monomialDegree := component#"maxDegree";        
-        return  rank super basis(monomialDegree, blackBox.coefficientRing) + localAdditionalJetLength;
+        maxMonomialDegree := component#"maxDegree";        
+        basisSize := monomialBasisSize(maxMonomialDegree,blackBox.ring);
+        return basisSize + localAdditionalJetLength;
+    );
+    
+     jetLengthEstimator.sameComponentTargetJetLength ( InterpolatedIdeal, Matrix,ZZ) :=  ZZ => 
+        ( component, point, maxMonomialDegreeP)->
+    (
+        maxMonomialDegree := max (maxMonomialDegreeP, component#"maxDegree");        
+        basisSize := monomialBasisSize(maxMonomialDegree,blackBox.ring);
+        return basisSize + localAdditionalJetLength;
     );
     
     result := newClass(BasicJetLengthHeuristic, jetLengthEstimator);
@@ -381,45 +445,48 @@ new BasicInterpolationMonomialDegreeHeuristic from Thing := (E,thing)->
     error "not supported";
 );
 
-basicInterpolationMonomialDegreeHeuristic = ()->
+basicInterpolationMonomialDegreeHeuristic = method();
+
+basicInterpolationMonomialDegreeHeuristic (BlackBoxInterpolator) := 
+    BasicInterpolationMonomialDegreeHeuristic => (interpolatorP)->
 (
+    interpolator := interpolatorP;
     monomialDegreeHeristic := new MutableHashTable;
     
     monomialDegreeHeristic.targetMonomialDegree = method();
     
     
-    monomialDegreeHeristic.targetMonomialDegree (BlackBoxParameterSpace, BlackBoxInterpolator, Matrix ) := ZZ => 
-        (blackBox,interpolator, point )->
+    monomialDegreeHeristic.targetMonomialDegree (Matrix ) := ZZ => (point )->
     (        
-        currentMaxDegree := 0;
+        currentMaxDegree := 1;
         
         components := interpolator.componentsAt(point);
         if (#components>0) then 
         (
                currentMaxDegree = max (0, apply (components, c-> max degrees flatten ideal c)) ;  
         );               
-        return currentMaxDegree+1;        
+        return currentMaxDegree;        
     );
     
     
-    monomialDegreeHeristic.targetMonomialDegree (BlackBoxParameterSpace, BlackBoxInterpolator,InterpolatedIdeal) := ZZ => 
-        (blackBox, interpolator, ic)->
+    monomialDegreeHeristic.targetMonomialDegree (InterpolatedIdeal) := ZZ => ( ic)->
     (
-        return ic#"maxDegree"+1;        
+        return ic#"maxDegree";        
     );
     
-    monomialDegreeHeristic.targetMonomialDegree (BlackBoxParameterSpace,  BlackBoxInterpolator) := ZZ => 
-        (blackBox,  interpolator)->
+    monomialDegreeHeristic.targetMonomialDegree (  BlackBoxInterpolator) := ZZ => (interpolator)->
     (
         -- if we have an interpolated component at point, then return monomialDegree of that one plus 1.  
         -- nicht gut, da 
         currentMaxDegree := max (0, interpolator.maxInterpolationDegree()) ;            
-        return currentMaxDegree+1;        
+        return currentMaxDegree;        
     );
     
     monomialDegreeHeristic = newClass(BasicInterpolationMonomialDegreeHeuristic, monomialDegreeHeristic);
     return monomialDegreeHeristic;
-)
+);
+
+
 
 ConstantInterpolationMonomialDegreeHeuristic = new Type of InterpolationMonomialDegreeHeuristic;
 
@@ -428,26 +495,30 @@ new ConstantInterpolationMonomialDegreeHeuristic from Thing := (E,thing)->
     error "not supported";
 );
 
-constantInterpolationMonomialDegreeHeuristic = (monomialDegree)->
+constantInterpolationMonomialDegreeHeuristic = method();
+
+constantInterpolationMonomialDegreeHeuristic (BlackBoxInterpolator, ZZ) := 
+    ConstantInterpolationMonomialDegreeHeuristic=>(interpolatorP, monomialDegree)->
 (
+    interpolator := interpolatorP;
     monomialDegreeHeristic := new MutableHashTable;
     
     monomialDegreeHeristic.targetMonomialDegree = method();
      
-    monomialDegreeHeristic.targetMonomialDegree (BlackBoxParameterSpace, BlackBoxInterpolator, Matrix ) := ZZ => 
-        (blackBox,interpolator, point )->
+    monomialDegreeHeristic.targetMonomialDegree ( Matrix ) := ZZ => 
+        ( point )->
     (        
          return monomialDegree;
     );
         
-    monomialDegreeHeristic.targetMonomialDegree (BlackBoxParameterSpace,BlackBoxInterpolator, InterpolatedIdeal ) := ZZ => 
-        (blackBox, ic, interpolator)->
+    monomialDegreeHeristic.targetMonomialDegree ( InterpolatedIdeal ) := ZZ => 
+        ( interpolatedIdeal)->
     (
         return monomialDegree;
     );
     
-    monomialDegreeHeristic.targetMonomialDegree (BlackBoxParameterSpace,  BlackBoxInterpolator) := ZZ => 
-        (blackBox,  interpolator)->
+    monomialDegreeHeristic.targetMonomialDegree (  BlackBoxInterpolator) := ZZ => 
+        ( interpolator)->
     (
          return monomialDegree;  
     );
@@ -456,7 +527,7 @@ constantInterpolationMonomialDegreeHeuristic = (monomialDegree)->
     return monomialDegreeHeristic;
 )
 
-BlackBoxInterpolator = new Type of HashTable;
+
 
 
 createSimpleInterpolator = method();
@@ -467,17 +538,16 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
        
     simpleInterpolator.blackBox = blackBox;
     
-    jetLengthHeuristic := basicJetLengthHeuristic();
+    monomialDegreeHeristic := null;
+    jetLengthHeuristic  := null;
     
+  
     
     simpleInterpolator.setJetLengthHeuristic = (jlh) ->
     (
         jetLengthHeuristic = jlh;
     );    
-    
-    
-    monomialDegreeHeristic := basicInterpolationMonomialDegreeHeuristic();
-    
+   
     
     simpleInterpolator.setMonomialDegreeHeristic = (mdh) ->
     (
@@ -501,24 +571,35 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
     
     componentNamePrefix := "c";
     
+    -- cached jets
+    jets := new MutableHashTable;
+    
+  -- component id should be unique per (blackBox, interpolator)    
+    nextComponentId := 1;
     
     simpleInterpolator.setComponentNamePrefix = (namePrefix)->
     (
         componentNamePrefix = namePrefix;
     );
     
-    -- component id should be unique per (blackBox, interpolator)    
-    nextComponentId := 1;
+    simpleInterpolator.reset = ()->
+    (
+         componentCandidatesDictionary = new MutableHashTable;
+         jets = new MutableHashTable;
+         nextComponentId = 1;
+    );
+    
+  
     
     
     -- uhh, was??? NICHT GUT? WIESO blackBox.componentCandidates()?
     -- => weil eventuell geplant war die Komponenten in der Black box zu speichern
     simpleInterpolator.componentNames = ()->
     (
-        --components:= blackBox.componentCandidates();
+        --components:= blackBox.components();
         components := values componentCandidatesDictionary;
        
-        names := apply(components, component-> component#"name"());
+        names := sort apply(components, component-> component#"name"());
         return names;        
       
     );
@@ -550,10 +631,7 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
     );
     
     
-    -- (jk) well, I think we do not need setComponentName(point, newName) , 
-    -- and, this could be unfortunate if the point is not smooth
-    -- and we have several components there
-    --
+    
     
     simpleInterpolator.componentByName = method();
     
@@ -601,15 +679,12 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
         return   candidates;        
     );
     
-    -- cached jets
-
-    jets := new MutableHashTable;
-
-    simpleInterpolator.componentCandidates = ()->
-    (
-        --return new HashTable from componentCandidatesDictionary;
-        return sort new List from values componentCandidatesDictionary;
-    );
+  
+    --simpleInterpolator.componentCandidates = ()->
+    --(
+    --    --return new HashTable from componentCandidatesDictionary;
+    --    return sort new List from values componentCandidatesDictionary;
+    --);
 
   
 
@@ -659,7 +734,7 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
 
     simpleInterpolator.maxInterpolationDegree = ()->
     (
-        components := interpolator.components();
+        components := simpleInterpolator.components();
 
         if (#components>0) then 
         (
@@ -676,11 +751,13 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
     --
     
     simpleInterpolator.sameComponentAt (InterpolatedIdeal, Matrix, ZZ) := Boolean  => 
-        (componentIdeal, point, onComponentPrecisionParam) ->
+        (componentIdeal, point, sameComponentPrecisionParam) ->
     (
-        return simpleInterpolator.sameComponentAt (ideal componentIdeal, point, onComponentPrecisionParam);
+        return simpleInterpolator.sameComponentAt (ideal componentIdeal, point, sameComponentPrecisionParam);
     );
     
+    --ebenfalls cachen, da teuer. Und: mit kurzem Jet anfangen und dann immer länger werden.?
+    --
     simpleInterpolator.sameComponentAt (Ideal, Matrix, ZZ) := Boolean => 
         (componentIdeal, point, sameComponentPrecisionParam)->
     (
@@ -690,7 +767,7 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
         if not (jets#?point) then
         (        
             -- we have no cached jets for the given point => compute jets
-            jets#point = jetAt( blackBox ,point, sameComponentPrecisionParam);
+            jets#point = jetAtOrNull( blackBox ,point, sameComponentPrecisionParam);                        
             -- here we could also update statistic if the jet succeeded or not...
         );
         jetP := jets#point;  
@@ -729,10 +806,7 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
     
     simpleInterpolator.sameComponentAt (Ideal, Matrix) := Boolean => (componentIdeal, point)->
     (
-        sameComponentPrecision := jetLengthHeuristic.sameComponentTargetJetLength(blackBox,
-                                                                            simpleInterpolator,
-                                                                            componentIdeal,
-                                                                            point);
+        sameComponentPrecision := jetLengthHeuristic.sameComponentTargetJetLength(  componentIdeal, point);
                                                                     
         return  simpleInterpolator.sameComponentAt (componentIdeal, point,sameComponentPrecision);
     );
@@ -759,11 +833,11 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
     -- so first decide: should the black box or the interpolator manage interpolated components?
     -- I vote that the interpolator should manage the components.
 
-    simpleInterpolator.interpolateAt = method();
+    interpolateAt := method();
 
     -- todo: another interpolateAt variant: pass jet(s) as parameter.
 
-    simpleInterpolator.interpolateAt( Matrix, ZZ, ZZ, MapHelper) := InterpolatedIdeal =>
+    interpolateAt( Matrix, ZZ, ZZ, MapHelper) := InterpolatedIdeal =>
                 (point,monomialMaxDegree,targetJetLength, mmap) -> 
     (
         R := mmap#"imageRing";
@@ -780,6 +854,8 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
         -- Test: see if interpolated polynomials are in at least one
         -- irreducible component of the BlackBoxIdeal.
         jetPimage :=  (mmap#"valueAtJet")(jetP);
+        --print ("jetPimage");
+        --print (jetPimage);
         bareIdeal:= interpolate(mons,{jetPimage});
     
         jetSet := new JetSet from jetP;
@@ -787,27 +863,137 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
         return interpolatedIdeal;
     );
 
-    simpleInterpolator.interpolateAt(Matrix,ZZ,Matrix) := Ideal =>
+    interpolateAt(Matrix,ZZ,Matrix) := Ideal =>
                 (point,monomialMaxDegree,mmap) -> 
     (
-        targetJetLength :=  jetLengthHeuristic.interpolationTargetJetLength(blackBox, simpleInterpolator, point, monomialMaxDegree);      
+        targetJetLength :=  jetLengthHeuristic.interpolationTargetJetLength(  point, monomialMaxDegree);      
         targetJetLength = targetJetLength + interpolationJetLengthCorrection;
-        return simpleInterpolator.interpolateAt(point,monomialMaxDegree,targetJetLength, new MapHelper from mmap);
+        return interpolateAt(point,monomialMaxDegree,targetJetLength, new MapHelper from mmap);
     );
 
 
-    simpleInterpolator.interpolateAt(Matrix,ZZ) := Ideal =>
+    interpolateAt(Matrix,ZZ) := Ideal =>
                 (point,monomialMaxDegree) -> 
     (
-        targetJetLength :=  jetLengthHeuristic.interpolationTargetJetLength(blackBox, simpleInterpolator, point, monomialMaxDegree);      
+        targetJetLength :=  jetLengthHeuristic.interpolationTargetJetLength( point, monomialMaxDegree);      
         targetJetLength = targetJetLength + interpolationJetLengthCorrection;
-        return simpleInterpolator.interpolateAt(point,monomialMaxDegree,targetJetLength, createMapHelper(vars blackBox.ring, blackBox.ring));
+        mapHelper:= createMapHelper(vars blackBox.ring, blackBox.ring);
+        return interpolateAt(point,monomialMaxDegree,targetJetLength, mapHelper);
     );
     
-    simpleInterpolator.interpolateAt(Matrix,ZZ, ZZ) := Ideal =>
+    interpolateAt(Matrix,ZZ, ZZ) := Ideal =>
                 (point,monomialMaxDegree, jetLength) -> 
     (
-        return simpleInterpolator.interpolateAt(point,monomialMaxDegree,jetLength,createMapHelper(vars blackBox.ring, blackBox.ring));
+        mapHelper:= createMapHelper(vars blackBox.ring, blackBox.ring);
+        return interpolateAt(point,monomialMaxDegree,jetLength, mapHelper);
+    );
+    
+    
+    simpleInterpolator.interpolateAt = method();
+    
+    simpleInterpolator.interpolateAt(Matrix) := Ideal => (point) -> 
+    (
+         localMaxMonomialDegree := simpleInterpolator.maxInterpolationDegree();
+         return simpleInterpolator.interpolateAt(point,localMaxMonomialDegree);
+    );
+    
+    -- (JK) todo: attention: interpolateAt shares duplicate code with interpolateComponents !! 
+    simpleInterpolator.interpolateAt(Matrix,ZZ) := Ideal => (point, monomialMaxDegree) -> 
+    (
+        -- wenn schon componente da an diesem punkt, dann verbessere bis zu monomialMaxDegree
+        
+        --  IMPROVE AT        
+        interpolationTargetDegree := null;
+        interpolationJetLength := null;
+        localInterpolatedIdealOrError := null;
+        if (componentCandidatesDictionary#?point) then 
+        (
+            currentComponent := componentCandidatesDictionary#point;
+            
+            interpolationTargetDegree = max( monomialMaxDegree, currentComponent#"maxDegree");
+           
+            interpolationJetLength = jetLengthHeuristic.interpolationTargetJetLength( currentComponent, interpolationTargetDegree);            
+            interpolationJetLength = interpolationJetLength + interpolationJetLengthCorrection;
+            
+            if (currentComponent#"maxDegree" < interpolationTargetDegree or
+                maximalConditions(currentComponent#"jetSet") < interpolationJetLength+1 ) then 
+            (
+                localInterpolatedIdealOrError = catch interpolateAt ( point,interpolationTargetDegree, interpolationJetLength );                     
+            
+                if (  isDerivedFrom(localInterpolatedIdealOrError,SingularPointException)) then 
+                (
+                    BlackBoxLogger.debug("interpolateComponents: point "| toString point| " was singular");
+                    remove(componentCandidatesDictionary,point);
+                )
+                else  
+                (   
+                    -- here we do the naming magic:
+                    remove(componentCandidatesDictionary,point);
+                    localInterpolatedIdealOrError#"setName"( currentComponent#"name"() );
+                    componentCandidatesDictionary#point = localInterpolatedIdealOrError ;  
+                    return localInterpolatedIdealOrError;
+                );
+            )
+            else
+            (   
+                return currentComponent;
+            )                        
+        )
+        else
+        (
+            -- INTERPOLATE AT
+              -- TODO: ignore incorrect points, or maybe even throw an exception or give an error
+            if not blackBox.isZeroAt(point) then 
+            (
+                throw new PointNotOnBlackBox from {"errorMessage" => " Point " |toString point|" not on Black box"};
+            );
+            pointIsSingular := false;
+            
+            interpolationTargetDegree = monomialMaxDegree;
+            -- check if component at point coincindes with one of the known components
+            bSameComponentAt := false;
+            for interpolatedIdeal in values componentCandidatesDictionary do
+            (
+                sameComponentPrecision := jetLengthHeuristic.sameComponentTargetJetLength(  interpolatedIdeal, point, interpolationTargetDegree);
+                sameComponentResult := catch simpleInterpolator.sameComponentAt ( interpolatedIdeal, point, sameComponentPrecision );
+                if  isDerivedFrom(sameComponentResult, SingularPointException) then
+                (
+                    pointIsSingular = true;
+                    throw sameComponentResult;
+                );
+                if (sameComponentResult) then
+                (
+                    bSameComponentAt = true; 
+                    print("warning: point is already on a component, no needs for interpolating at point");
+                );                
+            );
+             
+            -- separate compute from 
+          
+            interpolationJetLength = jetLengthHeuristic.interpolationTargetJetLength( point,interpolationTargetDegree);
+            interpolationJetLength = interpolationJetLength + interpolationJetLengthCorrection;
+            localInterpolatedIdealOrError = catch interpolateAt (point,interpolationTargetDegree, interpolationJetLength);                     
+            
+
+            if (  isDerivedFrom(localInterpolatedIdealOrError,SingularPointException)) then 
+            (
+                BlackBoxLogger.debug("interpolateComponents: point "| toString point| " was singular");
+            )
+            else  
+            (                                  
+                  if (  isDerivedFrom(localInterpolatedIdealOrError,InterpolatedIdeal)) then
+                  (
+                        -- here we do the naming magic:
+                        localInterpolatedIdealOrError#"setName"( nextComponentName() );
+                        componentCandidatesDictionary#point = localInterpolatedIdealOrError;      
+                        return localInterpolatedIdealOrError;
+                  )
+                  else
+                  (
+                     throw localInterpolatedIdealOrError;
+                  );
+            );
+        );
     );
     
     cachedPointList := null;
@@ -818,18 +1004,7 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
     simpleInterpolator.interpolateComponents = method();
     
     -- interpolateComponents should return or maintain smooth point list and eventually singular point list.
-    
-    simpleInterpolator.interpolateComponents (List, ZZ, ZZ) := List => 
-        (pointList, interpolationMaxDegree, targetJetLength) -> 
-    (
-        -- hier bauen wir konstante Heuristiken fr maxMonomialDegree und sameComponentPrecisionParam:
-        jlh := constantJetLengthHeuristic(targetJetLength);
-        
-        mdh := constantInterpolationMonomialDegreeHeuristic(interpolationMaxDegree);
-        return simpleInterpolator.interpolateComponents(pointList,mdh, jlh);
-    );
-    
-    
+
     
     simpleInterpolator.interpolateComponents (List, InterpolationMonomialDegreeHeuristic, JetLengthHeuristic) := List => 
         (pointList, idh, jlh) -> 
@@ -851,12 +1026,13 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
         (
             currentComponent := componentCandidatesDictionary#point;
             
-            interpolationTargetDegree := idh.targetMonomialDegree(blackBox,simpleInterpolator, currentComponent);
-            interpolationJetLength := jlh.interpolationTargetJetLength(blackBox,simpleInterpolator,currentComponent, interpolationTargetDegree);
+            interpolationTargetDegree := idh.targetMonomialDegree(  currentComponent);
+            interpolationJetLength := jlh.interpolationTargetJetLength( currentComponent, interpolationTargetDegree);            
             interpolationJetLength = interpolationJetLength + interpolationJetLengthCorrection;
-            if (currentComponent#"maxDegree" < interpolationTargetDegree) then 
+            if (currentComponent#"maxDegree" < interpolationTargetDegree or 
+                maximalConditions(currentComponent#"jetSet") < interpolationJetLength+1) then 
             (
-                localInterpolatedIdealOrError := catch simpleInterpolator.interpolateAt ( point,interpolationTargetDegree, interpolationJetLength );                     
+                localInterpolatedIdealOrError := catch interpolateAt ( point,interpolationTargetDegree, interpolationJetLength );                     
             
                 if (  isDerivedFrom(localInterpolatedIdealOrError,SingularPointException)) then 
                 (
@@ -866,7 +1042,8 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
                 else  
                 (   
                     -- here we do the naming magic:
-                    localInterpolatedIdealOrError#"setName"( nextComponentName() );
+                    remove(componentCandidatesDictionary,point);
+                    localInterpolatedIdealOrError#"setName"( currentComponent#"name"() );
                     componentCandidatesDictionary#point = localInterpolatedIdealOrError ;  
                 );
             )
@@ -887,8 +1064,8 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
             bSameComponentAt := false;
             for interpolatedIdeal in values componentCandidatesDictionary do
             (
-                sameComponentPrecision := jlh.sameComponentTargetJetLength(blackBox,simpleInterpolator, interpolatedIdeal, point);
-                sameComponentResult := simpleInterpolator.sameComponentAt ( interpolatedIdeal, point, sameComponentPrecision );
+                sameComponentPrecision := jlh.sameComponentTargetJetLength(  interpolatedIdeal, point);
+                sameComponentResult := catch simpleInterpolator.sameComponentAt ( interpolatedIdeal, point, sameComponentPrecision );
                 if  isDerivedFrom(sameComponentResult, SingularPointException) then
                 (
                     pointIsSingular = true;
@@ -913,10 +1090,10 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
             );
 
             -- separate compute from 
-            interpolationTargetDegree := idh.targetMonomialDegree(blackBox,simpleInterpolator, point);
-            interpolationJetLength := jlh.interpolationTargetJetLength(blackBox,simpleInterpolator,point,interpolationTargetDegree);
+            interpolationTargetDegree := idh.targetMonomialDegree(  point);
+            interpolationJetLength := jlh.interpolationTargetJetLength( point,interpolationTargetDegree);
             interpolationJetLength = interpolationJetLength + interpolationJetLengthCorrection;
-            localInterpolatedIdealOrError := catch simpleInterpolator.interpolateAt (point,interpolationTargetDegree, interpolationJetLength);                     
+            localInterpolatedIdealOrError := catch interpolateAt (point,interpolationTargetDegree, interpolationJetLength);                     
             
 
             if (  isDerivedFrom(localInterpolatedIdealOrError,SingularPointException)) then 
@@ -939,36 +1116,51 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
         );
         -- print "timing for loop", T#0;
                       
-        return simpleInterpolator.componentCandidates();
+        return simpleInterpolator.components();
     );
-     simpleInterpolator.interpolateComponents  (List) := List=> (pointList) -> 
+    
+    -- now, what should happen here?
+    simpleInterpolator.interpolateComponents  (List) := List=> (pointList) -> 
     (       
-        return simpleInterpolator.interpolateComponents(pointList,   
-                                                        monomialDegreeHeristic,
+        -- TODO wenn kein Monomgrad angegeben ist,fange bei max (1, maxInterpolationDegree()) an
+        -- und höre auf, sobald alle (glatten) Punkte auf Komponenten liegen:     
+        --
+        --error ("not implemented yet");        
+        interpolationMaxDegree := max(1, simpleInterpolator.maxInterpolationDegree());
+        return simpleInterpolator.interpolateComponents(pointList,                                                        
+                                                        constantInterpolationMonomialDegreeHeuristic(simpleInterpolator,
+                                                                                                     interpolationMaxDegree),
                                                         jetLengthHeuristic);
     );
+    
+    simpleInterpolator.refineInterpolation = () -> 
+    (           
+        interpolationMaxDegree := 1+max(1, simpleInterpolator.maxInterpolationDegree());
+        return simpleInterpolator.interpolateComponents(cachedPointList,                                                        
+                                                        constantInterpolationMonomialDegreeHeuristic(simpleInterpolator,
+                                                                                                     interpolationMaxDegree),
+                                                        jetLengthHeuristic);
+    );
+    
+    
     simpleInterpolator.interpolateComponents  (List, ZZ) := List=> (pointList, interpolationMaxDegree) -> 
     (       
         return simpleInterpolator.interpolateComponents(pointList,   
-                                                        constantInterpolationMonomialDegreeHeuristic(interpolationMaxDegree),
+                                                        constantInterpolationMonomialDegreeHeuristic(simpleInterpolator,
+                                                                                                     interpolationMaxDegree),
                                                         jetLengthHeuristic);
     );
+    
     
     simpleInterpolator.interpolateComponents  ( ZZ) := List=> ( interpolationMaxDegree) -> 
     (
         return simpleInterpolator.interpolateComponents(cachedPointList, 
-                                                        constantInterpolationMonomialDegreeHeuristic(interpolationMaxDegree),
+                                                        constantInterpolationMonomialDegreeHeuristic(simpleInterpolator,
+                                                                                                     interpolationMaxDegree),
                                                         jetLengthHeuristic
                                                         );
     );
     
-    simpleInterpolator.interpolateComponents  ( ZZ,ZZ) := List=> ( interpolationMaxDegree, sameComponentPrecisionParam) -> 
-    (
-        return simpleInterpolator.interpolateComponents(cachedPointList, 
-                                                        constantInterpolationMonomialDegreeHeuristic(interpolationMaxDegree),
-                                                        constantJetLengthHeuristic(sameComponentPrecisionParam)
-                                                        );
-    );
 
     --simpleInterpolator.refineInterpolation  = () -> 
     -- (
@@ -993,7 +1185,12 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
                 candidates = candidates | { componentCandidatesDictionary#componentKey };
             );
         );
-        return candidates;
+        return sort candidates;
+    );
+    
+    simpleInterpolator.components = ( )->
+    (       
+        return sort values componentCandidatesDictionary;
     );
     
     simpleInterpolator.dropComponent= method();
@@ -1037,10 +1234,100 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
     
     
     simpleInterpolator = newClass(BlackBoxInterpolator, simpleInterpolator);
-     
+    
+   
+    -- setMonomialDegreeHeristic geht erst hier, da newClass das Objekt simpleInterpolator verändert!
+    -- setJetLengthHeuristic geht erst hier, da newClass das Objekt simpleInterpolator verändert!
+    simpleInterpolator.setMonomialDegreeHeristic( basicInterpolationMonomialDegreeHeuristic(simpleInterpolator));
+    simpleInterpolator.setJetLengthHeuristic( basicJetLengthHeuristic(simpleInterpolator));
     return simpleInterpolator;
 );
 
+TEST ///
+  -- bug: jet length too short 
+  -- loadPackage "BlackBoxIdeals"
+  kk = ZZ
+  R = kk[x,y]
+  I  = ideal (x*y*(x^2-y^2)*(y^4-3*x-7))
+  bb = new BlackBoxIdeal from I; 
+ 
+  p3 = matrix {{3,2_kk}}
+  origin = matrix {{0, 0_kk}}
+  singularPoint  = matrix{{0,0_kk}}
+  bb.valuesAt p3
+  jlh = basicJetLengthHeuristic(bb.interpolator);    
+  maxDegree = 4;  
+  mons = matrix {flatten apply(maxDegree+1, currentDegree->flatten entries basis(currentDegree,bb.ring))};
+  
+  jetLength = jlh.interpolationTargetJetLength(maxDegree)
+  assert (jetLength >= rank source mons +10);
+  
+  pointList = {p1,singularPoint,p2,p3}
+  pointList = {p1,p2,p3}
+  pointList = {p3}
+  maxDegree=1
+  forcedInterpolationPrecision = 11
+  iiList1 =  bb.interpolateComponents(pointList,maxDegree)
+  apply(iiList1, ic-> assert(1 == ic#"maxDegree"))
+  maxDegree = 2
+  iiList2 = bb.interpolateComponents(pointList,maxDegree)   
+  maxDegree=1
+  iiList2b = bb.interpolateComponents(pointList,1)
+  apply(iiList2b, ic-> assert(2 == ic#"maxDegree"))
+  
+  bb.resetInterpolation()
+  maxDegree = 2
+  iiList2b = bb.interpolateComponents(pointList,maxDegree)
+  -- test zu lang !!
+  --maxDegree = 5
+  --bb.interpolateComponents(pointList,maxDegree)
+  --maxDegree = 6
+  --bb.interpolateComponents(pointList,maxDegree) 
+  --bb.resetInterpolation()
+  --maxDegree = 4
+  --bb.interpolateComponents(pointList,maxDegree) --ok
+  --maxDegree = 5
+///
+
+
+TEST ///
+  -- bug: jet length too short (incorrect jet length heuristic)
+  -- loadPackage "BlackBoxIdeals"
+  kk = QQ
+  R = kk[x,y]
+  I  = ideal (x*y*(x^2-y^2)*(y^4-3*x-7))
+  bb = new BlackBoxIdeal from I;
+  p1 = matrix {{1,1_kk}}
+  p2 = matrix {{1,0_kk}}
+  p3 = matrix {{3,2_kk}}
+  origin = matrix {{0, 0_kk}}
+  singularPoint  = matrix{{0,0_kk}}
+  pointList = {p1,singularPoint,p2,p3}
+  maxDegree = 1
+  iiList1 = bb.interpolateComponents(pointList,maxDegree)
+  
+  
+  -- test zu lang!!!
+  --maxDegree = 3
+  --iiList3 = bb.interpolateComponents(pointList,maxDegree) 
+  --assert(3 == #iiList3);
+  --bb.resetInterpolation()
+  --maxDegree = 4
+  --iiList4 = bb.interpolateComponents(pointList,maxDegree)
+  --assert(3 == #iiList4)
+  
+  --c3 = bb.componentsAt(p3)
+  --assert (#c3 ==1)
+  
+  --c3 = first c3
+  --assert (1==#(flatten entries gens ideal  c3))
+  --assert (4==first flatten degrees ideal  c3)
+
+  -- dies geht natuerlich nur wenn man alle Punkte angibt)
+  --resultIdeal = product( apply( iiList4, ic->ideal ic))  
+  -- assert (gens radical resultIdeal%  radical I
+  
+///
 
 
 new BlackBoxInterpolator  from BlackBoxParameterSpace := (E, blackBox )->

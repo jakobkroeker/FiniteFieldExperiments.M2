@@ -16,7 +16,7 @@ newPackage(
      PackageExports => {"BlackBoxIdeals", "IntervalPkg" },
      Headline => "finite field experiments for explicit and implicitly given ideals and parameter spaces",
      DebuggingMode => false,
-     CacheExampleOutput => true,
+     CacheExampleOutput => false,
      AuxiliaryFiles=>true
 )
 
@@ -65,7 +65,6 @@ FiniteFieldExperimentsProtect = ()->
     protect setDecompositionConfidenceInterval;
     protect allInterpolatedIdeals;
     protect experiment;
-    protect reset;
     protect pointKey;
     protect setPointIterator;
     protect setPointGenerator;
@@ -146,10 +145,7 @@ FiniteFieldExperimentsExport  = ()->
     exportMutable("allInterpolatedIdeals");
     exportMutable ("setDecompositionConfidenceInterval");
     exportMutable("smoothPoints");
-
-   
     exportMutable("experiment");
-    exportMutable("reset");
     exportMutable("pointKey");
     exportMutable("setPointIterator");
     exportMutable("setPointGenerator");
@@ -1811,9 +1807,9 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
     (
         if (propertyName == "rankJacobianAt") then
         (
-            if (blackBoxIdeal.type===BlackBoxIdeal) then
+            if (class blackBoxIdeal===BlackBoxIdeal) then
             (
-                error (" removing 'rankJacobianAt' from watched properties for a " | toString blackBoxIdeal.type | " not allowed !")
+                error (" removing 'rankJacobianAt' from watched properties for a " | toString class blackBoxIdeal | " not allowed !")
             );
         );
     );
