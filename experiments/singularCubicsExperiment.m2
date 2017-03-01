@@ -1,6 +1,6 @@
 -- look at the hilbert scheme of singular
 -- cubics
-
+ 
 restart
 
 path = append(path,"/Users/bothmer/Desktop/projekte/strudel/Jakob2010/GitHub/padicLiftM2/")
@@ -36,7 +36,7 @@ R = K[x,y,z,w]
 -- make a blackbox describing the parameter space of cubicc
 bbC = blackBoxParameterSpace(20,K);
 -- this Black Box is still empty:
-bbC.knownPointProperties()
+bbC.pointProperties()
 
 -- there are 20 monomials in degree 3
 mons3 = matrix entries transpose super basis(3,R)
@@ -252,7 +252,7 @@ tally apply(e.pointsByKey({3, {1,1,1}}),coeff->(
 -- look at decomposition over finite field (not over the algebraic closure)
 tally apply(e.pointsByKey({3, {1,1,1}}),coeff->(
 	  sing = singularLocusAt(bbC,coeff);
-	  apply(decompose sing,i->degree i)
+	  sort apply(decompose sing,i->degree i)
 	  ))
 -- {1, 1, 1} => 1}
 -- {1, 2} => 5
