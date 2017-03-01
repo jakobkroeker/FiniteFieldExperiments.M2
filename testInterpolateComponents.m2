@@ -19,7 +19,7 @@ installPackage "FiniteFieldExperiments"
   viewHelp BlackBoxIdeals
   debug BlackBoxIdeals
   targetJetLength:= 10;
-  
+  viewHelp FiniteFieldExperiments
 
 
 	
@@ -37,11 +37,11 @@ bb.interpolateAt(pointOnPlane, 1,10)
   restart 
  errorDepth =2
   loadPackage "BlackBoxIdeals"
-  check "BlackBoxIdeals"
-  uninstallPackage "BlackBoxIdeals"
-  installPackage "BlackBoxIdeals"
-  viewHelp BlackBoxIdeals
-  debug BlackBoxIdeals
+--  check "BlackBoxIdeals"
+--  uninstallPackage "BlackBoxIdeals"
+--  installPackage "BlackBoxIdeals"
+--  viewHelp BlackBoxIdeals
+--  debug BlackBoxIdeals
   -- to get meaningful debug output for packages,
   -- we need errorDepth = 2. (default value is 3) => Lower value means better 
   errorDepth = 2
@@ -62,10 +62,59 @@ bb.interpolateAt(pointOnPlane, 1,10)
   bb.valuesAt p1
   bb.valuesAt p2
   bb.valuesAt p3
+  maxdeg = 1
+  bb.interpolateComponentAt(p1,maxdeg)
+-- wenn bei p1 schon mal interpoliert wurde mit kleinerem 
+--   Grad, interpolieren mit maxdeg
+-- wenn bei p1 schon mal interpoliert wurde mit groesser oder gleichem
+--   grad, dann nichts machen
+-- wenn bei p1 noch nicht interpoliert wurde, dann neu componente
+--   interpolieren mit maxdeg
+-- jet zum interpolieren immer laenge = anzahl der Monome+10
+-- wenn kein jet dieser laenge gefunden werden kann, dann throw "singulaer"
+-- und keine Interpolation
+
+
+bb.interpolateComponentsAt({p_1,p_2},maxdeg)
+-- ruft interpolateComponentAt(p_i,maxdeg) auf wenn:
+--    sub(ideal componente, p_i) == 0  dann nicht interpolieren
+--
+--  ausser ideal componente == 0
+--
+--    nicht vorher testen ob glatt, sondern falls kein jet gefunden
+--    werden kann => nicht interpolieren, keine Fehlermeldung
+-- 
+-- possible names:
+--   quickIsOnComponentAt
+--   isOnComponentAt(...,0)
+
+bb.interpolatedComponentsAt(point,onComponentPrecision)
+-- erzeugt jet j der laenge onComponenPrecision mit Anfang in point
+--    wenn kein j dieser laege gefunden werden kann => "is singulaer"
+-- sonst 
+--     sub(ideal component, j) == 0
+-- fuer alle componenten testen.
+
+bb.interpolatedComponentNamesAt(point,onComponentPrecision)
+--- {"certainlySingular",{}}
+--- {"probablySmooth",{"c1","c2"}}
+
+bb.setOnCompnenPrecision(5) --- default =2
+bb.interpolatedComponentNamesAt(point)
+
+e.interpolateComponents(maxdeg)
+e.bb.interpolateComponentsAt(e.points(),maxdeg)
+
+e.watchProperty("interpolatedComponentNamesAt")
+e.tryProperty("interpolatedComponentNamesAt")
+
+
+
+
   monomialDegree = 0;  
   pointList = {p1,singularPoint,p2,p3}
       bb.resetInterpolation()
-  bb.interpolateComponents(pointList)
+  bb.interpolateComponents(pointList,4)
   c3 = first bb.componentsAt p3
   bb.isOnComponent(c3,p3)
   bb.isOnComponent("c3",p3)

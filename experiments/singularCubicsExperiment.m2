@@ -18,8 +18,8 @@ installPackage"BlackBoxIdeals"
 check BlackBoxIdeals
 
 uninstallPackage"FiniteFieldExperiments"
-installPackage"FiniteFieldExperiments"
-check FiniteFieldExperiments
+time installPackage"FiniteFieldExperiments"
+time check FiniteFieldExperiments
 
 viewHelp BlackBoxIdeals
 viewHelp FiniteFieldExperiments
