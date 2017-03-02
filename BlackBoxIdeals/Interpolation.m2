@@ -673,7 +673,7 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
         componentNamePrefix = namePrefix;
     );
     
-    simpleInterpolator.reset = ()->
+    simpleInterpolator.resetInterpolation = ()->
     (
          componentCandidatesDictionary = new MutableHashTable;
          jets = new MutableHashTable;
