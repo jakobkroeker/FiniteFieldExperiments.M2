@@ -25,6 +25,7 @@ newPackage(
 
 -- Map eigentlich Morphism
 export { 
+ 
   "Counts",
   "counts",
   "sortedCounts",
@@ -139,6 +140,7 @@ FiniteFieldExperimentsProtect = ()->
 
 FiniteFieldExperimentsExport  = ()->
 (
+    exportMutable("reset");
     exportMutable("setPosition");
     exportMutable("setPoint");
     exportMutable("pointData");

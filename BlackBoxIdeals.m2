@@ -24,9 +24,14 @@ needsPackage "M2Logging";
 
 
 export { 
+    "PlainTextSmoothnessInfoWithAnswerPair",
     "NullIfNotSmoothStrategy",
-        "ExceptionIfNotSmooth",
-            "SmoothnessInfoWithAnswerPair",
+    "ExceptionIfNotSmooth",
+    "SmoothnessInfoWithAnswerPair",
+    "plainTextSmoothnessInfoWithAnswerPair",
+    "nullIfNotSmoothStrategy",
+    "exceptionIfNotSmooth",
+    "smoothnessInfoWithAnswerPair",
     "refineInterpolation",
     "maximalConditions",
     "monomialBasisSize",
@@ -149,6 +154,8 @@ idealBlackBoxesProtect = ()->
 
 idealBlackBoxesExport = ()->
 (
+    exportMutable("transformedAnswer");
+    exportMutable("onComponentAnswerStrategies");
     exportMutable("setOnComponentAnswerStrategy");
     exportMutable("onComponentAnswerStrategy");
     exportMutable("onComponentPrecision");
@@ -158,7 +165,7 @@ idealBlackBoxesExport = ()->
     exportMutable("interpolatedComponents");
     exportMutable("interpolatedComponentNames");
     exportMutable("interpolatedComponentByName");        
-    exportMutable("reset");
+    --exportMutable("reset");
     exportMutable("setOnComponentPrecision");
     exportMutable("resetInterpolation");
     exportMutable("setInterpolator");
@@ -2283,11 +2290,13 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
     -- better: check component calculator type /interface.
     blackBox.setInterpolator = (interpolatorParam)->
     (
+        blackBox.onComponentAnswerStrategies = interpolatorParam.onComponentAnswerStrategies;
         blackBox.setOnComponentAnswerStrategy   =  interpolatorParam.setOnComponentAnswerStrategy;
         blackBox.onComponentAnswerStrategy   =  interpolatorParam.onComponentAnswerStrategy;
         blackBox.setOnComponentPrecision   =  interpolatorParam.setOnComponentPrecision;
+        blackBox.onComponentPrecision   =  interpolatorParam.onComponentPrecision;
         blackBox.interpolator   = interpolatorParam;
-        blackBox.resetInterpolation   = interpolatorParam.reset;
+        blackBox.resetInterpolation   = interpolatorParam.resetInterpolation;
         blackBox.isOnComponent  = interpolatorParam.isOnComponent;
         blackBox.interpolatedComponents     =  interpolatorParam.components;
         blackBox.interpolatedComponentNames  =  interpolatorParam.componentNames;

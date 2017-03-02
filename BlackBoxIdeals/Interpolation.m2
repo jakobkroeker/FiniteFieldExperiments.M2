@@ -6,9 +6,68 @@ bblog := BlackBoxLogger;
 BlackBoxInterpolator = new Type of HashTable;
 
 
-NullIfNotSmoothStrategy = new Type of HashTable;
-ExceptionIfNotSmooth = new Type of HashTable;
-SmoothnessInfoWithAnswerPair = new Type of HashTable;
+OnComponentAnswerStrategy = new Type of HashTable;
+
+NullIfNotSmooth = new Type of OnComponentAnswerStrategy;
+ExceptionIfNotSmooth = new Type of OnComponentAnswerStrategy;
+SmoothnessInfoWithAnswerPair = new Type of OnComponentAnswerStrategy;
+PlainTextSmoothnessInfoWithAnswerPair = new Type of OnComponentAnswerStrategy;
+
+nullIfNotSmoothStrategy = ()->
+(
+    answerTransformer := new MutableHashTable;
+    answerTransformer.transformedAnswer = (isSmooth, answer) ->
+    (
+        if (not isSmooth) then return null;
+        return answer;
+    );
+    answerTransformer = newClass(NullIfNotSmooth, answerTransformer);
+    return answerTransformer;
+);
+
+exceptionIfNotSmooth = ()->
+(
+    answerTransformer := new MutableHashTable;
+    answerTransformer.transformedAnswer = (isSmooth, answer) ->
+    (
+        if (not isSmooth) then throw new SingularPointException;
+        return answer;
+    );
+    answerTransformer = newClass(ExceptionIfNotSmooth, answerTransformer);
+    return answerTransformer;
+);
+
+smoothnessInfoWithAnswerPair = ()->
+(
+    answerTransformer := new MutableHashTable;
+    answerTransformer.transformedAnswer = (isSmooth, answer) ->
+    (        
+        return (isSmooth, answer);
+    );
+    answerTransformer = newClass(SmoothnessInfoWithAnswerPair, answerTransformer);
+    return answerTransformer;
+);
+
+smoothPointText := "probablySmooth";
+singularPointText := "certainlySingular";
+
+plainTextSmoothnessInfoWithAnswerPair = ()->
+(
+    answerTransformer := new MutableHashTable;
+    answerTransformer.transformedAnswer = (isSmooth, answer) ->
+    (       
+        if isSmooth then 
+            return (smoothPointText, answer);
+        return (singularPointText, answer);
+    );
+    answerTransformer = newClass(PlainTextSmoothnessInfoWithAnswerPair, answerTransformer);
+    return answerTransformer;
+);
+
+
+
+
+
 
 eassert = method();
 
@@ -673,23 +732,46 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
         componentNamePrefix = namePrefix;
     );
     
-    simpleInterpolator.reset = ()->
+    simpleInterpolator.resetInterpolation = ()->
     (
          componentCandidatesDictionary = new MutableHashTable;
          jets = new MutableHashTable;
          nextComponentId = 1;
     );
     
-    localAnswerStrategy := NullIfNotSmoothStrategy;
-    
-    --    NullIfNotSmoothStrategy = new Type of HashTable;
-    --    ExceptionIfNotSmooth = new Type of HashTable;
-    --    SmoothnessInfoWithAnswerPair = new Type of HashTable;
+    localAnswerStrategy := nullIfNotSmoothStrategy();
+ 
 
-    simpleInterpolator.setOnComponentAnswerStrategy = (answerStrategy)->
+    simpleInterpolator.setOnComponentAnswerStrategy = method();
+    simpleInterpolator.setOnComponentAnswerStrategy (Type) := Nothing => (answerStrategyType)->
+    (       
+        if (answerStrategyType===NullIfNotSmooth) then
+        (
+            localAnswerStrategy = nullIfNotSmoothStrategy();
+        );
+        if (answerStrategyType===ExceptionIfNotSmooth) then
+        (
+                localAnswerStrategy = exceptionIfNotSmooth();
+        );
+        if (answerStrategyType===SmoothnessInfoWithAnswerPair) then
+        (
+            localAnswerStrategy = smoothnessInfoWithAnswerPair();
+        );      
+        if (answerStrategyType===PlainTextSmoothnessInfoWithAnswerPair) then
+        (
+                localAnswerStrategy = plainTextSmoothnessInfoWithAnswerPair();
+        );
+    );
+    simpleInterpolator.onComponentAnswerStrategies = ()->
+    ( 
+        return {NullIfNotSmooth,ExceptionIfNotSmooth,SmoothnessInfoWithAnswerPair,PlainTextSmoothnessInfoWithAnswerPair};
+    );
+    
+    simpleInterpolator.setOnComponentAnswerStrategy (OnComponentAnswerStrategy) := Nothing ->(answerStrategy)->
     (
         localAnswerStrategy = answerStrategy;
     );
+    
     
     simpleInterpolator.onComponentAnswerStrategy = ()->
     (
@@ -781,29 +863,15 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
             sameComponentResult = catch simpleInterpolator.sameComponentAt( currentComponent, point, onComponentPrecisionP);
             if  isDerivedFrom(sameComponentResult, SingularPointException) then
             (
-                if (localAnswerStrategy===NullIfNotSmoothStrategy) then
-                (
-                    return null;
-                );
-                if (localAnswerStrategy===ExceptionIfNotSmooth) then
-                (
-                    throw sameComponentResult;
-                );
-                if (localAnswerStrategy===SmoothnessInfoWithAnswerPair) then
-                (
-                    return (false, null);
-                );                                
+                return localAnswerStrategy.transformedAnswer(false,null);
             );
             if (sameComponentResult) then
             (
                   candidates = candidates | { currentComponent#"name"() };                       
             );
         );
-        if (localAnswerStrategy===SmoothnessInfoWithAnswerPair) then
-        (
-            return (true, candidates);
-        );             
-        return candidates;             
+        candidates = sort candidates;
+        return localAnswerStrategy.transformedAnswer(true,candidates);        
     );
     
     
@@ -826,33 +894,16 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
         sameComponentResult := null;
         if (sub( componentIdeal,point)!=0) then 
         (               
-            if (localAnswerStrategy===SmoothnessInfoWithAnswerPair) then
-            (                
-                return (blackBox.isProbablySmoothAt(point), false);
-            );            
-            return false;
+            return localAnswerStrategy.transformedAnswer(true, false);
         );
         sameComponentResult = catch simpleInterpolator.sameComponentAt( componentIdeal, point, onComponentPrecisionP);
         if  isDerivedFrom(sameComponentResult, SingularPointException) then
         (
-            if (localAnswerStrategy===NullIfNotSmoothStrategy) then
-            (
-                return null;
-            );
-            if (localAnswerStrategy===ExceptionIfNotSmooth) then
-            (
-                throw sameComponentResult;
-            );
-            if (localAnswerStrategy===SmoothnessInfoWithAnswerPair) then
-            (
-                return (false, null);
-            );                                
-        );       
-        if (localAnswerStrategy===SmoothnessInfoWithAnswerPair) then
-        (
-            return (true, sameComponentResult);
-        );    
-        return sameComponentResult;
+            return localAnswerStrategy.transformedAnswer(false,null);            
+        );  
+        if  isDerivedFrom(sameComponentResult, Boolean) then
+            return localAnswerStrategy.transformedAnswer(true,sameComponentResult);
+        throw sameComponentResult;
     );
     
     simpleInterpolator.isOnComponent ( Ideal, Matrix) := Boolean => (componentIdeal, point)->
@@ -1365,29 +1416,15 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
             sameComponentResult = catch simpleInterpolator.sameComponentAt( currentComponent, point, onComponentPrecisionP);
             if  isDerivedFrom(sameComponentResult, SingularPointException) then
             (
-                if (localAnswerStrategy===NullIfNotSmoothStrategy) then
-                (
-                    return null;
-                );
-                if (localAnswerStrategy===ExceptionIfNotSmooth) then
-                (
-                    throw sameComponentResult;
-                );
-                if (localAnswerStrategy===SmoothnessInfoWithAnswerPair) then
-                (
-                    return (false, null);
-                );                                
+                return localAnswerStrategy.transformedAnswer(false,null);                       
             );
             if (sameComponentResult) then
             (
                   candidates = candidates | { currentComponent#"name"() };                       
             );
         );
-        if (localAnswerStrategy===SmoothnessInfoWithAnswerPair) then
-        (
-            return (true, candidates);
-        );             
-        return candidates;             
+        candidates = sort candidates;        
+        return localAnswerStrategy.transformedAnswer(true,candidates);                       
     );
     
     
@@ -1408,29 +1445,15 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
             sameComponentResult = catch simpleInterpolator.sameComponentAt( currentComponent, point, onComponentPrecisionP);
             if  isDerivedFrom(sameComponentResult, SingularPointException) then
             (
-                if (localAnswerStrategy===NullIfNotSmoothStrategy) then
-                (
-                    return null;
-                );
-                if (localAnswerStrategy===ExceptionIfNotSmooth) then
-                (
-                    throw sameComponentResult;
-                );
-                if (localAnswerStrategy===SmoothnessInfoWithAnswerPair) then
-                (
-                    return (false, null);
-                );                                
+                return localAnswerStrategy.transformedAnswer(false,null);                       
             );
             if ( sameComponentResult ) then
             (
                 candidates = candidates | { componentCandidatesDictionary#componentKey };
             );
         );
-        if (localAnswerStrategy===SmoothnessInfoWithAnswerPair) then
-        (
-            return (true, sort candidates);
-        );             
-        return sort candidates; 
+        candidates = sort candidates;
+        return localAnswerStrategy.transformedAnswer(true,candidates);       
     );
     
     simpleInterpolator.componentsAt (Matrix) := Thing =>( point)->

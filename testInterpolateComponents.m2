@@ -101,19 +101,11 @@ bb.interpolatedComponentsAt(p1)
 
 bb.interpolator.componentNamesAt(singularPoint,10)
 
-bb.interpolator.setAnswerStrategy(SmoothnessInfoWithAnswerPair)
-  bb.interpolator.setAnswerStrategy                     NullIfNotSmoothStrategy                
-sameComponent(
-
-P.isOnComponent
-
-P.sameComponent
-      
-Component.valuesAt(P) 
+bb.onComponentAvailableAnswerStrategies()
+bb.setOnComponentAnswerStrategy(PlainTextSmoothnessInfoWithAnswerPair)
 
 
-
-bb.interpolator.setOnComponentPrecision(5) --- default =2
+bb.setOnComponentPrecision(5) --- default =2
 bb.interpolatedComponentNamesAt(p3)
 
 e.interpolateComponents(maxdeg)
