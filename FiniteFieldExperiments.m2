@@ -1351,7 +1351,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
     experiment.interpolateComponents (ZZ ) := List=>(maxDeg)->
     (
         return blackBoxIdeal.interpolateComponentsAt(experiment.points(), maxDeg);
-    )
+    );
     
     
     decompositionConfidenceInterval := 1.96; -- value times sigma (measured in sigma)
