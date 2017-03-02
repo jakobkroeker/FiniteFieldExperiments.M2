@@ -30,8 +30,8 @@ bb = blackBoxIdeal I;
 pointOnLine = matrix{{0,0,1_K}}
 pointOnPlane = matrix{{0,1,0_K}}
 
-bb.interpolateAt(pointOnLine, 1,10)
-bb.interpolateAt(pointOnPlane, 1,10)
+bb.interpolateAt(pointOnLine, 1)
+bb.interpolateAt(pointOnPlane, 1)
 	   
    break
   restart 
@@ -75,7 +75,7 @@ bb.interpolateAt(pointOnPlane, 1,10)
 -- und keine Interpolation
 
 
-bb.interpolateComponentsAt({p_1,p_2},maxdeg)
+bb.interpolateComponentsAt({p1,p2},maxdeg)
 -- ruft interpolateComponentAt(p_i,maxdeg) auf wenn:
 --    sub(ideal componente, p_i) == 0  dann nicht interpolieren
 --
@@ -87,23 +87,37 @@ bb.interpolateComponentsAt({p_1,p_2},maxdeg)
 -- possible names:
 --   quickIsOnComponentAt
 --   isOnComponentAt(...,0)
-
-bb.interpolatedComponentsAt(point,onComponentPrecision)
+p1
+bb.interpolator.componentNamesAt(p1)
 -- erzeugt jet j der laenge onComponenPrecision mit Anfang in point
 --    wenn kein j dieser laege gefunden werden kann => "is singulaer"
 -- sonst 
 --     sub(ideal component, j) == 0
 -- fuer alle componenten testen.
 
-bb.interpolatedComponentNamesAt(point,onComponentPrecision)
+bb.interpolatedComponentsAt(p1)
 --- {"certainlySingular",{}}
 --- {"probablySmooth",{"c1","c2"}}
 
-bb.setOnCompnenPrecision(5) --- default =2
-bb.interpolatedComponentNamesAt(point)
+bb.interpolator.componentNamesAt(singularPoint,10)
+
+bb.interpolator.setAnswerStrategy(SmoothnessInfoWithAnswerPair)
+  bb.interpolator.setAnswerStrategy                     NullIfNotSmoothStrategy                
+sameComponent(
+
+P.isOnComponent
+
+P.sameComponent
+      
+Component.valuesAt(P) 
+
+
+
+bb.interpolator.setOnComponentPrecision(5) --- default =2
+bb.interpolatedComponentNamesAt(p3)
 
 e.interpolateComponents(maxdeg)
-e.bb.interpolateComponentsAt(e.points(),maxdeg)
+bb.interpolateComponentsAt(e.points(),maxdeg)
 
 e.watchProperty("interpolatedComponentNamesAt")
 e.tryProperty("interpolatedComponentNamesAt")
@@ -114,39 +128,39 @@ e.tryProperty("interpolatedComponentNamesAt")
   monomialDegree = 0;  
   pointList = {p1,singularPoint,p2,p3}
       bb.resetInterpolation()
-  bb.interpolateComponents(pointList,4)
-  c3 = first bb.componentsAt p3
+  bb.interpolateComponentsAt(pointList,4)
+  c3 = first bb.interpolator.componentsAt p3
   bb.isOnComponent(c3,p3)
   bb.isOnComponent("c3",p3)
   bb.isOnComponent("c1",origin)
   bb.isOnComponent("c1",p3)
-  bb.components()
-  bb.componentNames()
-  bb.componentByName "c1"
-  bb.interpolateAt p3  
-  bb.interpolateAt (p3,4)    
-  bb.interpolateAt p4
-  bb.components()
-  bb.componentNames()
+  bb.interpolatedComponents()
+  bb.interpolatedComponentNames()
+  bb.interpolatedComponentByName "c1"
+  bb.interpolateComponentAt p3  
+  bb.interpolateComponentAt (p3,4)    
+  bb.interpolateComponentAt p4
+  bb.interpolatedComponents()
+  bb.interpolatedComponentNames()
   bb.refineInterpolation()
   --pointList = {p1,p2,p3}
   --pointList = {p3}
   maxDegree=1
-  iiList1 =  bb.interpolateComponents(pointList,maxDegree)
+  iiList1 =  bb.interpolateComponentsAt(pointList,maxDegree)
   maxDegree = 3
-  iiList3 = bb.interpolateComponents(pointList,maxDegree) 
+  iiList3 = bb.interpolateComponentsAt(pointList,maxDegree) 
   bb.resetInterpolation()
   maxDegree = 4
-  iiList4 = bb.interpolateComponents(pointList,maxDegree)
+  iiList4 = bb.interpolateComponentsAt(pointList,maxDegree)
   maxDegree = 5
-  bb.interpolateComponents(pointList,maxDegree)
+  bb.interpolateComponentsAt(pointList,maxDegree)
   maxDegree = 3
-   bb.interpolateComponents(pointList,maxDegree) 
+   bb.interpolateComponentsAt(pointList,maxDegree) 
     bb.resetInterpolation()
-  bb.interpolateComponents(pointList)
+  bb.interpolateComponentsAt(pointList)
   
   interpolator = bb.interpolator
-  II = first  bb.componentsAt(p3)
+  II = first  bb.interpolatedComponentsAt(p3)
   first II#"jetSet"#"jets"
   maximalConditions  II#"jetSet"
   II#"setName"("c5")
@@ -159,7 +173,7 @@ e.tryProperty("interpolatedComponentNamesAt")
   interpolator.componentNamesAt(p1)
   interpolator.componentNamesAt(origin)
   interpolator.componentNamesAt(p3)  
-  c3 = bb.componentByName("c3")
+  c3 =bb.interpolatedComponentByName("c5")
   peek c3#"jetSet"
   jet = first  c3#"jetSet"#"jets"
   length jet

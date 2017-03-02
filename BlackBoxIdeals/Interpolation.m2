@@ -5,6 +5,11 @@ bblog := BlackBoxLogger;
 
 BlackBoxInterpolator = new Type of HashTable;
 
+
+NullIfNotSmoothStrategy = new Type of HashTable;
+ExceptionIfNotSmooth = new Type of HashTable;
+SmoothnessInfoWithAnswerPair = new Type of HashTable;
+
 eassert = method();
 
 eassert(Boolean,String) := Nothing =>(statement, errorMessage)->
@@ -413,9 +418,89 @@ basicJetLengthHeuristic (BlackBoxInterpolator) := BasicJetLengthHeuristic => (in
     jetLengthEstimator.sameComponentTargetJetLength ( InterpolatedIdeal, Matrix) :=  ZZ => 
         ( component, point)->
     (
-        maxMonomialDegree := component#"maxDegree";        
+        --maxMonomialDegree := component#"maxDegree";        
+        --basisSize := monomialBasisSize(maxMonomialDegree,blackBox.ring);
+        --return basisSize + localAdditionalJetLength;
+        return interpolator.onComponentPrecision();
+    );
+    
+     jetLengthEstimator.sameComponentTargetJetLength ( InterpolatedIdeal, Matrix,ZZ) :=  ZZ => 
+        ( component, point, maxMonomialDegreeP)->
+    (
+        --maxMonomialDegree := max (maxMonomialDegreeP, component#"maxDegree");        
+        --basisSize := monomialBasisSize(maxMonomialDegree,blackBox.ring);
+        --return basisSize + localAdditionalJetLength;
+        return interpolator.onComponentPrecision();
+    );
+    
+    result := newClass(BasicJetLengthHeuristic, jetLengthEstimator);
+    return result;
+);
+
+
+jetLengthHeuristicJK = method();
+jetLengthHeuristicJK (BlackBoxInterpolator) := BasicJetLengthHeuristic => (interpolatorP)->
+(
+    interpolator := interpolatorP;
+    blackBox := interpolator.blackBox;
+    
+    jetLengthEstimator := new MutableHashTable;
+    
+    localAdditionalJetLength := 10;
+    
+    
+    
+    jetLengthEstimator.setAdditionalJetLength = (additionalJetLengthParam)->
+    (
+        localAdditionalJetLength = additionalJetLengthParam;
+    );
+    
+    jetLengthEstimator.additionalJetLength = ()->
+    (
+        return localAdditionalJetLength;
+    );
+        
+          
+    jetLengthEstimator.interpolationTargetJetLength = method();
+    
+     jetLengthEstimator.interpolationTargetJetLength (ZZ) :=  ZZ =>( maxMonomialDegree)->
+    (
+        basisSize := monomialBasisSize(maxMonomialDegree,blackBox.ring);
+        return  basisSize + localAdditionalJetLength;
+    );
+    
+     
+    jetLengthEstimator.interpolationTargetJetLength (Matrix,ZZ) :=  ZZ =>( point, maxMonomialDegree)->
+    ( 
+          basisSize := monomialBasisSize(maxMonomialDegree,blackBox.ring);
+          return basisSize + localAdditionalJetLength;
+    );
+    
+    jetLengthEstimator.interpolationTargetJetLength (InterpolatedIdeal, Matrix) :=  ZZ =>
+         ( interpolatedIdeal, point)->
+    (
+         maxMonomialDegree := interpolatedIdeal#"maxDegree";        
+         basisSize := monomialBasisSize(maxMonomialDegree,blackBox.ring);
+         return basisSize + localAdditionalJetLength;
+    );
+    
+    jetLengthEstimator.interpolationTargetJetLength ( InterpolatedIdeal, ZZ) :=  ZZ =>
+         (interpolatedIdeal, maxMonomialDegree)->
+    (
         basisSize := monomialBasisSize(maxMonomialDegree,blackBox.ring);
         return basisSize + localAdditionalJetLength;
+    );
+    
+    
+    jetLengthEstimator.sameComponentTargetJetLength = method();
+    
+     -- component, point (check if point on component)
+    jetLengthEstimator.sameComponentTargetJetLength ( InterpolatedIdeal, Matrix) :=  ZZ => 
+        ( component, point)->
+    (
+        maxMonomialDegree := component#"maxDegree";        
+        basisSize := monomialBasisSize(maxMonomialDegree,blackBox.ring);
+        return basisSize + localAdditionalJetLength;       
     );
     
      jetLengthEstimator.sameComponentTargetJetLength ( InterpolatedIdeal, Matrix,ZZ) :=  ZZ => 
@@ -424,6 +509,7 @@ basicJetLengthHeuristic (BlackBoxInterpolator) := BasicJetLengthHeuristic => (in
         maxMonomialDegree := max (maxMonomialDegreeP, component#"maxDegree");        
         basisSize := monomialBasisSize(maxMonomialDegree,blackBox.ring);
         return basisSize + localAdditionalJetLength;
+
     );
     
     result := newClass(BasicJetLengthHeuristic, jetLengthEstimator);
@@ -555,12 +641,17 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
     );
     
     -- I think that 'sameComponentPrecision' should coincide with interpolation jet length.
-    --sameComponentPrecision := 5;
+    localOnComponentPrecision := 2;
 
-    --simpleInterpolator.setSameComponentPrecision = (precision)->
-    --(
-    --    sameComponentPrecision=precision;
-    --);
+    simpleInterpolator.setOnComponentPrecision = (precision)->
+    (
+        localOnComponentPrecision = precision;
+    );
+    
+    simpleInterpolator.onComponentPrecision = ()->
+    (
+        return localOnComponentPrecision;
+    );
     
     
     -- cached component candidates
@@ -589,7 +680,21 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
          nextComponentId = 1;
     );
     
-  
+    localAnswerStrategy := NullIfNotSmoothStrategy;
+    
+    --    NullIfNotSmoothStrategy = new Type of HashTable;
+    --    ExceptionIfNotSmooth = new Type of HashTable;
+    --    SmoothnessInfoWithAnswerPair = new Type of HashTable;
+
+    simpleInterpolator.setOnComponentAnswerStrategy = (answerStrategy)->
+    (
+        localAnswerStrategy = answerStrategy;
+    );
+    
+    simpleInterpolator.onComponentAnswerStrategy = ()->
+    (
+        return localAnswerStrategy  ;
+    );
     
     
     -- uhh, was??? NICHT GUT? WIESO blackBox.componentCandidates()?
@@ -664,47 +769,116 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
         );
     );
     
+    simpleInterpolator.componentNamesAt = method();
     
-    simpleInterpolator.componentNamesAt = (point)->
+    simpleInterpolator.componentNamesAt ( Matrix, ZZ)  := (point, onComponentPrecisionP )->
     (
+        sameComponentResult := null;
         candidates := {};
         for componentKey in keys componentCandidatesDictionary do
         (
             currentComponent := componentCandidatesDictionary#componentKey;
-            if ( simpleInterpolator.isOnComponent( currentComponent, point)) then
+            sameComponentResult = catch simpleInterpolator.sameComponentAt( currentComponent, point, onComponentPrecisionP);
+            if  isDerivedFrom(sameComponentResult, SingularPointException) then
             (
-                candidates = candidates | { currentComponent#"name"() };
+                if (localAnswerStrategy===NullIfNotSmoothStrategy) then
+                (
+                    return null;
+                );
+                if (localAnswerStrategy===ExceptionIfNotSmooth) then
+                (
+                    throw sameComponentResult;
+                );
+                if (localAnswerStrategy===SmoothnessInfoWithAnswerPair) then
+                (
+                    return (false, null);
+                );                                
+            );
+            if (sameComponentResult) then
+            (
+                  candidates = candidates | { currentComponent#"name"() };                       
             );
         );
-        return   candidates;        
+        if (localAnswerStrategy===SmoothnessInfoWithAnswerPair) then
+        (
+            return (true, candidates);
+        );             
+        return candidates;             
     );
     
-  
+    
+    simpleInterpolator.componentNamesAt ( Matrix)  := (point )->
+    (
+        return simpleInterpolator.componentNamesAt(point, localOnComponentPrecision);
+    );
+    
     --simpleInterpolator.componentCandidates = ()->
     --(
     --    --return new HashTable from componentCandidatesDictionary;
     --    return sort new List from values componentCandidatesDictionary;
     --);
 
-  
-
-    -- todo: rename to isProbablyOnComponent
-    --
+    
     simpleInterpolator.isOnComponent = method();
 
+    simpleInterpolator.isOnComponent ( Ideal, Matrix, ZZ) := Boolean => (componentIdeal, point, onComponentPrecisionP)->
+    (
+        sameComponentResult := null;
+        if (sub( componentIdeal,point)!=0) then 
+        (               
+            if (localAnswerStrategy===SmoothnessInfoWithAnswerPair) then
+            (                
+                return (blackBox.isProbablySmoothAt(point), false);
+            );            
+            return false;
+        );
+        sameComponentResult = catch simpleInterpolator.sameComponentAt( componentIdeal, point, onComponentPrecisionP);
+        if  isDerivedFrom(sameComponentResult, SingularPointException) then
+        (
+            if (localAnswerStrategy===NullIfNotSmoothStrategy) then
+            (
+                return null;
+            );
+            if (localAnswerStrategy===ExceptionIfNotSmooth) then
+            (
+                throw sameComponentResult;
+            );
+            if (localAnswerStrategy===SmoothnessInfoWithAnswerPair) then
+            (
+                return (false, null);
+            );                                
+        );       
+        if (localAnswerStrategy===SmoothnessInfoWithAnswerPair) then
+        (
+            return (true, sameComponentResult);
+        );    
+        return sameComponentResult;
+    );
+    
     simpleInterpolator.isOnComponent ( Ideal, Matrix) := Boolean => (componentIdeal, point)->
     (
-        return (sub( componentIdeal,point)==0);
+        return simpleInterpolator.isOnComponent(componentIdeal, point);
+    );
+    
+    simpleInterpolator.isOnComponent ( InterpolatedIdeal, Matrix, ZZ) := Boolean => (componentIdeal, point, onComponentPrecisionP)->
+    (
+        return simpleInterpolator.isOnComponent(ideal componentIdeal, point, onComponentPrecisionP);
     );
     
     simpleInterpolator.isOnComponent ( InterpolatedIdeal, Matrix) := Boolean => (componentIdeal, point)->
     (
-        return simpleInterpolator.isOnComponent(ideal componentIdeal, point);
+        return simpleInterpolator.isOnComponent(ideal componentIdeal, point, localOnComponentPrecision);
+    );
+
+    
+    simpleInterpolator.isOnComponent ( String, Matrix, ZZ) := Boolean => (componentName, point, onComponentPrecisionP)->
+    (
+       return simpleInterpolator.isOnComponent (simpleInterpolator.componentByName(componentName), point, onComponentPrecisionP);
     );
     
     simpleInterpolator.isOnComponent ( String, Matrix) := Boolean => (componentName, point)->
     (
-       return simpleInterpolator.isOnComponent (simpleInterpolator.componentByName(componentName), point);
+       return simpleInterpolator.isOnComponent (simpleInterpolator.componentByName(componentName), point, localOnComponentPrecision);
     );
     
     
@@ -803,7 +977,8 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
         );
 
     );
-    
+        
+    -- TODO: hide sameComponentAt !     
     simpleInterpolator.sameComponentAt (Ideal, Matrix) := Boolean => (componentIdeal, point)->
     (
         sameComponentPrecision := jetLengthHeuristic.sameComponentTargetJetLength(  componentIdeal, point);
@@ -889,16 +1064,17 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
     );
     
     
-    simpleInterpolator.interpolateAt = method();
+    simpleInterpolator.interpolateComponentAt = method();
     
-    simpleInterpolator.interpolateAt(Matrix) := Ideal => (point) -> 
+    simpleInterpolator.interpolateComponentAt(Matrix) := Ideal => (point) -> 
     (
          localMaxMonomialDegree := simpleInterpolator.maxInterpolationDegree();
-         return simpleInterpolator.interpolateAt(point,localMaxMonomialDegree);
+         return simpleInterpolator.interpolateComponentAt(point,localMaxMonomialDegree);
     );
     
+    -- todo: rename to FORCE
     -- (JK) todo: attention: interpolateAt shares duplicate code with interpolateComponents !! 
-    simpleInterpolator.interpolateAt(Matrix,ZZ) := Ideal => (point, monomialMaxDegree) -> 
+    simpleInterpolator.interpolateComponentAt(Matrix,ZZ) := Ideal => (point, monomialMaxDegree) -> 
     (
         -- wenn schon componente da an diesem punkt, dann verbessere bis zu monomialMaxDegree
         
@@ -1001,12 +1177,12 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
     
     -- nice to have: dryRun implementieren 0> spukt alle neuen Jetlaengen 
     
-    simpleInterpolator.interpolateComponents = method();
+    simpleInterpolator.interpolateComponentsAt = method();
     
     -- interpolateComponents should return or maintain smooth point list and eventually singular point list.
 
     
-    simpleInterpolator.interpolateComponents (List, InterpolationMonomialDegreeHeuristic, JetLengthHeuristic) := List => 
+    simpleInterpolator.interpolateComponentsAt (List, InterpolationMonomialDegreeHeuristic, JetLengthHeuristic) := List => 
         (pointList, idh, jlh) -> 
     ( 
         if (null===pointList) then 
@@ -1120,14 +1296,14 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
     );
     
     -- now, what should happen here?
-    simpleInterpolator.interpolateComponents  (List) := List=> (pointList) -> 
+    simpleInterpolator.interpolateComponentsAt  (List) := List=> (pointList) -> 
     (       
         -- TODO wenn kein Monomgrad angegeben ist,fange bei max (1, maxInterpolationDegree()) an
         -- und höre auf, sobald alle (glatten) Punkte auf Komponenten liegen:     
         --
         --error ("not implemented yet");        
         interpolationMaxDegree := max(1, simpleInterpolator.maxInterpolationDegree());
-        return simpleInterpolator.interpolateComponents(pointList,                                                        
+        return simpleInterpolator.interpolateComponentsAt(pointList,                                                        
                                                         constantInterpolationMonomialDegreeHeuristic(simpleInterpolator,
                                                                                                      interpolationMaxDegree),
                                                         jetLengthHeuristic);
@@ -1136,25 +1312,25 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
     simpleInterpolator.refineInterpolation = () -> 
     (           
         interpolationMaxDegree := 1+max(1, simpleInterpolator.maxInterpolationDegree());
-        return simpleInterpolator.interpolateComponents(cachedPointList,                                                        
+        return simpleInterpolator.interpolateComponentsAt(cachedPointList,                                                        
                                                         constantInterpolationMonomialDegreeHeuristic(simpleInterpolator,
                                                                                                      interpolationMaxDegree),
                                                         jetLengthHeuristic);
     );
     
     
-    simpleInterpolator.interpolateComponents  (List, ZZ) := List=> (pointList, interpolationMaxDegree) -> 
+    simpleInterpolator.interpolateComponentsAt  (List, ZZ) := List=> (pointList, interpolationMaxDegree) -> 
     (       
-        return simpleInterpolator.interpolateComponents(pointList,   
+        return simpleInterpolator.interpolateComponentsAt(pointList,   
                                                         constantInterpolationMonomialDegreeHeuristic(simpleInterpolator,
                                                                                                      interpolationMaxDegree),
                                                         jetLengthHeuristic);
     );
     
     
-    simpleInterpolator.interpolateComponents  ( ZZ) := List=> ( interpolationMaxDegree) -> 
+    simpleInterpolator.interpolateComponentsAt  ( ZZ) := List=> ( interpolationMaxDegree) -> 
     (
-        return simpleInterpolator.interpolateComponents(cachedPointList, 
+        return simpleInterpolator.interpolateComponentsAt(cachedPointList, 
                                                         constantInterpolationMonomialDegreeHeuristic(simpleInterpolator,
                                                                                                      interpolationMaxDegree),
                                                         jetLengthHeuristic
@@ -1172,20 +1348,94 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
     --(
     --    currentMaxDegree := monomialDegreeHeristic.targetMonomialDegree( blackBox, point, simpleInterpolator);
     --    return simpleInterpolator.interpolateComponents(pointList, interpolationMaxDegree, sameComponentPrecision);
-    --);
-
+    --); 
+    
     -- several components  because the point could be singular
-    simpleInterpolator.componentsAt = ( point)->
+    
+    
+     simpleInterpolator.componentNamesAt = method();
+    
+    simpleInterpolator.componentNamesAt ( Matrix, ZZ)  := (point, onComponentPrecisionP )->
     (
+        sameComponentResult := null;
         candidates := {};
         for componentKey in keys componentCandidatesDictionary do
         (
-            if ( simpleInterpolator.isOnComponent( componentCandidatesDictionary#componentKey, point)) then
+            currentComponent := componentCandidatesDictionary#componentKey;
+            sameComponentResult = catch simpleInterpolator.sameComponentAt( currentComponent, point, onComponentPrecisionP);
+            if  isDerivedFrom(sameComponentResult, SingularPointException) then
+            (
+                if (localAnswerStrategy===NullIfNotSmoothStrategy) then
+                (
+                    return null;
+                );
+                if (localAnswerStrategy===ExceptionIfNotSmooth) then
+                (
+                    throw sameComponentResult;
+                );
+                if (localAnswerStrategy===SmoothnessInfoWithAnswerPair) then
+                (
+                    return (false, null);
+                );                                
+            );
+            if (sameComponentResult) then
+            (
+                  candidates = candidates | { currentComponent#"name"() };                       
+            );
+        );
+        if (localAnswerStrategy===SmoothnessInfoWithAnswerPair) then
+        (
+            return (true, candidates);
+        );             
+        return candidates;             
+    );
+    
+    
+    simpleInterpolator.componentNamesAt ( Matrix)  := (point )->
+    (
+        return simpleInterpolator.componentNamesAt(point, localOnComponentPrecision);
+    );
+    
+    
+    simpleInterpolator.componentsAt = method();
+    simpleInterpolator.componentsAt (Matrix, ZZ) := Thing =>( point, onComponentPrecisionP)->
+    (
+        sameComponentResult := null;
+        candidates := {};
+        for componentKey in keys componentCandidatesDictionary do
+        (
+            currentComponent := componentCandidatesDictionary#componentKey;
+            sameComponentResult = catch simpleInterpolator.sameComponentAt( currentComponent, point, onComponentPrecisionP);
+            if  isDerivedFrom(sameComponentResult, SingularPointException) then
+            (
+                if (localAnswerStrategy===NullIfNotSmoothStrategy) then
+                (
+                    return null;
+                );
+                if (localAnswerStrategy===ExceptionIfNotSmooth) then
+                (
+                    throw sameComponentResult;
+                );
+                if (localAnswerStrategy===SmoothnessInfoWithAnswerPair) then
+                (
+                    return (false, null);
+                );                                
+            );
+            if ( sameComponentResult ) then
             (
                 candidates = candidates | { componentCandidatesDictionary#componentKey };
             );
         );
-        return sort candidates;
+        if (localAnswerStrategy===SmoothnessInfoWithAnswerPair) then
+        (
+            return (true, sort candidates);
+        );             
+        return sort candidates; 
+    );
+    
+    simpleInterpolator.componentsAt (Matrix) := Thing =>( point)->
+    (
+        return simpleInterpolator.componentsAt(point, localOnComponentPrecision);
     );
     
     simpleInterpolator.components = ( )->
@@ -1193,7 +1443,7 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
         return sort values componentCandidatesDictionary;
     );
     
-    simpleInterpolator.dropComponent= method();
+    simpleInterpolator.dropComponent = method();
     
     simpleInterpolator.dropComponent (InterpolatedIdeal) := Nothing => (component)->
     (
@@ -1267,25 +1517,25 @@ TEST ///
   pointList = {p3}
   maxDegree=1
   forcedInterpolationPrecision = 11
-  iiList1 =  bb.interpolateComponents(pointList,maxDegree)
+  iiList1 =  bb.interpolateComponentsAt(pointList,maxDegree)
   apply(iiList1, ic-> assert(1 == ic#"maxDegree"))
   maxDegree = 2
-  iiList2 = bb.interpolateComponents(pointList,maxDegree)   
+  iiList2 = bb.interpolateComponentsAt(pointList,maxDegree)   
   maxDegree=1
-  iiList2b = bb.interpolateComponents(pointList,1)
+  iiList2b = bb.interpolateComponentsAt(pointList,1)
   apply(iiList2b, ic-> assert(2 == ic#"maxDegree"))
   
   bb.resetInterpolation()
   maxDegree = 2
-  iiList2b = bb.interpolateComponents(pointList,maxDegree)
+  iiList2b = bb.interpolateComponentsAt(pointList,maxDegree)
   -- test zu lang !!
   --maxDegree = 5
-  --bb.interpolateComponents(pointList,maxDegree)
+  --bb.interpolateComponentsAt(pointList,maxDegree)
   --maxDegree = 6
-  --bb.interpolateComponents(pointList,maxDegree) 
+  --bb.interpolateComponentsAt(pointList,maxDegree) 
   --bb.resetInterpolation()
   --maxDegree = 4
-  --bb.interpolateComponents(pointList,maxDegree) --ok
+  --bb.interpolateComponentsAt(pointList,maxDegree) --ok
   --maxDegree = 5
 ///
 
@@ -1304,16 +1554,16 @@ TEST ///
   singularPoint  = matrix{{0,0_kk}}
   pointList = {p1,singularPoint,p2,p3}
   maxDegree = 1
-  iiList1 = bb.interpolateComponents(pointList,maxDegree)
+  iiList1 = bb.interpolateComponentsAt(pointList,maxDegree)
   
   
   -- test zu lang!!!
   --maxDegree = 3
-  --iiList3 = bb.interpolateComponents(pointList,maxDegree) 
+  --iiList3 = bb.interpolateComponentsAt(pointList,maxDegree) 
   --assert(3 == #iiList3);
   --bb.resetInterpolation()
   --maxDegree = 4
-  --iiList4 = bb.interpolateComponents(pointList,maxDegree)
+  --iiList4 = bb.interpolateComponentsAt(pointList,maxDegree)
   --assert(3 == #iiList4)
   
   --c3 = bb.componentsAt(p3)

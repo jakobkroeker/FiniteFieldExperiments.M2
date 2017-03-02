@@ -24,6 +24,9 @@ needsPackage "M2Logging";
 
 
 export { 
+    "NullIfNotSmoothStrategy",
+        "ExceptionIfNotSmooth",
+            "SmoothnessInfoWithAnswerPair",
     "refineInterpolation",
     "maximalConditions",
     "monomialBasisSize",
@@ -146,7 +149,17 @@ idealBlackBoxesProtect = ()->
 
 idealBlackBoxesExport = ()->
 (
+    exportMutable("setOnComponentAnswerStrategy");
+    exportMutable("onComponentAnswerStrategy");
+    exportMutable("onComponentPrecision");
+    exportMutable("interpolateComponentAt");
+    exportMutable("interpolateComponentsAt");
+    exportMutable("interpolatedComponentsAt");
+    exportMutable("interpolatedComponents");
+    exportMutable("interpolatedComponentNames");
+    exportMutable("interpolatedComponentByName");        
     exportMutable("reset");
+    exportMutable("setOnComponentPrecision");
     exportMutable("resetInterpolation");
     exportMutable("setInterpolator");
     exportMutable("setMonomialDegreeHeristic");
@@ -2264,26 +2277,36 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
 
     );
 
+    
     -- todo: choose later a different component calculator depending on strategy option
     
     -- better: check component calculator type /interface.
     blackBox.setInterpolator = (interpolatorParam)->
     (
+        blackBox.setOnComponentAnswerStrategy   =  interpolatorParam.setOnComponentAnswerStrategy;
+        blackBox.onComponentAnswerStrategy   =  interpolatorParam.onComponentAnswerStrategy;
+        blackBox.setOnComponentPrecision   =  interpolatorParam.setOnComponentPrecision;
         blackBox.interpolator   = interpolatorParam;
         blackBox.resetInterpolation   = interpolatorParam.reset;
         blackBox.isOnComponent  = interpolatorParam.isOnComponent;
-        blackBox.components     =  interpolatorParam.components;
-        blackBox.componentNames  =  interpolatorParam.componentNames;
+        blackBox.interpolatedComponents     =  interpolatorParam.components;
+        blackBox.interpolatedComponentNames  =  interpolatorParam.componentNames;
         blackBox.componentNameInUse  =  interpolatorParam.componentNameInUse;
-        blackBox.componentByName = interpolatorParam.componentByName;
+        blackBox.interpolatedComponentByName = interpolatorParam.componentByName;
         blackBox.renameComponent =  interpolatorParam.renameComponent;
          -- todo: when we change the interpolator, this will stop to work:
-        blackBox.interpolateComponents  = interpolatorParam.interpolateComponents;    
+        blackBox.interpolateComponentsAt  = interpolatorParam.interpolateComponentsAt;    
         blackBox.refineInterpolation  = interpolatorParam.refineInterpolation;    
-        blackBox.interpolateAt      =  interpolatorParam.interpolateAt;
-        blackBox.components         =   interpolatorParam.components;   
-        blackBox.setPointProperty("componentsAt", interpolatorParam.componentsAt);    
-        blackBox.setPointProperty("componentNamesAt", interpolatorParam.componentNamesAt);
+        blackBox.interpolateComponentAt      =  interpolatorParam.interpolateComponentAt;
+        blackBox.interpolatedComponents         =   interpolatorParam.components;  
+        
+        localinterpolatedComponentsAt := (point) -> interpolatorParam.componentsAt(point);
+        
+        blackBox.setPointProperty("interpolatedComponentsAt", localinterpolatedComponentsAt );    
+        
+        localinterpolatedComponentNamesAt := (point) -> interpolatorParam.componentNamesAt(point);
+        
+        blackBox.setPointProperty("interpolatedComponentNamesAt", localinterpolatedComponentNamesAt);
                 
         -- TODO well , setSameComponentPrecision should be more generic as different component calculators may 
         -- have different configuration settings ( so may be another component calculator has no 'onComponentPrecision' property)
@@ -2318,7 +2341,7 @@ TEST ///
   point2 = matrix {{1,0_ZZ}}
   pointList = {point1,point2}
   maxDegree := 4
-  bb.interpolateComponents(pointList, maxDegree);
+  bb.interpolateComponentsAt(pointList, maxDegree);
 ///
  
 
