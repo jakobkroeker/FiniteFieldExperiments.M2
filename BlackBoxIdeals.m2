@@ -1191,7 +1191,7 @@ assert (jetL0#"value" == p1)
 
 ///
 
--- jetAtSingleTrial(): 
+-- jetAtWithInfo(): 
 --
 --   tries once to compute a jet , ( see http://en.wikipedia.org/wiki/Jet_%28mathematics%29 for jet definition;) 
 --   for the used computation algorithm see the bacherlor thesis at 'http://www.centerfocus.de/theses/js.pdf' .
@@ -1215,7 +1215,7 @@ assert (jetL0#"value" == p1)
  
 jetAtWithInfo = method();
 
--- jetAtSingleTrial():
+-- jetAtWithInfo():
 --
 -- here we improve precision by 1 in each step
 -- using Newtons-Algorithm one could double precision in each step, but
@@ -1231,7 +1231,7 @@ jetAtWithInfo( BlackBoxParameterSpace, Matrix, ZZ ) := HashTable => ( blackBox, 
     if not (blackBox.isZeroAt(point)) then 
     (
         --error(" point is not on BlackBox ");
-        throw new PointNotOnBlackBox from {"errorMessage" => "jetAtSingleTrial: point " | toString point | "does not belong to the object! "}
+        throw new PointNotOnBlackBox from {"errorMessage" => "jetAtWithInfo: point " | toString point | "does not belong to the object! "}
     );
 
     liftingFailed := false;
@@ -1685,7 +1685,7 @@ TEST ///
 load "./BlackBoxIdeals/Interpolation.m2";
 
 
--- development remark: we need jets at least per blackbox individually.
+-- development remark: we need jetAt at least per blackbox individually.
 
 pointProperties = method();
 
@@ -1870,7 +1870,7 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
     );
 
 
-    -- 'setPointProperty': 
+    -- setPointProperty(): 
     --  
     --  internal method to set a point property. 
     --                     Is called by 'outerSetPointProperty', 'setIsZeroAt', 'setValuesAt', 'setJacobianAt'
@@ -1975,11 +1975,12 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
     (   
         -- parameter is called differently to the symbol 'isZeroAt', otherwise it seems we could get the wrong value...
         setPointProperty("isZeroAt" , pIsZeroAt );
-   );
+    );
    
     localJetAt := jetAt;
 
-    -- setJacobianAt:
+    
+    -- setJacobianAt():
     -- 
     --    set a method to compute the jacobian at a point.
     --
@@ -2257,7 +2258,7 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
         return blackBox;
     );
 
-   -- public..
+    -- public..
     --
     blackBox.registerPointProperty(String, Function) := Thing => ( propertyName, propertyMethod )->
     (
@@ -2340,7 +2341,7 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
     );
 
 
-    -- get singularityTestOptions
+    -- singularityTestOptions()
     --
     -- returns currently used configuration for singularity test (at a point)
     --
@@ -2354,7 +2355,7 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
     );
 
 
-    -- set singularityTestOptions
+    -- setSingularityTestOptions()
     --
     -- sets currently used configuration for singularity test (at a point)
     --
@@ -2383,6 +2384,9 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
         blackBox.onComponentAnswerStrategies = interpolatorParam.onComponentAnswerStrategies;
         blackBox.setOnComponentAnswerStrategy   =  interpolatorParam.setOnComponentAnswerStrategy;
         blackBox.onComponentAnswerStrategy   =  interpolatorParam.onComponentAnswerStrategy;
+        
+        -- TODO well, setOnComponentPrecision() should be more generic as different component calculators may 
+        -- have different configuration settings ( so may be another component calculator has no 'onComponentPrecision' property)
         blackBox.setOnComponentPrecision   =  interpolatorParam.setOnComponentPrecision;
         blackBox.onComponentPrecision   =  interpolatorParam.onComponentPrecision;
         blackBox.interpolator   = interpolatorParam;
@@ -2412,18 +2416,7 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
         --blackBox.setSameComponentPrecision =  interpolatorParam.setSameComponentPrecision;
     );
     
-    blackBox.setInterpolator( createSimpleInterpolator(blackBox) );
- 
-    -- TODO well, this should be more generic as different component calculators may 
-    -- have different configuration settings ( so may be another component calculator has no 'onComponentPrecision' property)
-    --
-    --blackBox.setSameComponentPrecision = (precision)->
-    --(
-    --    blackBox.interpolator.setSameComponentPrecision(precision);
-    --);
-
-   
-    
+    blackBox.setInterpolator( createSimpleInterpolator(blackBox) );    
     
     -- a user should not call this method...
 
