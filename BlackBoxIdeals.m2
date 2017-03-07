@@ -24,9 +24,15 @@ needsPackage "M2Logging";
 
 
 export { 
+    "OnComponentAnswerStrategy",
+    "PlainTextSmoothnessInfoWithAnswerPair",
     "NullIfNotSmoothStrategy",
-        "ExceptionIfNotSmooth",
-            "SmoothnessInfoWithAnswerPair",
+    "ExceptionIfNotSmooth",
+    "SmoothnessInfoWithAnswerPair",
+    "plainTextSmoothnessInfoWithAnswerPair",
+    "nullIfNotSmoothStrategy",
+    "exceptionIfNotSmooth",
+    "smoothnessInfoWithAnswerPair",
     "refineInterpolation",
     "maximalConditions",
     "monomialBasisSize",
@@ -149,6 +155,8 @@ idealBlackBoxesProtect = ()->
 
 idealBlackBoxesExport = ()->
 (
+    exportMutable("transformedAnswer");
+    exportMutable("onComponentAnswerStrategies");
     exportMutable("setOnComponentAnswerStrategy");
     exportMutable("onComponentAnswerStrategy");
     exportMutable("onComponentPrecision");
@@ -158,6 +166,7 @@ idealBlackBoxesExport = ()->
     exportMutable("interpolatedComponents");
     exportMutable("interpolatedComponentNames");
     exportMutable("interpolatedComponentByName");        
+    --exportMutable("reset");
     exportMutable("setOnComponentPrecision");
     exportMutable("resetInterpolation");
     exportMutable("setInterpolator");
@@ -192,6 +201,7 @@ idealBlackBoxesExport = ()->
     --exportMutable("name");
     --exportMutable("name");
     exportMutable("isOnComponent");
+    exportMutable("isOnInterpolatedComponent");
     exportMutable("enableChecks");
     exportMutable("disableChecks");
     exportMutable("withChecks");  
@@ -706,6 +716,7 @@ getEpsRingFunction := (coeffring, epsDim)->
             savedEpsRings#(coeffring,epsDim) = polRing/(leps^(epsDim+1));            
         );
         epsRng = savedEpsRings#(coeffring, epsDim);
+        epsRng#"epsPrecision" = epsDim;
         eps = first gens epsRng;
         (savedEpsRings#(coeffring,epsDim))#"eps" = eps;
         (savedEpsRings#(coeffring,epsDim)).eps = eps;        
@@ -976,8 +987,20 @@ BlackBoxParameterSpace = new Type of  MutableHashTable;
 
 
 
-
-jetAtResultFunction := (bestJet, failedJetLength)->
+-- jetAtWithInfoResultFunction
+-- 
+-- constructs a jetAtWithInfoResult  Hashtable from (bestJet and failedJetLength) 
+-- with entries "jet", "bestJet", "failedJetLength", "succeeded" 
+--
+-- purpose: return multiple variables at once in jetAtWithInfo. 
+-- Returning a sequence is not an option since then the implementation is not extensible
+-- (how to add an additional returned variable without breaking existing code?)
+--
+-- "bestJet" is always set to bestJet and "failedJetLength" always to failedJetLength.
+-- If failedJetLength is null, then "jet" is also set to bestJet and "succeed" to true.
+-- otherwise "jet" is set to null and "succeed" to false. 
+--
+jetAtWithInfoResultFunction := (bestJet, failedJetLength)->
 (    
     assert(class bestJet === Jet);
     jet := null;
@@ -998,52 +1021,65 @@ jetAtResultFunction := (bestJet, failedJetLength)->
                               };
 );
 
-jetAtResult := method();
-jetAtResult ( Jet, ZZ ) := HashTable => (bestJet, failedJetLength)->
+--
+-- see jetAtWithInfoResultFunction()
+--
+jetAtWithInfoResult := method();
+jetAtWithInfoResult ( Jet, ZZ ) := HashTable => (bestJet, failedJetLength)->
 (    
-    return jetAtResultFunction(bestJet, failedJetLength);
+    return jetAtWithInfoResultFunction(bestJet, failedJetLength);
 );
 
 -- special case for null...
-jetAtResult ( Jet, Nothing ) := HashTable => (bestJet, failedJetLength)->
+--
+-- see jetAtWithInfoResultFunction()
+--
+jetAtWithInfoResult ( Jet, Nothing ) := HashTable => (bestJet, failedJetLength)->
 (
-     return jetAtResultFunction(bestJet, failedJetLength);
+     return jetAtWithInfoResultFunction(bestJet, failedJetLength);
 );
 
 
--- todo: remove duplicate code (see jetAtWithInfo)
+
+-- continueJetWithInfo()
+--
+-- Ccontinues a given jet up to a requested jetLength (if possible)
+-- Returns a hashtable with a bunch of information, see jetAtWithInfoResult()
+--
 -- todo: eventually cache jacobian and jacobian kernel
+--
 continueJetWithInfo = method();
 
-continueJetWithInfo( BlackBoxParameterSpace, Jet, ZZ ) := HashTable => ( blackBox,  richJet, jetLength )  ->
+continueJetWithInfo( BlackBoxParameterSpace, Jet, ZZ ) := HashTable => ( blackBox,  jet, jetLength )  ->
 (  
-    assert ( 0 == blackBox.valuesAt(richJet#"value") );
+    assert ( 0 == blackBox.valuesAt(jet#"value") );
     assert ( jetLength >= 0 );
-    assert ( jetLength >= length richJet );  
+    assert ( jetLength >= length jet );  
     
     failedJetLength := null;    
 
-    if (jetLength==0) then return   jetAtResult(richJet, failedJetLength);
+    if (jetLength==0) then return   jetAtWithInfoResult(jet, failedJetLength);
     
-    point := richJet#"point";
+    point := jet#"point";
     
-    epsPrecision := length richJet;  
+    epsPrecision := length jet;  
           
     coeffRng := (blackBox.coefficientRing); -- we need the braces here !!!
     
-    jet := richJet#"value";
+    jetValue := jet#"value";
     
     liftingFailed := false;
        
     jetObj := null;
+    prejet := null;
 
-    succeededJetLength := length richJet;    
+    succeededJetLength := length jet;    
     jacobianM2Transposed := transpose blackBox.jacobianAt(point) ;
     
     
     jacobianKernel := generators kernel jacobianM2Transposed ; -- syz would also work
     
-    if (length richJet==0) then 
+    if (length jet==0) then 
     (
         epsPrecision = 1;
         epsRng := getEpsRing( blackBox.coefficientRing,  epsPrecision );
@@ -1070,7 +1106,7 @@ continueJetWithInfo( BlackBoxParameterSpace, Jet, ZZ ) := HashTable => ( blackBo
         else
         (
             succeededJetLength = 1;
-            jet = lengthOneLift;
+            jetValue = lengthOneLift;
         );
     );
  
@@ -1081,13 +1117,12 @@ continueJetWithInfo( BlackBoxParameterSpace, Jet, ZZ ) := HashTable => ( blackBo
             epsRng := getEpsRing( coeffRng, epsPrecision);
             eps := (gens epsRng)#0;
     
-            jet =  sub(jet,epsRng);
+            prejet =  sub(jetValue,epsRng);
 
-            valuesAtJet := blackBox.valuesAt(jet );
+            valuesAtJet := blackBox.valuesAt(prejet );
 
             rightHandSide := matrix mutableMatrix( coeffRng, numColumns valuesAtJet ,1 );
             
-                
             if not zero(valuesAtJet) then 
             (           
                 rightHandSide = transpose last coefficients (valuesAtJet, Monomials=>{ eps^epsPrecision });
@@ -1107,30 +1142,67 @@ continueJetWithInfo( BlackBoxParameterSpace, Jet, ZZ ) := HashTable => ( blackBo
             x = x + jacobianKernel* random(coeffRng^(numColumns(jacobianKernel)), coeffRng^1 );
             x = transpose x;
     
-            jet2 := sub (jet, epsRng ) - sub( x, epsRng ) * eps^epsPrecision;
-            assert ( 0 == blackBox.valuesAt(jet2) ); -- debug
-            jet = jet2;
+            nextJetValue := sub (prejet, epsRng ) - sub( x, epsRng ) * eps^epsPrecision;
+            assert ( 0 == blackBox.valuesAt(nextJetValue) ); -- debug
+            jetValue = nextJetValue;
         );
     );
 
-    bestJetObject := jetObject (blackBox,  point, jet, succeededJetLength);
+    bestJetObject := jetObject (blackBox,  point, jetValue, succeededJetLength);
     
-    return  jetAtResult(bestJetObject, failedJetLength);
+    return  jetAtWithInfoResult(bestJetObject, failedJetLength);
 );
 
+TEST ///
+  -- test for bug that  valuesAt(jet) is non zero (jet was incorrectly in a ring with higher precision than required)
 
--- jetAtSingleTrial(): 
+kk = QQ
+R = QQ[x,y]
+I = ideal (x*y)
+
+origin = matrix{{0,0_kk}}
+p1     = matrix{{1,0_kk}}
+
+myValuesAt = (p) -> (  return gens sub(I,p);  );
+
+bb = blackBoxIdealFromEvaluation(2,kk, myValuesAt)
+
+jetStats = jetStatsAt(bb,origin,2,10)
+
+jetsL1 = jetStats#"jetSets"#1
+jetL1 = first jetsL1#"jets"
+L1values =  bb.valuesAt(jetL1#"value")
+assert (0 == L1values)
+epsRng = ring L1values;
+assert (epsRng#"epsPrecision"==1)
+-- check that we are in R[eps]/eps^2 for precision 1 jet
+assert (ideal epsRng == ideal (first gens last epsRng.baseRings)^2)
+
+jetL2 = jetAt(bb,p1,2)
+valuesL2 =  bb.valuesAt(jetL2#"value")
+assert (0 == valuesL2)
+epsRng = ring valuesL2;
+assert (epsRng#"epsPrecision"==2)
+-- check that we are in R[eps]/eps^3 for precision 2 jet
+assert (ideal epsRng == ideal (first gens last epsRng.baseRings)^3)
+
+jetL0 = jetAt(bb,p1,0)
+assert (jetL0#"value" == p1)
+
+///
+
+-- jetAtWithInfo(): 
 --
 --   tries once to compute a jet , ( see http://en.wikipedia.org/wiki/Jet_%28mathematics%29 for jet definition;) 
 --   for the used computation algorithm see the bacherlor thesis at 'http://www.centerfocus.de/theses/js.pdf' .
 --
---   preconditions: black box provides evaluation at a point. ('valuesAt') 
+--   preconditions: black box provides evaluation at a point ('valuesAt') and valuesAt(point) evaluates to zero.
 -- 
---  returns a hashtable with entries
+--   returns a hashtable with entries
 -- 
 --  - "succeeded" a boolean, 
 --  - "failedJetLength"  contains the jet length at which the computation failed, otherwise null
---  - "jet"  contains the jet . The jet of the length n has the form
+--  - "jet"  contains the jet, if succeeded, otherwise null. The jet of the length n has the form
 --           j = point + eps*y_1 + . . . + eps^n * y_n 
 --           such that F(j) = 0, 
 --           where F: E_(n+1)^m -> E_(n+1)^k 
@@ -1143,7 +1215,7 @@ continueJetWithInfo( BlackBoxParameterSpace, Jet, ZZ ) := HashTable => ( blackBo
  
 jetAtWithInfo = method();
 
--- jetAtSingleTrial():
+-- jetAtWithInfo():
 --
 -- here we improve precision by 1 in each step
 -- using Newtons-Algorithm one could double precision in each step, but
@@ -1159,7 +1231,7 @@ jetAtWithInfo( BlackBoxParameterSpace, Matrix, ZZ ) := HashTable => ( blackBox, 
     if not (blackBox.isZeroAt(point)) then 
     (
         --error(" point is not on BlackBox ");
-        throw new PointNotOnBlackBox from {"errorMessage" => "jetAtSingleTrial: point " | toString point | "does not belong to the object! "}
+        throw new PointNotOnBlackBox from {"errorMessage" => "jetAtWithInfo: point " | toString point | "does not belong to the object! "}
     );
 
     liftingFailed := false;
@@ -1173,7 +1245,7 @@ jetAtWithInfo( BlackBoxParameterSpace, Matrix, ZZ ) := HashTable => ( blackBox, 
     
     if (jetLength==0) then 
     (
-        return  jetAtResult(localJetObject, failedJetLength);
+        return  jetAtWithInfoResult(localJetObject, failedJetLength);
     );
     
     return continueJetWithInfo(blackBox, localJetObject, jetLength);
@@ -1183,20 +1255,10 @@ jetAtWithInfo( BlackBoxParameterSpace, Matrix, ZZ ) := HashTable => ( blackBox, 
 
 
 
-
--- 'jetAt()'
+-- jetAtOrException ()
 --
---   tries to compute a jet at a given point P several times (= numTrials). 
---   The given point P belongs to the zero set of the black box.
--- 
---   for the returned result and input restrictions see 'jetAtSingleTrial'
---
-
-
-
--- computes a jet with given jetLength several times. 
--- If one computation fails, throws an exception.
--- returns the last one (very stupid..., all previous jets lost)
+-- Computes a jet with given jetLength once using jetAtWithInfo()
+-- Returns the jet if succeeded, otherwise the point is singular and an SingularPointException is thrown
 -- 
 jetAtOrException = method();
 
@@ -1216,6 +1278,13 @@ jetAtOrException( BlackBoxParameterSpace, Matrix, ZZ) := Jet => ( blackBox,  poi
 );
 
 
+
+-- continueJetOrException()
+--
+-- Continues a given jet up to a requested jetLength (if possible) using continueJetWithInfo()
+-- returns the computed jet if succeeded, otherwise the point is singular and a SingularPointException is thrown.
+--
+--
 continueJetOrException = method();
 
 continueJetOrException( BlackBoxParameterSpace, Jet, ZZ) := Jet => ( blackBox,  jet, jetLength )  ->
@@ -1234,9 +1303,11 @@ continueJetOrException( BlackBoxParameterSpace, Jet, ZZ) := Jet => ( blackBox,  
  
 
 
-
-
--- returns null if one of the numTrials failed or the jet from the last trial (very stupid..., all previous jets lost)
+-- jetAtOrNull ()
+--
+-- computes a jet with given jetLength once using jetAtWithInfo()
+-- returns the computed jet if succeeded, otherwise returns null.
+-- 
 
 jetAtOrNull = method();
 jetAtOrNull( BlackBoxParameterSpace, Matrix, ZZ) := Jet => ( blackBox,  point, jetLength )  ->
@@ -1247,6 +1318,13 @@ jetAtOrNull( BlackBoxParameterSpace, Matrix, ZZ) := Jet => ( blackBox,  point, j
     return jetResult#"jet";
 );
 
+
+-- continueJetOrException()
+--
+-- Continues a given jet up to a requested jetLength (if possible) using continueJetWithInfo()
+-- returns the computed jet if succeeded, otherwise null.
+--
+--
 continueJetOrNull = method();
 continueJetOrNull( BlackBoxParameterSpace, Jet, ZZ) := Jet => ( blackBox,  jet, jetLength )  ->
 (
@@ -1257,16 +1335,39 @@ continueJetOrNull( BlackBoxParameterSpace, Jet, ZZ) := Jet => ( blackBox,  jet, 
 );
 
 
-
--- use the exception variant as default for jetAt, because computation at a singular point should hurt.
--- change: do we need numTrials for jetAt? If numTrials >1 we still keep only one jet. That is very inefficient.
+-- jetAt()
+--
+-- is the default for computing a jet at a point. 
+--
+-- the default is set to jetAtOrException(), because computation at a singular point should hurt.
 --
 jetAt = jetAtOrException;  
+
+
+-- continueJet()
+--
+-- is the default method for continuing a jet at a point. 
+--
+-- the default is set to continueJetOrException(), because computation at a singular point should hurt.
+--
 continueJet = continueJetOrException;
 
 
-
--- returns the first failed jet or the last jet in case no trial failed.
+-- jetStatsAt()
+--
+-- computes jet statistics at a point, namely the counts of first failed jet lenght for several trials
+-- This may be of interest at singular points.
+--
+-- Parameters:  a black box, a point, the maximal jet length and number of trials to compute a jet.
+--
+-- Returns a hashtable with 
+--
+-- "targetJetLength"
+-- "numTrials" 
+-- "jetSets" -- a hashtable of jet list at point with their length as HashTable key
+-- "failedLengthCount" -- a (Tally) where the key is the jetLength l,
+--                      and the value is the count of trials where the computation failed at length l.
+--
 jetStatsAt = method();
 jetStatsAt( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := HashTable => ( blackBox,  point, jetLength, numTrials )  ->
 (
@@ -1315,15 +1416,9 @@ jetStatsAt( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := HashTable => ( blackBox, 
 );
 
 
-jetStatsAt( BlackBoxParameterSpace, Matrix, ZZ) := Jet => ( blackBox,  point, jetLength )  ->
-(
-    return jetStatsAt( blackBox,  point, jetLength, 1 );
-);
-
-
-
-
-
+--
+--
+--
 isCertainlySingularAt = method();
 isCertainlySingularAt( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials ) ->
 (
@@ -1336,9 +1431,9 @@ isCertainlySingularAt( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := MutableHashTab
         (
             return true;
         );
-        if (class jetOrError =!= Jet) then 
+        if not isDerivedFrom(jetOrError, Jet) then 
         (
-            return jetOrError; -- it is a different error 
+            throw jetOrError; -- it is a different error 
         );
     );
     return false;
@@ -1377,14 +1472,17 @@ keysWithoutSymbols(HashTable) := List => (bb)->
 
 
 
-
+--
 -- disable BlackBoxParameterSpace construction using new for an arbitrary parameter:
+--
 new BlackBoxParameterSpace from Thing := ( E, thing) -> 
 (
     error "creating blackbox from  type " | toString E | " not implemented ";
 );
 
+--
 -- disable BlackBoxParameterSpace construction using new without parameters:
+--
 new BlackBoxParameterSpace   := (E) -> 
 (
     error "creating empty blackbox not possible. You have at least to provide the number of variables and their ring";
@@ -1587,7 +1685,7 @@ TEST ///
 load "./BlackBoxIdeals/Interpolation.m2";
 
 
--- development remark: we need jets at least per blackbox individually.
+-- development remark: we need jetAt at least per blackbox individually.
 
 pointProperties = method();
 
@@ -1772,7 +1870,7 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
     );
 
 
-    -- 'setPointProperty': 
+    -- setPointProperty(): 
     --  
     --  internal method to set a point property. 
     --                     Is called by 'outerSetPointProperty', 'setIsZeroAt', 'setValuesAt', 'setJacobianAt'
@@ -1877,11 +1975,12 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
     (   
         -- parameter is called differently to the symbol 'isZeroAt', otherwise it seems we could get the wrong value...
         setPointProperty("isZeroAt" , pIsZeroAt );
-   );
+    );
    
     localJetAt := jetAt;
 
-    -- setJacobianAt:
+    
+    -- setJacobianAt():
     -- 
     --    set a method to compute the jacobian at a point.
     --
@@ -2159,7 +2258,7 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
         return blackBox;
     );
 
-   -- public..
+    -- public..
     --
     blackBox.registerPointProperty(String, Function) := Thing => ( propertyName, propertyMethod )->
     (
@@ -2242,7 +2341,7 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
     );
 
 
-    -- get singularityTestOptions
+    -- singularityTestOptions()
     --
     -- returns currently used configuration for singularity test (at a point)
     --
@@ -2256,7 +2355,7 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
     );
 
 
-    -- set singularityTestOptions
+    -- setSingularityTestOptions()
     --
     -- sets currently used configuration for singularity test (at a point)
     --
@@ -2282,12 +2381,17 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
     -- better: check component calculator type /interface.
     blackBox.setInterpolator = (interpolatorParam)->
     (
+        blackBox.onComponentAnswerStrategies = interpolatorParam.onComponentAnswerStrategies;
         blackBox.setOnComponentAnswerStrategy   =  interpolatorParam.setOnComponentAnswerStrategy;
         blackBox.onComponentAnswerStrategy   =  interpolatorParam.onComponentAnswerStrategy;
+        
+        -- TODO well, setOnComponentPrecision() should be more generic as different component calculators may 
+        -- have different configuration settings ( so may be another component calculator has no 'onComponentPrecision' property)
         blackBox.setOnComponentPrecision   =  interpolatorParam.setOnComponentPrecision;
+        blackBox.onComponentPrecision   =  interpolatorParam.onComponentPrecision;
         blackBox.interpolator   = interpolatorParam;
         blackBox.resetInterpolation   = interpolatorParam.resetInterpolation;
-        blackBox.isOnComponent  = interpolatorParam.isOnComponent;
+        blackBox.isOnInterpolatedComponent  = interpolatorParam.isOnComponent;
         blackBox.interpolatedComponents     =  interpolatorParam.components;
         blackBox.interpolatedComponentNames  =  interpolatorParam.componentNames;
         blackBox.componentNameInUse  =  interpolatorParam.componentNameInUse;
@@ -2312,18 +2416,7 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
         --blackBox.setSameComponentPrecision =  interpolatorParam.setSameComponentPrecision;
     );
     
-    blackBox.setInterpolator( createSimpleInterpolator(blackBox) );
- 
-    -- TODO well, this should be more generic as different component calculators may 
-    -- have different configuration settings ( so may be another component calculator has no 'onComponentPrecision' property)
-    --
-    --blackBox.setSameComponentPrecision = (precision)->
-    --(
-    --    blackBox.interpolator.setSameComponentPrecision(precision);
-    --);
-
-   
-    
+    blackBox.setInterpolator( createSimpleInterpolator(blackBox) );    
     
     -- a user should not call this method...
 
@@ -3808,6 +3901,7 @@ doc ///
 doc ///
     Key
         "memberMethods"
+        (memberMethods, BlackBoxParameterSpace)
     Headline
         list the methods of a black box 
     Usage   
@@ -3843,7 +3937,8 @@ doc ///
 
 doc ///
     Key
-        "pointProperties"        
+        "pointProperties"   
+        (pointProperties, BlackBoxParameterSpace)
     Headline
         list the pointProperties of a black box 
     Usage   
@@ -4123,20 +4218,21 @@ TEST ///
     bb.setSingularityTestOptions(5,5);
     point = matrix{{0_coeffRing, 1_coeffRing}}
     bb.valuesAt (point)
-    catchOrResult = bb.isCertainlySingularAt(point)
+    catchOrResult = catch bb.isCertainlySingularAt(point)
     assert (class catchOrResult === PointNotOnBlackBox)
 ///
 
 TEST ///
     --test for issue #86
-    R = QQ[x,y]
+    kk = ZZ/2
+    R = kk[x,y]
     I = ideal(x^5-y^7);
     bbI = blackBoxIdeal I;
-    smoothPoint = matrix{{8,4_QQ}}
+    smoothPoint = matrix{{8,4_kk}}
     bbI.valuesAt(smoothPoint)
         
-    try  (bbI.isProbablySmoothAt(smoothPoint)) then (assert(false)) else ()
-    origin = matrix{{0,0_QQ}}
+    bbI.isProbablySmoothAt(smoothPoint)
+    origin = matrix{{0,0_kk}}
     bbI.isProbablySmoothAt(origin)
     bbI.isCertainlySingularAt(origin)
     bbI.setSingularityTestOptions(4,1)
@@ -4216,6 +4312,8 @@ TEST ///
 -- at least there should be a comment note inside this package.
 -- 
 undocumented { 
+    (isCertainlySingularAt, BlackBoxParameterSpace,Matrix,HashTable),
+    (isCertainlySingularAt, BlackBoxParameterSpace, Matrix, ZZ, ZZ),
     setJetLengthHeuristic,
     setMonomialDegreeHeuristic,
     setName,   
@@ -4286,7 +4384,8 @@ undocumented {
     (NewFromMethod, ConstantJetLengthHeuristic, Thing),
     (NewFromMethod, InterpolatedIdeal, Thing),
     (NewFromMethod, InterpolationMonomialDegreeHeuristic, Thing),
-    (NewFromMethod, MapHelper, Matrix)
+    (NewFromMethod, MapHelper, Matrix),
+    transformedAnswer
 } 
 
 

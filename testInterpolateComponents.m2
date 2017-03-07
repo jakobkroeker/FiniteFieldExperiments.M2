@@ -102,20 +102,29 @@ bb.interpolatedComponentsAt(p1)
 bb.interpolatedComponentNamesAt(singularPoint)
 bb.interpolatedComponentNamesAt(p1)
 
-bb.setOnComponentAnswerStrategy(SmoothnessInfoWithAnswerPair)
-bb.setOnComponentAnswerStrategy(NullIfNotSmoothStrategy)
+
+-- bb.setOnComponentAnswerStrategy(SmoothnessInfoWithAnswerPair)
+-- bb.setOnComponentAnswerStrategy(NullIfNotSmoothStrategy)
 
 
-bb.onInterpolatedComponentPrecision()
+-- bb.onInterpolatedComponentPrecision()
 
-bb.interpolator.onComponentPrecision()
-bb.interpolator.setOnComponentPrecision(5)
+-- bb.interpolator.onComponentPrecision()
+-- bb.interpolator.setOnComponentPrecision(5)
 
   
 
-bb.interpolator.setOnComponentPrecision(5) --- default =2
-bb.interpolatedComponentNamesAt(p2)
-bb.interpolatedComponents()
+-- bb.interpolator.setOnComponentPrecision(5) --- default =2
+-- bb.interpolatedComponentNamesAt(p2)
+-- bb.interpolatedComponents()
+
+bb.onComponentAvailableAnswerStrategies()
+bb.setOnComponentAnswerStrategy(PlainTextSmoothnessInfoWithAnswerPair)
+
+
+bb.setOnComponentPrecision(5) --- default =2
+bb.interpolatedComponentNamesAt(p3)
+
 
 e.interpolateComponents(maxdeg)
 bb.interpolateComponentsAt(e.points(),maxdeg)

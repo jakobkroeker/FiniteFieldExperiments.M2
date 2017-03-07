@@ -25,6 +25,7 @@ newPackage(
 
 -- Map eigentlich Morphism
 export { 
+ 
   "Counts",
   "counts",
   "sortedCounts",
