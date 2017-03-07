@@ -14,7 +14,7 @@ newPackage(
      PackageExports => {"M2Logging"},
      Headline => "black boxes for explicit and implicitly given ideals",
      DebuggingMode => true,
-     CacheExampleOutput => true,
+     CacheExampleOutput => false,
      AuxiliaryFiles=>true
 )
 
@@ -2657,38 +2657,29 @@ doc ///
         BlackBoxIdeal
         (NewFromMethod, BlackBoxIdeal, Ideal)
    Headline
-        an unified interface to a black box ideal
-   Usage   
-        new BlackBoxIdeal from pIdeal
-        blackBoxIdealFromEvaluation( rng, evaluationMethod )
-        blackBoxIdealFromEvaluation( variableNumber, coeffRing, evaluationMethod)
-   Inputs  
-        pIdeal:Ideal
-             with integer coefficients
-   Outputs
-        : BlackBoxIdeal
+        a type
    Description
          Text
-            {\bf Design} \break
-            The {\tt  BlackBoxIdeal } objects implements the interface of @TO BlackBoxParameterSpace @ \break 
-            and in addition following methods and attributes:
+            A @TO BlackBoxIdeal @ is a special @TO BlackBoxParameterSpace @.
+            It is used when the equations of a stratum of
+            a parameter space are known at least implicitly.
+            
+            \,\, \bullet \, If the equations are known explicitly use 
+            @TO blackBoxIdeal @ to create a @TO BlackBoxIdeal @.
+            
+            \,\, \bullet \, If the equations are known implicitly, i.e.
+            an algoithm to evaluate the equations is known,
+            then use @TO blackBoxIdealFromEvaluation@
+            to create a @TO BlackBoxIdeal @.
+            
+            In both cases the BlackBoxIdeal has the following
+            point properties predefined:
 
-            \,\, \bullet \,{\tt numGenerators() }: number of  generators/equations \break \break             
-
-            Point properties:\break
             \,\, \bullet \, @TO "isZeroAt" @ \break
             \,\, \bullet \, @TO "valuesAt" @ \break
             \,\, \bullet \, @TO "jacobianAt" @ \break
             \,\, \bullet \, @TO "rankJacobianAt" @ \break
                         
-            If the black boxes was generated from an explicit ideal, the
-            following properties are also defined: \break 
-            \,\, \bullet \,{\tt unknowns}: a list of the parameter variables . \break
-            \,\, \bullet \,{\tt ideal}: the original ideal  \break
-            \,\, \bullet \,{\tt equations}: generators/equations of the original ideal/polynomial system \break
-            
-        Text
-            \break  For an example see @TO blackBoxIdealFromEvaluation@, @TO blackBoxIdeal @.         
 ///
 
 doc ///
@@ -4017,6 +4008,82 @@ doc ///
           isCertainlySingularAt
           isProbablySmoothAt
           jetAt
+///
+
+doc ///
+    Key
+        "Jet"
+    Headline
+        a type for handling jets
+    Description
+       Text
+          Algebraically a jet is a map 
+          
+          R \to K[e]/e^{d+1} 
+          
+          where R is a polynomial ring in n variables.
+          Geometrically it is a truncated curve germ.
+          
+          Here a jet is modeled as a row matrix with n
+          entries in an eps-Ring of precision d (see @TO getEpsRing @).
+          
+          As an example consider the cuspidal cubic curve
+          in the plane:                    
+       Example
+          K = QQ
+          R = QQ[x,y]      
+          I = ideal (x^2-y^3)
+          bbI = blackBoxIdeal I;
+       Text
+          the following point lies on the cuspidal cubic
+       Example
+          smoothPoint = matrix{{1,1_K}}
+          bbI.isZeroAt(smoothPoint)
+       Text
+          Lets now make a jet of lenght 2 lying on cuspidal
+          cubic and starting in the above point.
+       Example   
+          j = bbI.jetAt(smoothPoint,2)
+       Text
+          The jet does indeed lie on the cuspidal cubic
+       Example
+          sub(I,j)
+       Text
+          A jet remembers from which point it started
+          from:
+       Example
+          j#"point"    
+       Text
+          Also it knows its length:
+       Example
+          j#"jetLength"
+       Text
+          Finally it remembers from which BlackBoxIdeal it
+          was created
+       Example
+          class j#"parent"
+       Text
+          The length of a jet can be increased:
+       Example
+          j3 = continueJet(bbI,j,3)    
+       Text
+          Jets can only be reliably created in smooth
+          points of a variety (by a variant of Newtons method).
+          If the starting point of the jet is not smooth
+          on the variety defined by the BlackBoxIdeal, then
+          after a finite number of steps the algorithm can 
+          not continue. If this happens
+          an exception is raised. 
+          
+          For readable error messages
+          and more precise information one has to use 
+          the throw/catch mechanism:
+       Example
+          singularPoint = matrix{{0,0_K}};
+          catch bbI.jetAt(singularPoint,1)          
+          catch bbI.jetAt(singularPoint,2)
+    Caveat
+    SeeAlso
 ///
 
 

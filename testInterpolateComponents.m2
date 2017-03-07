@@ -74,8 +74,8 @@ bb.interpolateAt(pointOnPlane, 1)
 -- wenn kein jet dieser laenge gefunden werden kann, dann throw "singulaer"
 -- und keine Interpolation
 
-
-bb.interpolateComponentsAt({p1,p2},maxdeg)
+maxdeg = 2
+bb.interpolateComponentsAt({p1,p2,p3},maxdeg)
 -- ruft interpolateComponentAt(p_i,maxdeg) auf wenn:
 --    sub(ideal componente, p_i) == 0  dann nicht interpolieren
 --
@@ -99,22 +99,23 @@ bb.interpolatedComponentsAt(p1)
 --- {"certainlySingular",{}}
 --- {"probablySmooth",{"c1","c2"}}
 
-bb.interpolator.componentNamesAt(singularPoint,10)
+bb.interpolatedComponentNamesAt(singularPoint)
+bb.interpolatedComponentNamesAt(p1)
 
-bb.interpolator.setAnswerStrategy(SmoothnessInfoWithAnswerPair)
-  bb.interpolator.setAnswerStrategy                     NullIfNotSmoothStrategy                
-sameComponent(
-
-P.isOnComponent
-
-P.sameComponent
-      
-Component.valuesAt(P) 
+bb.setOnComponentAnswerStrategy(SmoothnessInfoWithAnswerPair)
+bb.setOnComponentAnswerStrategy(NullIfNotSmoothStrategy)
 
 
+bb.onInterpolatedComponentPrecision()
+
+bb.interpolator.onComponentPrecision()
+bb.interpolator.setOnComponentPrecision(5)
+
+  
 
 bb.interpolator.setOnComponentPrecision(5) --- default =2
-bb.interpolatedComponentNamesAt(p3)
+bb.interpolatedComponentNamesAt(p2)
+bb.interpolatedComponents()
 
 e.interpolateComponents(maxdeg)
 bb.interpolateComponentsAt(e.points(),maxdeg)
@@ -134,6 +135,7 @@ e.tryProperty("interpolatedComponentNamesAt")
   bb.isOnComponent("c3",p3)
   bb.isOnComponent("c1",origin)
   bb.isOnComponent("c1",p3)
+  -- uses "isOnComponentPrecision"
   bb.interpolatedComponents()
   bb.interpolatedComponentNames()
   bb.interpolatedComponentByName "c1"
@@ -169,6 +171,8 @@ e.tryProperty("interpolatedComponentNamesAt")
   interpolator.componentNames()
   interpolator.componentByName("c2")
   interpolator.renameComponent("c1","cc");
+bb.interpolatedComponents()
+bb.renameComponent("linear Factor 1","linearFactor1")
   interpolator.renameComponent("c2","ccc")
   interpolator.componentNamesAt(p1)
   interpolator.componentNamesAt(origin)

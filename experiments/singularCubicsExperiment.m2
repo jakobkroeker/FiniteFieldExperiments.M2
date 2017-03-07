@@ -1,9 +1,17 @@
 -- look at the hilbert scheme of singular
 -- cubics
- 
+
+exit 
 restart
 
+uninstallPackage"BlackBoxIdeals"
 path = append(path,"/Users/bothmer/Desktop/projekte/strudel/Jakob2010/GitHub/padicLiftM2/")
+time installPackage"BlackBoxIdeals"
+viewHelp "BlackBoxIdeals"
+
+check BlackBoxIdeals
+
+
 
 uninstallPackage"M2Logging"
 installPackage"M2Logging"
