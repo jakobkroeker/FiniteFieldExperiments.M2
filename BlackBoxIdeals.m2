@@ -158,7 +158,6 @@ idealBlackBoxesExport = ()->
     exportMutable("interpolatedComponents");
     exportMutable("interpolatedComponentNames");
     exportMutable("interpolatedComponentByName");        
-    exportMutable("reset");
     exportMutable("setOnComponentPrecision");
     exportMutable("resetInterpolation");
     exportMutable("setInterpolator");
@@ -2287,7 +2286,7 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
         blackBox.onComponentAnswerStrategy   =  interpolatorParam.onComponentAnswerStrategy;
         blackBox.setOnComponentPrecision   =  interpolatorParam.setOnComponentPrecision;
         blackBox.interpolator   = interpolatorParam;
-        blackBox.resetInterpolation   = interpolatorParam.reset;
+        blackBox.resetInterpolation   = interpolatorParam.resetInterpolation;
         blackBox.isOnComponent  = interpolatorParam.isOnComponent;
         blackBox.interpolatedComponents     =  interpolatorParam.components;
         blackBox.interpolatedComponentNames  =  interpolatorParam.componentNames;

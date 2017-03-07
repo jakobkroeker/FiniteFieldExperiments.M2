@@ -16,7 +16,7 @@ newPackage(
      PackageExports => {"BlackBoxIdeals", "IntervalPkg" },
      Headline => "finite field experiments for explicit and implicitly given ideals and parameter spaces",
      DebuggingMode => false,
-     CacheExampleOutput => false,
+     CacheExampleOutput => true,
      AuxiliaryFiles=>true
 )
 
@@ -139,6 +139,7 @@ FiniteFieldExperimentsProtect = ()->
 
 FiniteFieldExperimentsExport  = ()->
 (
+    exportMutable("reset");
     exportMutable("setPosition");
     exportMutable("setPoint");
     exportMutable("pointData");
