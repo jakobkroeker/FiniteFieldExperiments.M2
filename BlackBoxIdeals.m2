@@ -70,7 +70,7 @@ export {
     "blackBoxIdealFromEvaluation",
     "BlackBoxLogger",
     "getEpsRing",
-    "bestJetAt",
+    --"bestJetAt",
     "jetAt",
     "jetAtOrException",
     "jetAtWithInfo",
@@ -3550,13 +3550,6 @@ doc ///
         Text
           Notice that one has to use the catch/throw mechanism
           to obtain readable error messages. 
-          
-          Notice also that the search for fails at length 2 most of the time,
-          since the singularity has multiplicity 2. If one tries
-          long enough a longer jet can be found (lying on one
-          of the branches at the origin):
-        Example        
-          jetStatsAt(bbI,origin,3,200) 
     SeeAlso
         jetAtOrNull
         isProbablySmoothAt
@@ -3614,6 +3607,134 @@ doc ///
         jetAtOrException
 ///
 
+doc ///
+    Key
+        continueJetOrException
+    Headline
+        increases the length of a given jet on a variety defined by a black box
+    Usage   
+        continueJetOrException(bb,jet,length)
+    Inputs  
+        bb: BlackBoxIdeal
+             THIS SHOULD NOT BE NECESSARY!
+        jet: Jet 
+        length: ZZ
+             the length of the desired jet
+    Outputs
+        : Jet
+    Description
+        Text 
+          This takes a jet of a given length and tries
+          to continues the algorithm of @TO jetAt@ until
+          the jet has the desired length.
+          
+          If the variety defined by the black box is smooth at
+          the given point, arbitray jets can be found by the
+          implemented algorithm. If the point is singular, the
+          algorithm fails after a finite number of steps. If 
+          this happens an exception is raised. This is implemented
+          using the throw/catch mechanism.
+          
+          Consinder for example a cuspidal cubic:
+        Example
+          Fp = ZZ/101
+          R = Fp[x,y]
+          I = ideal(x^2-y^3)
+          bbI = blackBoxIdeal I;
+        Text
+          Consider a point on the cuspidal cubic different from the origin:
+        Example
+          point = matrix{{8,4_Fp}}
+        Text
+          Check whether the point lies on the cuspidal cubic:
+        Example  
+          bbI.isZeroAt(point)
+        Text
+          We now look for a jet:
+        Example
+          j = jetAt(bbI,point,3)
+        Text
+          Now we increase the length of the jet
+        Example
+          continueJetOrException(bbI,j,4)
+        Text
+          At the origin the cuspidal cubic is singular. Short jets can be found,
+          but not long ones.
+        Example
+          origin = matrix{{0,0_Fp}}
+          j = jetAt(bbI,origin,1)  
+          catch continueJetOrException(bbI,j,3)
+        Text
+          Notice that one has to use the catch/throw mechanism
+          to obtain readable error messages. 
+    SeeAlso
+        jetAtOrException
+///
+
+
+doc ///
+    Key
+        jetStatsAt
+    Headline
+        counts possible jet lengths at a singular point
+    Usage   
+        jetStatsAt(bb,point,trials,length)
+        bb.jetStatsAt(point,trials,length)
+    Inputs  
+        bb: BlackBoxIdeal
+             a black box ideal
+        point: Matrix 
+             the coordinates of a point
+        trials: ZZ
+             the number of times the jet-finding procedure
+             is started
+        length: ZZ
+             the maximum length used in the search
+    Outputs
+        : Jet
+    Description
+        Text 
+          "jetAtOrException" can be abbreviated as "jetAt".
+          It tries to find a jet starting at a given point on 
+          a variety given by a black box.
+          
+          If the variety defined by the black box is smooth at
+          the given point, arbitray jets can be found by the
+          implemented algorithm. If the point is singular, the
+          algorithm fails after a finite number of steps. If 
+          this happens an exception is raised. This is implemented
+          using the throw/catch mechanism.
+          
+          Consinder for example a cuspidal cubic:
+        Example
+          Fp = ZZ/5
+          R = Fp[x,y]
+          bbCusp = blackBoxIdeal ideal(x^2-y^3);
+        Text
+          At the origin the cuspidal cubic is singular. Short jets can be found,
+          but not long ones.
+        Example
+          origin = matrix{{0,0_Fp}}
+          catch jetAt(bbCusp,origin,3)  
+        Text
+          Lets check how often this happens:
+        Example
+          jetStatsAt(bbCusp,origin,10,5^3)
+        Text
+          Now lets do the same for a node:
+        Example
+          bbNode = blackBoxIdeal ideal(x*y);
+          jetStatsAt(bbNode,origin,10,5^3)
+        Text
+          Notice that the statistics is significantly different
+          form the cusp example. Possibly some help in 
+          classifying implicitly given singularities can be
+          obtained from this.  
+    SeeAlso
+        jetAtOrException
+        isProbablySmoothAt
+        isCertainlySingularAt
+///
  
 
 doc ///
@@ -4191,8 +4312,8 @@ doc ///
           As an example consider the cuspidal cubic curve
           in the plane:                    
        Example
-          K = QQ
-          R = QQ[x,y]      
+          K = ZZ/7
+          R = K[x,y]      
           I = ideal (x^2-y^3)
           bbI = blackBoxIdeal I;
        Text
@@ -4243,10 +4364,61 @@ doc ///
           singularPoint = matrix{{0,0_K}};
           catch bbI.jetAt(singularPoint,1)          
           catch bbI.jetAt(singularPoint,2)
+       Text                 
+          Notice that the search for fails at length 2 most of the time,
+          since the singularity has multiplicity 2. If one tries
+          long enough, a longer jet can be found (lying on one
+          of the branches at the origin):
+       Example        
+          jetStatsAt(bbI,singularPoint,3,200) 
     Caveat
     SeeAlso
 ///
 
+doc ///
+    Key
+        "JetSet"
+    Headline
+        a type for handling a set of jets starting at the same point
+    Description
+       Text
+          A JetSet is a set of jets that start at the same point.
+          This is important since jets starting at the
+          same (smooth) point of a variety X must 
+          lie on the same component of X.
+       
+          For example consider the cuspidal cubic:
+       Example
+          K = ZZ/101
+          R = K[x,y]
+          bbCusp = blackBoxIdeal ideal(x^2-y^3);
+       Text
+          Lets make a jet at a smooth point
+       Example
+          smoothPoint = matrix{{1,1_K}}
+          j = jetAt(bbCusp,smoothPoint,3)
+       Text
+          We now make a JetSet containing one Element
+       Example
+          js = new JetSet from j
+       Text
+          We add another jet to this collection
+       Example
+          addElement(js,jetAt(bbCusp,smoothPoint,3)) 
+       Text
+          Lets now consider a differnent point on 
+          the cuspidal cubic
+       Example
+          otherSmoothPoint = matrix{{8,4_K}}
+          otherJet = jetAt(bbCusp,otherSmoothPoint,3)
+       Text
+          this can not be added to our JetSet, because
+          the jet starts at a different point.
+
+          -- addElement(js,otherJet)
+    Caveat
+    SeeAlso
+///
 
 
 
