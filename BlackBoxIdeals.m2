@@ -4469,7 +4469,7 @@ doc ///
     Key
         "InterpolatedIdeal"
     Headline
-        a type for handling partial information about components of an implicitly given Variety
+        a type for handling partial information about irreducible components
     Description
        Text
           Let $X = X_1 \cup \dots \cup X_k$ be the
@@ -4535,7 +4535,12 @@ doc ///
           bbI.renameComponent("c1","line")
        Text
           THIS SHOULD BE "renameInterpolatedComponent"
-                   
+          
+          Sometimes one wants to extract only the interpolated 
+          equations of the interpolated ideal:
+       Example
+          ideal bbI.interpolatedComponentByName("line")
+       Text
           Lets now recover the linear equations of the
           second component:
        Example
@@ -4599,7 +4604,7 @@ doc ///
           bbI.interpolateComponentAt(pointOnConic,2)  
        Text
           Now also the precision zero method can distinguish
-          the components
+          the components:
        Example
           bbI.onComponentPrecision()   
           bbI.interpolatedComponentNamesAt(pointOnLineAndPlane) 
