@@ -3485,38 +3485,50 @@ doc ///
 
 doc ///
     Key
-        jetAt
-        (jetAt, BlackBoxParameterSpace, Matrix, ZZ)
+        jetAtOrException
+        (jetAtOrException, BlackBoxParameterSpace, Matrix, ZZ)
+        "jetAt"
     Headline
-        find jets on the varieties defined by a black box
+        finds a jet on a variety defined by a black box
     Usage   
-        jetAt(bb,point,prec)
+        jetAt(bb,point,length)
+        jetAtOrException(bb,point,length)
+        bb.jetAt(point,length)
+        bb.jetAtOrException(point,length)
     Inputs  
         bb: BlackBoxIdeal
              an black box ideal
         point: Matrix 
              the coordinates of a point
-        prec: ZZ
-             the precision of the desired jet
+        length: ZZ
+             the length of the desired jet
     Outputs
-        : MutableHashTable
+        : Jet
     Description
-        Text
-          Tries to find a jet starting at a given point on 
+        Text 
+          "jetAtOrException" can be abbreviated as "jetAt".
+          It tries to find a jet starting at a given point on 
           a variety given by a black box.
           
-          Consinder for example a nodal cubic:
+          If the variety defined by the black box is smooth at
+          the given point, arbitray jets can be found by the
+          implemented algorithm. If the point is singular, the
+          algorithm fails after a finite number of steps. If 
+          this happens an exception is raised. This is implemented
+          using the throw/catch mechanism.
+          
+          Consinder for example a cuspidal cubic:
         Example
           Fp = ZZ/101
           R = Fp[x,y]
-          I = ideal(x^2-y^2+x^3)
+          I = ideal(x^2-y^3)
           bbI = blackBoxIdeal I;
         Text
-          Consider a point on the nodal cubic different from the origin:
+          Consider a point on the cuspidal cubic different from the origin:
         Example
-          point = matrix{{3,6_Fp}}
+          point = matrix{{8,4_Fp}}
         Text
-          Check whether the other point lies on the nodal cubic:
+          Check whether the point lies on the cuspidal cubic:
         Example  
           bbI.isZeroAt(point)
         Text
@@ -3528,23 +3540,78 @@ doc ///
         Example
           sub(I,j)
         Text
-          At the origin the nodal cubic is singular. Short jets can be found,
-          but not long ones:
+          At the origin the cuspidal cubic is singular. Short jets can be found,
+          but not long ones.
         Example
           origin = matrix{{0,0_Fp}}
           catch jetAt(bbI,origin,1)  
           catch jetAt(bbI,origin,2)  
           catch jetAt(bbI,origin,3)  
         Text
-          Notice that the search for fails at length 2 most of the time,
+          Notice that one has to use the catch/throw mechanism
+          to obtain readable error messages. 
+          
+          Notice also that the search for fails at length 2 most of the time,
           since the singularity has multiplicity 2. If one tries
           long enough a longer jet can be found (lying on one
           of the branches at the origin):
         Example        
           jetStatsAt(bbI,origin,3,200) 
     SeeAlso
+        jetAtOrNull
         isProbablySmoothAt
         isCertainlySingularAt
+///
+
+doc ///
+    Key
+        jetAtOrNull
+        (jetAtOrNull, BlackBoxParameterSpace, Matrix, ZZ)
+    Headline
+        finds a jet on a variety defined by a black box
+    Usage   
+        jetAtOrNull(bb,point,length)
+        bb.jetAtOrNull(point,length)
+    Inputs  
+        bb: BlackBoxIdeal
+             an black box ideal
+        point: Matrix 
+             the coordinates of a point
+        length: ZZ
+             the length of the desired jet
+    Outputs
+        : Jet
+            or null.
+    Description
+        Text 
+          @TO jetAtOrNull @ does the same as @TO jetAtOrException @,
+          i.e. it
+          tries to find a jet starting at a given point on 
+          a variety given by a black box.          
+          The only difference is, that if it failes to
+          find a jet of the desired length, no exception is raised.
+          Instead null is returned.
+          
+          Consinder for example a cuspidal cubic:
+        Example
+          Fp = ZZ/101
+          R = Fp[x,y]
+          I = ideal(x^2-y^3)
+          bbI = blackBoxIdeal I;
+        Text
+          At the origin the cuspidal cubic is singular. Short jets can be found,
+          but not long ones.
+        Example
+          origin = matrix{{0,0_Fp}}
+          jetAtOrNull(bbI,origin,1)  
+          jetAtOrNull(bbI,origin,2)  
+          catch jetAtOrException(bbI,origin,2)  
+        Text
+          Notice that with @TO jetAtOrNull @ one does
+          not need to use the catch/throw mechanism, but
+          also one does not get useful error messages.
+    SeeAlso
+        jetAtOrException
 ///
 
  
