@@ -4393,33 +4393,233 @@ doc ///
           R = K[x,y]
           bbCusp = blackBoxIdeal ideal(x^2-y^3);
        Text
-          Lets make a jet at a smooth point
+          Lets make a jet at a smooth point:
        Example
           smoothPoint = matrix{{1,1_K}}
           j = jetAt(bbCusp,smoothPoint,3)
        Text
-          We now make a JetSet containing one Element
+          We now make a JetSet containing one Element:
        Example
           js = new JetSet from j
        Text
-          We add another jet to this collection
+          We add another jet to this collection:
        Example
+          size js
           addElement(js,jetAt(bbCusp,smoothPoint,3)) 
+          size js
        Text
           Lets now consider a differnent point on 
-          the cuspidal cubic
+          the cuspidal cubic:
        Example
           otherSmoothPoint = matrix{{8,4_K}}
           otherJet = jetAt(bbCusp,otherSmoothPoint,3)
        Text
-          this can not be added to our JetSet, because
+          This jet can not be added to our JetSet, because
           the jet starts at a different point.
-
-          -- addElement(js,otherJet)
+       Example
+          1; --addElement(js,otherJet)
     Caveat
     SeeAlso
 ///
 
+
+doc ///
+    Key
+        addElement
+    Headline
+        adds a Jet to a JetSet
+    Usage   
+        addElement(jetSet,jet)
+    Inputs  
+        jetSet: JetSet
+        jet: Jet 
+    Outputs
+        : JetSet
+    Description
+       Text
+          Adds a jet to a JetSet if both lie on 
+          the variety defined by the same BlackBoxIdeal 
+          and both start at the same point.
+          
+          For example consider the cuspidal cubic:
+       Example
+          K = ZZ/101
+          R = K[x,y]
+          bbCusp = blackBoxIdeal ideal(x^2-y^3);
+       Text
+          Lets make a jet at a smooth point:
+       Example
+          smoothPoint = matrix{{1,1_K}}
+          j = jetAt(bbCusp,smoothPoint,3)
+       Text
+          We now make a JetSet containing one Element:
+       Example
+          js = new JetSet from j
+       Text
+          We add another jet to this collection:
+       Example
+          size js
+          addElement(js,jetAt(bbCusp,smoothPoint,3)) 
+          size js
+    Caveat
+    SeeAlso
+///
+
+doc ///
+    Key
+        "InterpolatedIdeal"
+    Headline
+        a type for handling partial information about components of an implicitly given Variety
+    Description
+       Text
+          Let $X = X_1 \cup \dots \cup X_k$ be the
+          decomposition of a variety in its irreducible
+          components.
+                    
+          An @TO InterpolatedIdeal @ is a type for
+          collecting partial information about 
+          pairs $(X_i,P)$ where $X_i$ is
+          an irreducible component of $X$ and $P$ is a smooth
+          point on $X_i$ as well as on $X$.
+          
+          This partial information is usually obtained
+          by interpolating the equations of $X_i$ up to 
+          a certain maximal degree.
+          
+          As an example consider the union of a line and
+          a plane conic in IP^3:      
+       Example
+          K = ZZ/7
+          R = K[x,y,z,w]      
+          line = ideal (x,y);
+          conic = ideal (w,x^2+y^2-z^2);
+          bbI = blackBoxIdeal intersect(line,conic);
+       Text
+          Consider the following two points:
+       Example
+          pointOnLine = matrix{{0,0,1,2_K}}
+          pointOnConic = matrix{{3,4,5,0_K}}
+          bbI.isZeroAt(pointOnLine)
+          bbI.isZeroAt(pointOnConic)
+       Text
+          Lets now recover the linear equations of
+          the first component via interpolation:
+       Example   
+          bbI.interpolateComponentAt(pointOnLine,1)
+       Text
+          We see, that the InterpolatedIdeal contains
+          a name ("c1"), the equations up to a maximal degree,
+          the point from which the interpolation started,
+          an a set of jets starting at that point. (The interpolation
+          algorithm works as follows: find a long enough jet
+          starting at the given point and then find all polynomials
+          of degree at most maxDegree vanishing on this jet.)
+      
+          Also the @TO InterpolatedIdeal @ knows which 
+          @TO BlackBoxIdeal @
+          it belongs to (this information is not printed).
+ 
+          The @TO InterpolatedIdeal @ is also stored inside the
+          corresponding @TO BlackBoxIdeal @:
+       Example
+          bbI.interpolatedComponents()
+       Text   
+          The @TO InterpolatedIdeal @ can be recovered 
+          from its name:
+       Example
+          bbI.interpolatedComponentByName("c1")   
+       Text                    
+          The name of an @TO InterpolatedIdeal @ can be
+          changed:
+       Example
+          bbI.renameComponent("c1","line")
+       Text
+          THIS SHOULD BE "renameInterpolatedComponent"
+                   
+          Lets now recover the linear equations of the
+          second component:
+       Example
+          bbI.interpolateComponentAt(pointOnConic,1)
+          bbI.interpolatedComponents()
+          bbI.renameComponent("c1","conic")
+          bbI.interpolatedComponents()
+       Text
+          Notice that the information about the conic component
+          does not jet seem to be complete, since the quadratic
+          equation has not been explicitly computed. Nevertheless
+          this partial information is enough to decide
+          for a given point on which component it lies.
+       Example
+          bbI.interpolatedComponentNamesAt(pointOnLine)
+          bbI.interpolatedComponentNamesAt(pointOnConic)   
+       Text
+          This even works the point that lies on the
+          intersection of the line with the plane spanned
+          by the plane conic:
+       Example
+          pointOnLineAndPlane = matrix{{0,0,1,0_K}}
+          bbI.isZeroAt(pointOnLineAndPlane)
+          bbI.interpolatedComponentNamesAt(pointOnLineAndPlane)          
+       Text
+          This is done as follows: a short jet on the 
+          variety defined by the BlackBoxIdeal is calculated
+          at the given point. Then is is checked wether the
+          interpolated equations vanish on this jet. 
+          
+          In the
+          above example the short jet lies on the line, but
+          leaves the plane spanned by the conic:
+       Example
+          j := bbI.jetAt(pointOnLineAndPlane,2)
+          0==sub(ideal w,j)
+       Text
+          This is a infinitesimal version of the 
+          "whitness point"-concept in numerical algebraic geometry.
+          
+          The length of the jet used in detecting on which
+          component a point lies can be changed:
+       Example
+          bbI.onComponentPrecision()
+          bbI.setOnComponentPrecision(0)
+          bbI.onComponentPrecision()
+       Text
+          Notice that with precision zero no jet is calculated,
+          and only the point itself is used.
+          In this case the algorithm can not jet classify
+          the point on the line and plane correctly:
+       Example
+          bbI.interpolatedComponentNamesAt(pointOnLineAndPlane)
+       Text
+          THIS DOES NOT WORK AS EXPECTED!!! 
+          
+          Even though we did not need the conic equation
+          for the classification of points, lets still
+          recover it for the sake of completeness
+       Example
+          bbI.interpolateComponentAt(pointOnConic,2)  
+       Text
+          Now also the precision zero method can distinguish
+          the components
+       Example
+          bbI.onComponentPrecision()   
+          bbI.interpolatedComponentNamesAt(pointOnLineAndPlane) 
+       Text
+          One can also interpolate all components for a list of
+          points:
+       Example
+          bbI.resetInterpolation()           
+          bbI.interpolatedComponents()
+          bbI.interpolateComponentsAt({pointOnLine,pointOnConic,pointOnLineAndPlane},1)
+       Text
+          Here the interpolation was done only for the first 2
+          points, the the third one was already on one of
+          the previously calculated components. For efficiency
+          reason this check is always done with precision zero
+          (usually we find the points using a finiteFieldExperiment
+          and there we have many points).   
+    Caveat
+    SeeAlso
+///
 
 
 
