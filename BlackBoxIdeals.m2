@@ -3610,6 +3610,7 @@ doc ///
 doc ///
     Key
         continueJetOrException
+        (continueJetOrException, BlackBoxParameterSpace,Jet,ZZ)
     Headline
         increases the length of a given jet on a variety defined by a black box
     Usage   
@@ -3734,6 +3735,51 @@ doc ///
         jetAtOrException
         isProbablySmoothAt
         isCertainlySingularAt
+///
+ 
+doc ///
+    Key
+        (length, Jet)
+    Headline
+        length of a Jet
+    Usage   
+        length(jet)
+    Inputs  
+        jet: Jet
+    Outputs
+        : ZZ
+          the length of the input jet.
+    Description
+        Text 
+          Algebraically a jet of length d is a map 
+          
+             j : R \to K[e]/e^{d+1} 
+          
+          where R is a polynomial ring in n variables.
+          Geometrically it is a truncated curve germ.
+          In particular a jet of length zero is a point
+          and a jet of length one is a tangent vector
+          to a point.
+          
+          Consinder for example a point on the cuspidal cubic:
+        Example
+          Fp = ZZ/5
+          R = Fp[x,y]
+          bbCusp = blackBoxIdeal ideal(x^2-y^3);
+          pointOnCusp = matrix{{1,1_Fp}}
+          bbCusp.isZeroAt(pointOnCusp)
+        Text
+          Here are some jets of different length at this point:
+        Example
+          j0 = jetAt(bbCusp,pointOnCusp,0)
+          j1 = continueJet(bbCusp,j0,1)      
+          j2 = continueJet(bbCusp,j1,2)
+        Text
+          indeed:
+        Example
+          length j0
+          length j1
+          length j2
 ///
  
 
@@ -4301,7 +4347,7 @@ doc ///
        Text
           Algebraically a jet is a map 
           
-          R \to K[e]/e^{d+1} 
+             j : R \to K[e]/e^{d+1} 
           
           where R is a polynomial ring in n variables.
           Geometrically it is a truncated curve germ.
@@ -4339,6 +4385,7 @@ doc ///
           Also it knows its length:
        Example
           j#"jetLength"
+          length j
        Text
           Finally it remembers from which BlackBoxIdeal it
           was created
@@ -4422,10 +4469,46 @@ doc ///
     SeeAlso
 ///
 
+doc ///
+    Key
+        (size, JetSet)
+    Headline
+        the number of Jets in a JetSet
+    Usage   
+        size(jetSet)
+    Inputs  
+        jetSet: JetSet
+    Outputs
+        : ZZ
+          the number of jets in the jetSet
+    Description
+        Text 
+          A JetSet is a set of jets starting at the same point.
+          size returns the number of jets in such a JetSet
+                  
+          Consinder for example a smooth point on the cuspidal cubic:
+        Example
+          Fp = ZZ/5
+          R = Fp[x,y]
+          bbCusp = blackBoxIdeal ideal(x^2-y^3);
+          smoothPoint = matrix{{1,1_Fp}}
+          bbCusp.isZeroAt(smoothPoint)
+        Text
+          We collect some jets starting at this point
+          in a JetSet:
+        Example
+          js = new JetSet from jetAt(bbCusp,smoothPoint,2)
+          size js
+          addElement(js,jetAt(bbCusp,smoothPoint,2))
+          size js
+ ///
+ 
+
 
 doc ///
     Key
         addElement
+        (addElement, JetSet, Jet)
     Headline
         adds a Jet to a JetSet
     Usage   
@@ -4617,7 +4700,7 @@ doc ///
           bbI.interpolateComponentsAt({pointOnLine,pointOnConic,pointOnLineAndPlane},1)
        Text
           Here the interpolation was done only for the first 2
-          points, the the third one was already on one of
+          points, because the third one was already on one of
           the previously calculated components. For efficiency
           reason this check is always done with precision zero
           (usually we find the points using a finiteFieldExperiment
