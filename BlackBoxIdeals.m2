@@ -71,7 +71,7 @@ export {
     "blackBoxIdealFromEvaluation",
     "BlackBoxLogger",
     "getEpsRing",
-    "bestJetAt",
+    --"bestJetAt",
     "jetAt",
     "jetAtOrException",
     "jetAtWithInfo",
@@ -3572,38 +3572,50 @@ doc ///
 
 doc ///
     Key
-        jetAt
-        (jetAt, BlackBoxParameterSpace, Matrix, ZZ)
+        jetAtOrException
+        (jetAtOrException, BlackBoxParameterSpace, Matrix, ZZ)
+        "jetAt"
     Headline
-        find jets on the varieties defined by a black box
+        finds a jet on a variety defined by a black box
     Usage   
-        jetAt(bb,point,prec)
+        jetAt(bb,point,length)
+        jetAtOrException(bb,point,length)
+        bb.jetAt(point,length)
+        bb.jetAtOrException(point,length)
     Inputs  
         bb: BlackBoxIdeal
              an black box ideal
         point: Matrix 
              the coordinates of a point
-        prec: ZZ
-             the precision of the desired jet
+        length: ZZ
+             the length of the desired jet
     Outputs
-        : MutableHashTable
+        : Jet
     Description
-        Text
-          Tries to find a jet starting at a given point on 
+        Text 
+          "jetAtOrException" can be abbreviated as "jetAt".
+          It tries to find a jet starting at a given point on 
           a variety given by a black box.
           
-          Consinder for example a nodal cubic:
+          If the variety defined by the black box is smooth at
+          the given point, arbitray jets can be found by the
+          implemented algorithm. If the point is singular, the
+          algorithm fails after a finite number of steps. If 
+          this happens an exception is raised. This is implemented
+          using the throw/catch mechanism.
+          
+          Consinder for example a cuspidal cubic:
         Example
           Fp = ZZ/101
           R = Fp[x,y]
-          I = ideal(x^2-y^2+x^3)
+          I = ideal(x^2-y^3)
           bbI = blackBoxIdeal I;
         Text
-          Consider a point on the nodal cubic different from the origin:
+          Consider a point on the cuspidal cubic different from the origin:
         Example
-          point = matrix{{3,6_Fp}}
+          point = matrix{{8,4_Fp}}
         Text
-          Check whether the other point lies on the nodal cubic:
+          Check whether the point lies on the cuspidal cubic:
         Example  
           bbI.isZeroAt(point)
         Text
@@ -3615,25 +3627,247 @@ doc ///
         Example
           sub(I,j)
         Text
-          At the origin the nodal cubic is singular. Short jets can be found,
-          but not long ones:
+          At the origin the cuspidal cubic is singular. Short jets can be found,
+          but not long ones.
         Example
           origin = matrix{{0,0_Fp}}
           catch jetAt(bbI,origin,1)  
           catch jetAt(bbI,origin,2)  
           catch jetAt(bbI,origin,3)  
         Text
-          Notice that the search for fails at length 2 most of the time,
-          since the singularity has multiplicity 2. If one tries
-          long enough a longer jet can be found (lying on one
-          of the branches at the origin):
-        Example        
-          jetStatsAt(bbI,origin,3,200) 
+          Notice that one has to use the catch/throw mechanism
+          to obtain readable error messages. 
     SeeAlso
+        jetAtOrNull
         isProbablySmoothAt
         isCertainlySingularAt
 ///
 
+doc ///
+    Key
+        jetAtOrNull
+        (jetAtOrNull, BlackBoxParameterSpace, Matrix, ZZ)
+    Headline
+        finds a jet on a variety defined by a black box
+    Usage   
+        jetAtOrNull(bb,point,length)
+        bb.jetAtOrNull(point,length)
+    Inputs  
+        bb: BlackBoxIdeal
+             an black box ideal
+        point: Matrix 
+             the coordinates of a point
+        length: ZZ
+             the length of the desired jet
+    Outputs
+        : Jet
+            or null.
+    Description
+        Text 
+          @TO jetAtOrNull @ does the same as @TO jetAtOrException @,
+          i.e. it
+          tries to find a jet starting at a given point on 
+          a variety given by a black box.          
+          The only difference is, that if it failes to
+          find a jet of the desired length, no exception is raised.
+          Instead null is returned.
+          
+          Consinder for example a cuspidal cubic:
+        Example
+          Fp = ZZ/101
+          R = Fp[x,y]
+          I = ideal(x^2-y^3)
+          bbI = blackBoxIdeal I;
+        Text
+          At the origin the cuspidal cubic is singular. Short jets can be found,
+          but not long ones.
+        Example
+          origin = matrix{{0,0_Fp}}
+          jetAtOrNull(bbI,origin,1)  
+          jetAtOrNull(bbI,origin,2)  
+          catch jetAtOrException(bbI,origin,2)  
+        Text
+          Notice that with @TO jetAtOrNull @ one does
+          not need to use the catch/throw mechanism, but
+          also one does not get useful error messages.
+    SeeAlso
+        jetAtOrException
+///
+
+doc ///
+    Key
+        continueJetOrException
+        (continueJetOrException, BlackBoxParameterSpace,Jet,ZZ)
+    Headline
+        increases the length of a given jet on a variety defined by a black box
+    Usage   
+        continueJetOrException(bb,jet,length)
+    Inputs  
+        bb: BlackBoxIdeal
+             THIS SHOULD NOT BE NECESSARY!
+        jet: Jet 
+        length: ZZ
+             the length of the desired jet
+    Outputs
+        : Jet
+    Description
+        Text 
+          This takes a jet of a given length and tries
+          to continues the algorithm of @TO jetAt@ until
+          the jet has the desired length.
+          
+          If the variety defined by the black box is smooth at
+          the given point, arbitray jets can be found by the
+          implemented algorithm. If the point is singular, the
+          algorithm fails after a finite number of steps. If 
+          this happens an exception is raised. This is implemented
+          using the throw/catch mechanism.
+          
+          Consinder for example a cuspidal cubic:
+        Example
+          Fp = ZZ/101
+          R = Fp[x,y]
+          I = ideal(x^2-y^3)
+          bbI = blackBoxIdeal I;
+        Text
+          Consider a point on the cuspidal cubic different from the origin:
+        Example
+          point = matrix{{8,4_Fp}}
+        Text
+          Check whether the point lies on the cuspidal cubic:
+        Example  
+          bbI.isZeroAt(point)
+        Text
+          We now look for a jet:
+        Example
+          j = jetAt(bbI,point,3)
+        Text
+          Now we increase the length of the jet
+        Example
+          continueJetOrException(bbI,j,4)
+        Text
+          At the origin the cuspidal cubic is singular. Short jets can be found,
+          but not long ones.
+        Example
+          origin = matrix{{0,0_Fp}}
+          j = jetAt(bbI,origin,1)  
+          catch continueJetOrException(bbI,j,3)
+        Text
+          Notice that one has to use the catch/throw mechanism
+          to obtain readable error messages. 
+    SeeAlso
+        jetAtOrException
+///
+
+
+doc ///
+    Key
+        jetStatsAt
+    Headline
+        counts possible jet lengths at a singular point
+    Usage   
+        jetStatsAt(bb,point,trials,length)
+        bb.jetStatsAt(point,trials,length)
+    Inputs  
+        bb: BlackBoxIdeal
+             a black box ideal
+        point: Matrix 
+             the coordinates of a point
+        trials: ZZ
+             the number of times the jet-finding procedure
+             is started
+        length: ZZ
+             the maximum length used in the search
+    Outputs
+        : Jet
+    Description
+        Text 
+          "jetAtOrException" can be abbreviated as "jetAt".
+          It tries to find a jet starting at a given point on 
+          a variety given by a black box.
+          
+          If the variety defined by the black box is smooth at
+          the given point, arbitray jets can be found by the
+          implemented algorithm. If the point is singular, the
+          algorithm fails after a finite number of steps. If 
+          this happens an exception is raised. This is implemented
+          using the throw/catch mechanism.
+          
+          Consinder for example a cuspidal cubic:
+        Example
+          Fp = ZZ/5
+          R = Fp[x,y]
+          bbCusp = blackBoxIdeal ideal(x^2-y^3);
+        Text
+          At the origin the cuspidal cubic is singular. Short jets can be found,
+          but not long ones.
+        Example
+          origin = matrix{{0,0_Fp}}
+          catch jetAt(bbCusp,origin,3)  
+        Text
+          Lets check how often this happens:
+        Example
+          jetStatsAt(bbCusp,origin,10,5^3)
+        Text
+          Now lets do the same for a node:
+        Example
+          bbNode = blackBoxIdeal ideal(x*y);
+          jetStatsAt(bbNode,origin,10,5^3)
+        Text
+          Notice that the statistics is significantly different
+          form the cusp example. Possibly some help in 
+          classifying implicitly given singularities can be
+          obtained from this.  
+    SeeAlso
+        jetAtOrException
+        isProbablySmoothAt
+        isCertainlySingularAt
+///
+ 
+doc ///
+    Key
+        (length, Jet)
+    Headline
+        length of a Jet
+    Usage   
+        length(jet)
+    Inputs  
+        jet: Jet
+    Outputs
+        : ZZ
+          the length of the input jet.
+    Description
+        Text 
+          Algebraically a jet of length d is a map 
+          
+             j : R \to K[e]/e^{d+1} 
+          
+          where R is a polynomial ring in n variables.
+          Geometrically it is a truncated curve germ.
+          In particular a jet of length zero is a point
+          and a jet of length one is a tangent vector
+          to a point.
+          
+          Consinder for example a point on the cuspidal cubic:
+        Example
+          Fp = ZZ/5
+          R = Fp[x,y]
+          bbCusp = blackBoxIdeal ideal(x^2-y^3);
+          pointOnCusp = matrix{{1,1_Fp}}
+          bbCusp.isZeroAt(pointOnCusp)
+        Text
+          Here are some jets of different length at this point:
+        Example
+          j0 = jetAt(bbCusp,pointOnCusp,0)
+          j1 = continueJet(bbCusp,j0,1)      
+          j2 = continueJet(bbCusp,j1,2)
+        Text
+          indeed:
+        Example
+          length j0
+          length j1
+          length j2
+///
  
 
 doc ///
@@ -4197,7 +4431,7 @@ doc ///
        Text
           Algebraically a jet is a map 
           
-          R \to K[e]/e^{d+1} 
+             j : R \to K[e]/e^{d+1} 
           
           where R is a polynomial ring in n variables.
           Geometrically it is a truncated curve germ.
@@ -4208,8 +4442,8 @@ doc ///
           As an example consider the cuspidal cubic curve
           in the plane:                    
        Example
-          K = QQ
-          R = QQ[x,y]      
+          K = ZZ/7
+          R = K[x,y]      
           I = ideal (x^2-y^3)
           bbI = blackBoxIdeal I;
        Text
@@ -4235,6 +4469,7 @@ doc ///
           Also it knows its length:
        Example
           j#"jetLength"
+          length j
        Text
           Finally it remembers from which BlackBoxIdeal it
           was created
@@ -4260,11 +4495,303 @@ doc ///
           singularPoint = matrix{{0,0_K}};
           catch bbI.jetAt(singularPoint,1)          
           catch bbI.jetAt(singularPoint,2)
+       Text                 
+          Notice that the search for fails at length 2 most of the time,
+          since the singularity has multiplicity 2. If one tries
+          long enough, a longer jet can be found (lying on one
+          of the branches at the origin):
+       Example        
+          jetStatsAt(bbI,singularPoint,3,200) 
     Caveat
     SeeAlso
 ///
 
+doc ///
+    Key
+        "JetSet"
+    Headline
+        a type for handling a set of jets starting at the same point
+    Description
+       Text
+          A JetSet is a set of jets that start at the same point.
+          This is important since jets starting at the
+          same (smooth) point of a variety X must 
+          lie on the same component of X.
+       
+          For example consider the cuspidal cubic:
+       Example
+          K = ZZ/101
+          R = K[x,y]
+          bbCusp = blackBoxIdeal ideal(x^2-y^3);
+       Text
+          Lets make a jet at a smooth point:
+       Example
+          smoothPoint = matrix{{1,1_K}}
+          j = jetAt(bbCusp,smoothPoint,3)
+       Text
+          We now make a JetSet containing one Element:
+       Example
+          js = new JetSet from j
+       Text
+          We add another jet to this collection:
+       Example
+          size js
+          addElement(js,jetAt(bbCusp,smoothPoint,3)) 
+          size js
+       Text
+          Lets now consider a differnent point on 
+          the cuspidal cubic:
+       Example
+          otherSmoothPoint = matrix{{8,4_K}}
+          otherJet = jetAt(bbCusp,otherSmoothPoint,3)
+       Text
+          This jet can not be added to our JetSet, because
+          the jet starts at a different point.
+       Example
+          1; --addElement(js,otherJet)
+    Caveat
+    SeeAlso
+///
 
+doc ///
+    Key
+        (size, JetSet)
+    Headline
+        the number of Jets in a JetSet
+    Usage   
+        size(jetSet)
+    Inputs  
+        jetSet: JetSet
+    Outputs
+        : ZZ
+          the number of jets in the jetSet
+    Description
+        Text 
+          A JetSet is a set of jets starting at the same point.
+          size returns the number of jets in such a JetSet
+                  
+          Consinder for example a smooth point on the cuspidal cubic:
+        Example
+          Fp = ZZ/5
+          R = Fp[x,y]
+          bbCusp = blackBoxIdeal ideal(x^2-y^3);
+          smoothPoint = matrix{{1,1_Fp}}
+          bbCusp.isZeroAt(smoothPoint)
+        Text
+          We collect some jets starting at this point
+          in a JetSet:
+        Example
+          js = new JetSet from jetAt(bbCusp,smoothPoint,2)
+          size js
+          addElement(js,jetAt(bbCusp,smoothPoint,2))
+          size js
+ ///
+ 
+
+
+doc ///
+    Key
+        addElement
+        (addElement, JetSet, Jet)
+    Headline
+        adds a Jet to a JetSet
+    Usage   
+        addElement(jetSet,jet)
+    Inputs  
+        jetSet: JetSet
+        jet: Jet 
+    Outputs
+        : JetSet
+    Description
+       Text
+          Adds a jet to a JetSet if both lie on 
+          the variety defined by the same BlackBoxIdeal 
+          and both start at the same point.
+          
+          For example consider the cuspidal cubic:
+       Example
+          K = ZZ/101
+          R = K[x,y]
+          bbCusp = blackBoxIdeal ideal(x^2-y^3);
+       Text
+          Lets make a jet at a smooth point:
+       Example
+          smoothPoint = matrix{{1,1_K}}
+          j = jetAt(bbCusp,smoothPoint,3)
+       Text
+          We now make a JetSet containing one Element:
+       Example
+          js = new JetSet from j
+       Text
+          We add another jet to this collection:
+       Example
+          size js
+          addElement(js,jetAt(bbCusp,smoothPoint,3)) 
+          size js
+    Caveat
+    SeeAlso
+///
+
+doc ///
+    Key
+        "InterpolatedIdeal"
+    Headline
+        a type for handling partial information about irreducible components
+    Description
+       Text
+          Let $X = X_1 \cup \dots \cup X_k$ be the
+          decomposition of a variety in its irreducible
+          components.
+                    
+          An @TO InterpolatedIdeal @ is a type for
+          collecting partial information about 
+          pairs $(X_i,P)$ where $X_i$ is
+          an irreducible component of $X$ and $P$ is a smooth
+          point on $X_i$ as well as on $X$.
+          
+          This partial information is usually obtained
+          by interpolating the equations of $X_i$ up to 
+          a certain maximal degree.
+          
+          As an example consider the union of a line and
+          a plane conic in IP^3:      
+       Example
+          K = ZZ/7
+          R = K[x,y,z,w]      
+          line = ideal (x,y);
+          conic = ideal (w,x^2+y^2-z^2);
+          bbI = blackBoxIdeal intersect(line,conic);
+       Text
+          Consider the following two points:
+       Example
+          pointOnLine = matrix{{0,0,1,2_K}}
+          pointOnConic = matrix{{3,4,5,0_K}}
+          bbI.isZeroAt(pointOnLine)
+          bbI.isZeroAt(pointOnConic)
+       Text
+          Lets now recover the linear equations of
+          the first component via interpolation:
+       Example   
+          bbI.interpolateComponentAt(pointOnLine,1)
+       Text
+          We see, that the InterpolatedIdeal contains
+          a name ("c1"), the equations up to a maximal degree,
+          the point from which the interpolation started,
+          an a set of jets starting at that point. (The interpolation
+          algorithm works as follows: find a long enough jet
+          starting at the given point and then find all polynomials
+          of degree at most maxDegree vanishing on this jet.)
+      
+          Also the @TO InterpolatedIdeal @ knows which 
+          @TO BlackBoxIdeal @
+          it belongs to (this information is not printed).
+ 
+          The @TO InterpolatedIdeal @ is also stored inside the
+          corresponding @TO BlackBoxIdeal @:
+       Example
+          bbI.interpolatedComponents()
+       Text   
+          The @TO InterpolatedIdeal @ can be recovered 
+          from its name:
+       Example
+          bbI.interpolatedComponentByName("c1")   
+       Text                    
+          The name of an @TO InterpolatedIdeal @ can be
+          changed:
+       Example
+          bbI.renameComponent("c1","line")
+       Text
+          THIS SHOULD BE "renameInterpolatedComponent"
+          
+          Sometimes one wants to extract only the interpolated 
+          equations of the interpolated ideal:
+       Example
+          ideal bbI.interpolatedComponentByName("line")
+       Text
+          Lets now recover the linear equations of the
+          second component:
+       Example
+          bbI.interpolateComponentAt(pointOnConic,1)
+          bbI.interpolatedComponents()
+          bbI.renameComponent("c1","conic")
+          bbI.interpolatedComponents()
+       Text
+          Notice that the information about the conic component
+          does not jet seem to be complete, since the quadratic
+          equation has not been explicitly computed. Nevertheless
+          this partial information is enough to decide
+          for a given point on which component it lies.
+       Example
+          bbI.interpolatedComponentNamesAt(pointOnLine)
+          bbI.interpolatedComponentNamesAt(pointOnConic)   
+       Text
+          This even works the point that lies on the
+          intersection of the line with the plane spanned
+          by the plane conic:
+       Example
+          pointOnLineAndPlane = matrix{{0,0,1,0_K}}
+          bbI.isZeroAt(pointOnLineAndPlane)
+          bbI.interpolatedComponentNamesAt(pointOnLineAndPlane)          
+       Text
+          This is done as follows: a short jet on the 
+          variety defined by the BlackBoxIdeal is calculated
+          at the given point. Then is is checked wether the
+          interpolated equations vanish on this jet. 
+          
+          In the
+          above example the short jet lies on the line, but
+          leaves the plane spanned by the conic:
+       Example
+          j := bbI.jetAt(pointOnLineAndPlane,2)
+          0==sub(ideal w,j)
+       Text
+          This is a infinitesimal version of the 
+          "whitness point"-concept in numerical algebraic geometry.
+          
+          The length of the jet used in detecting on which
+          component a point lies can be changed:
+       Example
+          bbI.onComponentPrecision()
+          bbI.setOnComponentPrecision(0)
+          bbI.onComponentPrecision()
+       Text
+          Notice that with precision zero no jet is calculated,
+          and only the point itself is used.
+          In this case the algorithm can not jet classify
+          the point on the line and plane correctly:
+       Example
+          bbI.interpolatedComponentNamesAt(pointOnLineAndPlane)
+       Text
+          THIS DOES NOT WORK AS EXPECTED!!! 
+          
+          Even though we did not need the conic equation
+          for the classification of points, lets still
+          recover it for the sake of completeness
+       Example
+          bbI.interpolateComponentAt(pointOnConic,2)  
+       Text
+          Now also the precision zero method can distinguish
+          the components:
+       Example
+          bbI.onComponentPrecision()   
+          bbI.interpolatedComponentNamesAt(pointOnLineAndPlane) 
+       Text
+          One can also interpolate all components for a list of
+          points:
+       Example
+          bbI.resetInterpolation()           
+          bbI.interpolatedComponents()
+          bbI.interpolateComponentsAt({pointOnLine,pointOnConic,pointOnLineAndPlane},1)
+       Text
+          Here the interpolation was done only for the first 2
+          points, because the third one was already on one of
+          the previously calculated components. For efficiency
+          reason this check is always done with precision zero
+          (usually we find the points using a finiteFieldExperiment
+          and there we have many points).   
+    Caveat
+    SeeAlso
+///
 
 
 

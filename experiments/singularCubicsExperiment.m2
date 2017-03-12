@@ -1,9 +1,8 @@
 -- look at the hilbert scheme of singular
 -- cubics
 
-exit 
+exit -- F11 F12 F11 
 restart
-
 uninstallPackage"BlackBoxIdeals"
 path = append(path,"/Users/bothmer/Desktop/projekte/strudel/Jakob2010/GitHub/padicLiftM2/")
 time installPackage"BlackBoxIdeals"
