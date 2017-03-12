@@ -51,7 +51,6 @@ export {
     "ConstantInterpolationMonomialDegreeHeuristic",
     "sameComponentAt",     
     "componentNamesAt",
-    "bare",
     "jetStatsAt",
     --"locus",
     --"joinJetSets",
@@ -85,7 +84,7 @@ export {
     "interpolateAt",
     "interpolate",
     "MapHelper",
-    "InterpolatedIdeal",
+    "InterpolatedComponent",
     "SingularPointException",
     "PointNotOnBlackBox",
     "createMapHelper"
@@ -132,11 +131,9 @@ idealBlackBoxesProtect = ()->
     protect setPointProperty;
     protect setValuesAt;
     protect checkInputPoint;
-    protect deduceNumGenerators;
+    --protect deduceNumGenerators;
     protect setIsZeroAt;
   
-     
-    protect unknowns;
     protect pointProperty;
     protect updatePointProperty;
     protect setJacobianAt;
@@ -194,6 +191,7 @@ idealBlackBoxesExport = ()->
     exportMutable("additionalJetLength");
     exportMutable("interpolator");
     exportMutable("componentByName"),
+    exportMutable("renameInterpolatedComponent"),
     exportMutable("renameComponent"),
     exportMutable("componentNameInUse"),
     exportMutable("componentNamesInUse"),
@@ -228,7 +226,6 @@ idealBlackBoxesExport = ()->
     exportMutable("deduceNumGenerators");
     exportMutable("setIsZeroAt");
     
-    exportMutable("unknowns");
     exportMutable("pointProperty");
     exportMutable("updatePointProperty");
     exportMutable("setJacobianAt");
@@ -1218,7 +1215,7 @@ assert (epsRng#"epsPrecision"==2)
 assert (ideal epsRng == ideal (first gens last epsRng.baseRings)^3)
 
 jetL0 = jetAt(bb,p1,0)
-assert (jetL0#"value" == p1)
+assert (jetL0#"value" == sub(p1,ring jetL0#"value") )
 
 ///
 
@@ -1267,7 +1264,10 @@ jetAtWithInfo( BlackBoxParameterSpace, Matrix, ZZ ) := HashTable => ( blackBox, 
 
     liftingFailed := false;
     failedJetLength := null;
-    jet := point;
+    epsPrecision := 0;
+    epsRng := getEpsRing( blackBox.coefficientRing,  epsPrecision );
+        
+    jet := sub(point, epsRng);
 
     succeededJetLength := 0;    
     
@@ -1608,13 +1608,7 @@ net (JetSet) := Net => (jetSet)->
     return result;
 );
 
-firstElem = method();
-
-firstElem (JetSet) := Jet => (jetset)->
-(
-    return first jetset#"jets";
-);
-
+ 
 maximalConditions = method();
 maximalConditions( JetSet ) := ZZ => (jetSet)->
 (
@@ -1639,7 +1633,7 @@ compatible (Jet,Jet) := Boolean => (jet1, jet2 )->
 compatible (JetSet,JetSet) := Boolean => (jetSet1, jetSet2 )->
 (    
     if (0== size jetSet1 or 0== size jetSet2 ) then   return true;   
-    return compatible(firstElem jetSet1, firstElem jetSet2);
+    return compatible(  jetSet1#"jets"#0,   jetSet2#"jets"#0);
 );
 
 size (JetSet) := ZZ =>(jetset)->
@@ -1655,13 +1649,13 @@ addElement = method();
 addElement (JetSet,Jet) := JetSet => (jetSet, jet)->
 (
     if ( size jetSet===0 or
-         compatible(firstElem jetSet, jet) 
+         compatible(jetSet#"jets"#0, jet) 
        ) then
         (
             jetSet#"jets" = append(jetSet#"jets",jet);            
             return jetSet;
         );
-    error ("JetSet and Jet are probably incompatible");
+    error ("JetSet and Jet are probably incompatible (either they do not start at the same point or do not belong to the same black box)");
 )
 
 joinJetSets = method();
@@ -1693,6 +1687,7 @@ TEST ///
     
     
     point = matrix{{0_QQ, 0_QQ}};
+    point2 = matrix{{0, 1_K}};
     
     jet =  jetAt(bbI,point,1)
     
@@ -1709,6 +1704,11 @@ TEST ///
     addElement(jetSet,jet2)
     
     joinJetSets(jetSet,jetSet);    
+    
+    jet3 := jetAt(bbI,point2,1)
+    
+    try (addElement(jetSet,jet3)) then (error ("adding incompatible jet should fail"))  else()
+    
     -- unique: not im    
 ///
 
@@ -2009,7 +2009,8 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
     );
    
     localJetAt := jetAt;
-
+    localJetStatsAt := jetStatsAt;
+    localContinueJet := continueJet;
     
     -- setJacobianAt():
     -- 
@@ -2057,7 +2058,22 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
             return localJetAt(blackBox, point, jetLength);
         );
         
-        blackBox.jetAt = blackBox#"jetAt";        
+        blackBox.jetAt = blackBox#"jetAt";     
+        
+        blackBox#"jetStatsAt" = (point, jetLength)->
+        (
+            return jetStatsAt(blackBox, point, jetLength);
+        );
+        
+        blackBox.jetStatsAt = blackBox#"jetStatsAt";    
+        
+         blackBox#"continueJet" = (jet, jetLength)->
+        (
+            return jetStatsAt(blackBox, jet, jetLength);
+        );
+        
+        blackBox.continueJet = blackBox#"continueJet";    
+        
     );
 
     
@@ -2132,6 +2148,10 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
         localMethod :=  (point)->deduceJacobianAt( blackBox, point );
         setJacobianAt ( localMethod );  
         updateSingularityTest();
+        if (not blackBox#?"interpolator") then 
+        (
+            blackBox.setInterpolator( createSimpleInterpolator(blackBox) );    
+        );
     );
  
 
@@ -2420,6 +2440,7 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
         -- have different configuration settings ( so may be another component calculator has no 'onComponentPrecision' property)
         blackBox.setOnComponentPrecision   =  interpolatorParam.setOnComponentPrecision;
         blackBox.onComponentPrecision   =  interpolatorParam.onComponentPrecision;
+        blackBox#"interpolator"   = interpolatorParam;
         blackBox.interpolator   = interpolatorParam;
         blackBox.resetInterpolation   = interpolatorParam.resetInterpolation;
         blackBox.isOnInterpolatedComponent  = interpolatorParam.isOnComponent;
@@ -2427,7 +2448,7 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
         blackBox.interpolatedComponentNames  =  interpolatorParam.componentNames;
         blackBox.componentNameInUse  =  interpolatorParam.componentNameInUse;
         blackBox.interpolatedComponentByName = interpolatorParam.componentByName;
-        blackBox.renameComponent =  interpolatorParam.renameComponent;
+        blackBox.renameInterpolatedComponent =  interpolatorParam.renameComponent;
          -- todo: when we change the interpolator, this will stop to work:
         blackBox.interpolateComponentsAt  = interpolatorParam.interpolateComponentsAt;    
         blackBox.refineInterpolation  = interpolatorParam.refineInterpolation;    
@@ -2447,7 +2468,7 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
         --blackBox.setSameComponentPrecision =  interpolatorParam.setSameComponentPrecision;
     );
     
-    blackBox.setInterpolator( createSimpleInterpolator(blackBox) );    
+
     
     -- a user should not call this method...
 
@@ -4209,7 +4230,7 @@ doc ///
           bbP = blackBoxParameterSpace(2,QQ);
           bbP.attributes()
         Text
-          For a blackPointParameterSpace "ring" and "unknowns" are 
+          For a blackPointParameterSpace "ring" is 
           missing since there are no equations (not even implicit ones)  
     SeeAlso
          pointProperties
@@ -4634,7 +4655,7 @@ doc ///
 
 doc ///
     Key
-        "InterpolatedIdeal"
+        "InterpolatedComponent"
     Headline
         a type for handling partial information about irreducible components
     Description
@@ -4643,7 +4664,7 @@ doc ///
           decomposition of a variety in its irreducible
           components.
                     
-          An @TO InterpolatedIdeal @ is a type for
+          An @TO InterpolatedComponent @ is a type for
           collecting partial information about 
           pairs $(X_i,P)$ where $X_i$ is
           an irreducible component of $X$ and $P$ is a smooth
@@ -4674,7 +4695,7 @@ doc ///
        Example   
           bbI.interpolateComponentAt(pointOnLine,1)
        Text
-          We see, that the InterpolatedIdeal contains
+          We see, that the InterpolatedComponent contains
           a name ("c1"), the equations up to a maximal degree,
           the point from which the interpolation started,
           an a set of jets starting at that point. (The interpolation
@@ -4682,27 +4703,25 @@ doc ///
           starting at the given point and then find all polynomials
           of degree at most maxDegree vanishing on this jet.)
       
-          Also the @TO InterpolatedIdeal @ knows which 
+          Also the @TO InterpolatedComponent @ knows which 
           @TO BlackBoxIdeal @
           it belongs to (this information is not printed).
  
-          The @TO InterpolatedIdeal @ is also stored inside the
+          The @TO InterpolatedComponent @ is also stored inside the
           corresponding @TO BlackBoxIdeal @:
        Example
           bbI.interpolatedComponents()
        Text   
-          The @TO InterpolatedIdeal @ can be recovered 
+          The @TO InterpolatedComponent @ can be recovered 
           from its name:
        Example
           bbI.interpolatedComponentByName("c1")   
        Text                    
-          The name of an @TO InterpolatedIdeal @ can be
+          The name of an @TO InterpolatedComponent @ can be
           changed:
        Example
-          bbI.renameComponent("c1","line")
+          bbI.renameInterpolatedComponent("c1","line")
        Text
-          THIS SHOULD BE "renameInterpolatedComponent"
-          
           Sometimes one wants to extract only the interpolated 
           equations of the interpolated ideal:
        Example
@@ -4713,7 +4732,7 @@ doc ///
        Example
           bbI.interpolateComponentAt(pointOnConic,1)
           bbI.interpolatedComponents()
-          bbI.renameComponent("c1","conic")
+          bbI.renameInterpolatedComponent("c2","conic")
           bbI.interpolatedComponents()
        Text
           Notice that the information about the conic component
@@ -4933,7 +4952,7 @@ undocumented {
     withChecks,
     (net,Jet),
     (net,JetSet),
-    (net,InterpolatedIdeal),
+    (net, InterpolatedComponent),
     (net, BlackBoxParameterSpace),  
     setIsZeroAt,      -- internal   
     setJacobianAt,    -- internal   
@@ -4947,7 +4966,6 @@ undocumented {
     checkInputPoint,
     pointPropertiesAsSymbols,
     unknownIsValid,
-    unknowns,
     numTrials,
     pointProperty, -- internal function
     guessAcceptedParameterNumber, -- internal function
@@ -4983,7 +5001,7 @@ undocumented {
     jetSet,
     
     maximalConditions,    
-    "InterpolatedIdeal ? InterpolatedIdeal", -- implemented comparison by name for sorting purposes. probably not a good idea, since the order holds for the names but not for the ideals !!
+    "InterpolatedComponent ? InterpolatedComponent", -- implemented comparison by name for sorting purposes. probably not a good idea, since the order holds for the names but not for the ideals !!
     -- purpose of overriding new from Thing is to disallow arbitrary HashTables as objects
     (NewFromMethod, JetSet, Thing),
     (NewFromMethod, BlackBoxIdeal, Thing),
@@ -4993,10 +5011,12 @@ undocumented {
     (NewFromMethod, BasicJetLengthHeuristic, Thing),
     (NewFromMethod, ConstantInterpolationMonomialDegreeHeuristic, Thing),
     (NewFromMethod, ConstantJetLengthHeuristic, Thing),
-    (NewFromMethod, InterpolatedIdeal, Thing),
+    (NewFromMethod, InterpolatedComponent, Thing),
     (NewFromMethod, InterpolationMonomialDegreeHeuristic, Thing),
     (NewFromMethod, MapHelper, Matrix),
-    transformedAnswer
+    transformedAnswer,       --internal
+    createInterpolatedIdeal, --internal
+    --deduceNumGenerators      --internal
 } 
 
 
@@ -5139,7 +5159,7 @@ JetInfoAt
 -- we could do precision Jet and then check  first "jetLength", then 'precision ring jet'.
 
 
-InterpolatedIdeal: parent is JetSet
+InterpolatedComponent: parent is JetSet
 
 Jet: parent is Point ? (or black box and point)
 

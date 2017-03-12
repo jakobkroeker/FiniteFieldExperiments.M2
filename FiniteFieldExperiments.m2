@@ -76,7 +76,7 @@ FiniteFieldExperimentsProtect = ()->
     protect begin;
     protect count;
     protect countinfo;
-    protect point;
+    --protect point;
     --protect collectedCount;
     protect pointKeys; 
     --protect points;
@@ -140,6 +140,7 @@ FiniteFieldExperimentsProtect = ()->
 
 FiniteFieldExperimentsExport  = ()->
 (
+    exportMutable("getPoint");
     exportMutable("reset");
     exportMutable("setPosition");
     exportMutable("setPoint");
@@ -160,8 +161,7 @@ FiniteFieldExperimentsExport  = ()->
     exportMutable("next");
     exportMutable("begin");
     exportMutable("count");
-    exportMutable("countinfo");
-    exportMutable("point");
+    exportMutable("countinfo");    
     exportMutable("collectedCount");
     exportMutable("pointKeys");
     exportMutable("points");
@@ -232,7 +232,6 @@ createExperimentData,      --internal, only used for IO
 createRandomPointIterator, --document in random point iterator, later.
 begin,                     --document in random point iterator, later.
 next,                      --document in random point iterator, later.
-point,                     --document in random point iterator, later.
 points,                        --a list of all points not sorted into list. 
                                --not used anymore since tryProperty has
                                --been implemented
@@ -500,21 +499,21 @@ pointsWithProperties = richPoints;
 
 
 -------------------------------------------
-
-createPointData = (pBlackBox, point)->
-(
-    blackBox := pBlackBox;
-    p := new MutableHashTable;
-    p.point = point;
+-- unused/deprecated:
+--createPointData = (pBlackBox, point)->
+--(
+--    blackBox := pBlackBox;
+--    p := new MutableHashTable;
+--    p.point = point;
     
-    localIsCertainlySingularAt := null;
-    p.isCertainlySingularAt = ()->
-    (
-        if (localIsCertainlySingularAt=!=null) then return localIsCertainlySingularAt;
-        localIsCertainlySingularAt = blackBox.isCertainlySingularAt(point);
-        return localIsCertainlySingularAt;
-    );
-);
+--    localIsCertainlySingularAt := null;
+--    p.isCertainlySingularAt = ()->
+--    (
+--        if (localIsCertainlySingularAt=!=null) then return localIsCertainlySingularAt;
+--        localIsCertainlySingularAt = blackBox.isCertainlySingularAt(point);
+--        return localIsCertainlySingularAt;
+--    );
+--);
 
 
 new ExperimentData from Ring := (E, coeffRing) -> 
@@ -715,7 +714,7 @@ createRandomPointIterator (Function) := RandomPointIterator =>( weakRandomPointG
         return ri;
     );
 
-    rpi.point = ()-> randomPoint;
+    rpi.getPoint = ()-> randomPoint;
     rpi = new HashTable from rpi;
     rpi = newClass(RandomPointIterator,rpi);
     return rpi;
@@ -742,7 +741,7 @@ TEST ///
     assert(e.trials()>100);
     wrpi.reset();
     assert(wrpi.position()==0);
-    assert(wrpi.point()===null);
+    assert(wrpi.getPoint()===null);
   
 ///
 
@@ -779,7 +778,7 @@ createRandomPointIterator (Ring,ZZ) := HashTable =>( coeffRing,numVariables )->
         return ri;
     );
 
-    rpi.point=()-> randomPoint;
+    rpi.getPoint=()-> randomPoint;
     
     rpi = new HashTable from rpi;
     rpi = newClass(RandomPointIterator,rpi);
@@ -791,12 +790,12 @@ TEST ///
     FiniteFieldExperimentsProtect()
     pointIterator = createRandomPointIterator(ZZ/7, 5)
     pointIterator.next()
-    pointIterator.point()
+    pointIterator.getPoint()
     apply(99, i-> pointIterator.next() )
     assert(pointIterator.position()==100);
     pointIterator.reset();
     assert(pointIterator.position()==0);
-    assert(pointIterator.point()===null);
+    assert(pointIterator.getPoint()===null);
 ///
 
 
@@ -824,10 +823,10 @@ doc ///
            now we are able to generate random points by calling next():
         Example
            pointIterator.next()
-           pointIterator.point()
+           pointIterator.getPoint()
            pointIterator.position()
            pointIterator.next()
-           pointIterator.point()
+           pointIterator.getPoint()
            pointIterator.position()       
 ///
 
@@ -852,10 +851,10 @@ doc ///
            now we are able to generate random points by calling next():
         Example
            pointIterator.next()
-           pointIterator.point()
+           pointIterator.getPoint()
            pointIterator.position()
            pointIterator.next()
-           pointIterator.point()
+           pointIterator.getPoint()
            pointIterator.position()        
 ///
 
@@ -898,7 +897,7 @@ createIterator (List) := PointIterator =>( pPoints )->
         return localPointIterator;
     );
 
-    pIterator.point = ()-> point;
+    pIterator.getPoint = ()-> point;
     pIterator = new HashTable from pIterator;
     pIterator = newClass(PointIterator,pIterator);
     return pIterator;
@@ -924,7 +923,7 @@ doc ///
         Text
            now we are able to iterate over all points:
         Example
-           while  pointIterator.next() do pointIterator.point()
+           while  pointIterator.next() do pointIterator.getPoint()
            pointIterator.next()
 ///
 
@@ -1604,7 +1603,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
         for i in 1..newTrials do
         (
             assert( pPointIterator.next() );
-            runExperimentOnce( experimentData, pPointIterator.point(), pointsPerComponent );
+            runExperimentOnce( experimentData, pPointIterator.getPoint(), pointsPerComponent );
             experimentData.trials =  experiment.trials();
         );
     );
@@ -4097,7 +4096,7 @@ end
 
 --   while ( pointIterator.next() ) do
 --   (
---       runExperimentOnce( experimentData, pointIterator.point(), pointsPerComponent );
+--       runExperimentOnce( experimentData, pointIterator.getPoint(), pointsPerComponent );
 --   );
 --);
 
