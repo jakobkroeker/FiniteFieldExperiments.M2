@@ -345,8 +345,6 @@ liftStep = ( systemData, vanishingCoordinates ) ->
     nextLiftDestRing := ZZ[]/nextchar; 
     localVanishingCoordinates := sub( vanishingCoordinates, nextLiftDestRing );
   
-    systemData.unknowns;
-
     print(" --debug , localVanishingCoordinates: " |toString localVanishingCoordinates);
     print(" --debug , valuesAt: " |toString systemData.valuesAt(localVanishingCoordinates));
     transposedM2JacobianAtSolution := transpose systemData.jacobianAt(localVanishingCoordinates); -- jacobian without degree information

@@ -24,6 +24,7 @@ needsPackage "M2Logging";
 
 
 export { 
+    "assertEx",
     "OnComponentAnswerStrategy",
     "PlainTextSmoothnessInfoWithAnswerPair",
     "NullIfNotSmoothStrategy",
@@ -244,6 +245,34 @@ idealBlackBoxesExport = ()->
     exportMutable("updateBlackBox");
     
 )
+
+assertEx = method();
+assertEx (Boolean, String) := Nothing=>(condition)->
+(
+    assert(condition);
+    return null;
+)
+assertEx (Boolean, String) := Nothing => (condition, errorMessage)->
+(
+    if (not condition) then error (errorMessage);
+    return null;
+)
+TEST ///
+    -- test assertEx
+  
+    assertEx(true, "");
+  
+    try( assertEx(false,"errorMsg") ) then 
+    (
+        assert(false) 
+    )    else
+    (
+        print "test assertEx: error triggered as expected."
+    )
+
+
+///
+
 
 
 --load "./BlackBoxIdeals/Exceptions.m2";
@@ -521,6 +550,7 @@ testTensoredClearCoeffDenominators =()->
     FZ := (entries (gens IFZ)_0)#0;
     assert(   FZ == sub(x*z+3*z,ring FZ)   ) ;       
 )
+
 ------------------------------------------------
 -- END UTILS
 ------------------------------------------------
@@ -1165,7 +1195,8 @@ p1     = matrix{{1,0_kk}}
 
 myValuesAt = (p) -> (  return gens sub(I,p);  );
 
-bb = blackBoxIdealFromEvaluation(2,kk, myValuesAt)
+
+bb = blackBoxIdealFromEvaluation(R, myValuesAt)
 
 jetStats = jetStatsAt(bb,origin,2,10)
 
@@ -1940,7 +1971,7 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
 
             for symb in getPropertySymbols(propertyName) do 
             (
-                assert(symb=!=null);
+                assertEx(symb=!=null, " symbol " | toString symb | "is null for property "  | propertyName);
                 blackBox#symb  = (point)->( (blackBox.pointProperty(propertyName))(point) );
             )
         );
@@ -2318,7 +2349,7 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
     -- attributes()
     --
     -- returns a list of known attributes. 
-    -- (computed as 'keys blackBox which are not Functions' \ {pointPropertiesAsSymbols() }
+    -- (computed as 'keys blackBox which are not Functions'  {pointPropertiesAsSymbols() }
     --
     blackBox.attributes = ()->
     (
@@ -2447,13 +2478,14 @@ blackBoxParameterSpaceInternal(Type, Ring) := HashTable => ( resultType, pRing )
 (
     blackBox := blackBoxParameterSpaceInternal(resultType, #(gens pRing), coefficientRing pRing);
     
+    blackBox#"ring" = pRing;
     blackBox.ring = pRing;
-    blackBox.unknowns = gens blackBox.ring;
-    assert( blackBox.numVariables == #blackBox.unknowns );
+
+    assert( blackBox.numVariables == #( gens blackBox#"ring") );
     
     blackBox.unknownIsValid = (unknown)->
     (
-        if not ( blackBox.ring === ring unknown) then 
+        if not ( blackBox#"ring" === ring unknown) then 
         ( 
             bblog.error( "the unknown is not element of the equations ideal ring" );
             return false;
@@ -2525,7 +2557,6 @@ blackBoxParameterSpace(Ring) := HashTable => ( pRing ) ->
 blackBoxParameterSpace(ZZ, Ring) := BlackBoxParameterSpace => ( numVariables, coeffRing )  ->
 (
     blackBox := blackBoxParameterSpaceInternal(BlackBoxParameterSpace, numVariables, coeffRing );
-    --bb := newClass( BlackBoxParameterSpace, blackBox );
     return blackBox;
 )
 
@@ -2541,10 +2572,10 @@ new BlackBoxIdeal from Ideal := (E, equationsIdeal)->
     
     
     -- maybe blackBox.addProperty( ideal, equationsIdeal)
+    blackBox#"ideal" = equationsIdeal;     
     blackBox.ideal = equationsIdeal;      
     
-    -- maybe blackBox.addProperty( equations, gens equationsIdeal )
-    blackBox.equations =  gens  equationsIdeal; 
+   
     
     
     -- registering valuesAt generates 'isZeroAt' and 'jacobianAt', too !  
@@ -2613,8 +2644,7 @@ testBlackBoxIdeal=()->
     IFPBlackBox := blackBoxIdeal( IFP );
     point := matrix {{3}};
     rng13 := ZZ/13;
-    assert( IFPBlackBox.unknowns=={x} );
-    assert( IFPBlackBox.equations==gens IFP);
+ 
     assert( IFPBlackBox.jacobian== jacobian IFP);
 
     jac := null;
@@ -2652,28 +2682,6 @@ testBlackBoxIdeal=()->
 
 blackBoxIdealFromEvaluation = method();
 
-blackBoxIdealFromEvaluation(ZZ, Ring, Function) := HashTable => ( numVariables, coeffRing, pValuesAt )  ->
-(    
-    blackBox := blackBoxParameterSpaceInternal( BlackBoxIdeal, numVariables, coeffRing );
-
-    --sets isZeroAt, jacobianAt, rankJacobianAt and numGenerators
-    blackBox.registerPointProperty ("valuesAt", (bb,point)->pValuesAt(point) ); 
-
-    check := ()->
-    (
-         numVariables :=  blackBox.numVariables;
-
-         point := matrix { apply(numVariables, i-> 0_(blackBox.coefficientRing) ) };
-         blackBox.valuesAt( point );
-         blackBox.isZeroAt( point );
-    );
-
-    check();      
-    
-    --blackBox = newClass( BlackBoxIdeal, blackBox ); 
-    return blackBox ;
-)
-
 
 blackBoxIdealFromEvaluation( Ring, Function ) := HashTable => ( pRing, pValuesAt ) ->
 (
@@ -2691,12 +2699,89 @@ blackBoxIdealFromEvaluation( Ring, Function ) := HashTable => ( pRing, pValuesAt
    );
 
    check(); 
-   --blackBox = newClass( BlackBoxIdeal, blackBox ); 
    return blackBox;
 )
 
+ideal (BlackBoxIdeal) := Ideal =>(bbI)->
+(
+    if (bbI#?"ideal") then
+        return bbI#"ideal";
+    if (bbI#?"ring") then
+    (
+        -- optional todo : we could cache the ideal here, once it is computed,
+        -- but then it gets complicated to assure consistency
+        return  ideal bbI.valuesAt(gens ideal gens bbI#"ring");        
+    );
+    error ("internally no ring is stored");    
+);
 
 
+TEST ///
+   -- test extracting ideal from evaluation
+    x  = symbol x;
+    y  = symbol y;
+
+    RP := ZZ/7[x,y];
+    IFP := ideal ( 3*x^2+1, 5*x-1*y );      
+
+    rank source gens IFP;
+  
+    evaluation := (point)->
+    (
+        return gens sub(IFP, point);
+    );  
+    evalBlackBox := blackBoxIdealFromEvaluation ( RP, evaluation );
+    
+    I = ideal evalBlackBox;
+    
+    assert((gens I)% IFP==0 )
+    assert((gens IFP)% I==0 )
+    
+///
+
+doc ///
+   Key
+        (ideal, BlackBoxIdeal)
+   Headline
+        extracts the ideal from a BlackBoxIdeal object
+   Usage   
+        ideal bbI
+   Inputs  
+        bbI:BlackBoxIdeal
+             a BlackBoxIdeal
+   Outputs
+        : Ideal
+            the corresponding ideal of the black box
+   Description   
+        Text    
+           Extracts an ideal for a black box, if the equations were given explicitly
+           or reconstructs the ideal from an evaluation. 
+        Text
+           Lets start with the simpler example where the ideal equations were given explicitly to the black box:
+        Example
+           K = ZZ/11;
+           R  = K[x,y];
+           I = ideal (x^2-y^2);
+           bbI = new BlackBoxIdeal from I;
+           ideal bbI
+        Text 
+           Now we give an example where the ideal is reconstructed from an evaluation.
+        Text
+           As an example we use the computation of a determinant (see @TO "blackBoxIdealFromEvaluation" @)
+        Text
+           We construct the black box:
+        Example            
+           K = ZZ/11;
+           n = 2;
+           matrixAt = point -> matrix apply(n,i->apply(n,j->point_(i*n+j)_0)) ;             
+           detAt = point -> matrix{{det matrixAt(point)}};
+           R = K[a_(0,0)..a_(n-1,n-1)];
+           bbDet = blackBoxIdealFromEvaluation(R,detAt);
+        Text
+           Now it is possible to extract the explicit equations from the black box (though it is usually not recomended)    
+        Example
+           ideal bbDet
+///
 
 testBlackBoxIdealFromEvaluation = ()->
 (
@@ -2715,11 +2800,12 @@ testBlackBoxIdealFromEvaluation = ()->
     evaluation := blackBoxIdeal( IFP );
     --evaluation := basicBlackBox();
   
-    evalBlackBox := blackBoxIdealFromEvaluation ( # (gens evaluation.ring), coefficientRing evaluation.ring, evaluation.valuesAt );
+    -- deprecated:
+    -- evalBlackBox := blackBoxIdealFromEvaluation ( # (gens evaluation.ring), coefficientRing evaluation.ring, evaluation.valuesAt );
+    evalBlackBox := blackBoxIdealFromEvaluation ( RP, evaluation.valuesAt );
 
     point := matrix {{3_(ZZ/7)}} ;
     assert( evaluation.isZeroAt( point ) );
-    assert( evaluation.unknowns=={x} );
     assert( evaluation.valuesAt( point ) == evalBlackBox.valuesAt( point ) );
     assert( evaluation.jacobianAt( point ) == evalBlackBox.jacobianAt( point ) );
 
@@ -2964,7 +3050,8 @@ TEST ///
         matrix{{det M_{0,1},det M_{0,2},det M_{1,2}}}
         )
 
-    B2 = blackBoxIdealFromEvaluation( 4, ZZ, evalLinePlusConic)
+    R = ZZ[x1,x2,x3,x4]
+    B2 = blackBoxIdealFromEvaluation( R, evalLinePlusConic)
 
     apply(100,i->(
         r = random(K^1,K^4);
@@ -3859,8 +3946,7 @@ doc ///
         Text
           Lets look at these attributes in turn
         Example
-          bbI.coefficientRing
-          bbI.equations
+          bbI.coefficientRing        
           bbI.ideal
           bbI.jacobian
           bbI.numVariables
@@ -3868,8 +3954,6 @@ doc ///
           class bbI
         Text
           The type can also be "BlackBoxParameterSpace"  
-        Example
-          bbI.unknowns
         Text
           Lets now look at a blackBoxIdeal defined by an
           evaluation. The standart example is the determinant
