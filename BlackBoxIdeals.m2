@@ -24,6 +24,12 @@ needsPackage "M2Logging";
 
 
 export { 
+    "SmoothnessTester",
+    "BasicSmoothnessTester",
+    "JetAtCalculator",
+    "BasicJetAtCalculator",
+    "setJetAtCalculator",
+    "setSmoothnessTester",
     "assertEx",
     "OnComponentAnswerStrategy",
     "PlainTextSmoothnessInfoWithAnswerPair",
@@ -35,7 +41,7 @@ export {
     "exceptionIfNotSmooth",
     "smoothnessInfoWithAnswerPair",
     "refineInterpolation",
-    "maximalConditions",
+     
     "monomialBasisSize",
     "basicJetLengthHeuristic",
     "constantJetLengthHeuristic",
@@ -43,6 +49,7 @@ export {
     --"compatible",
     "continueJet",
     "continueJetOrException",
+    "continueJetOrNull",
     "JetLengthHeuristic",
     "ConstantJetLengthHeuristic",
     "BasicJetLengthHeuristic",
@@ -54,7 +61,6 @@ export {
     "jetStatsAt",
     --"locus",
     --"joinJetSets",
-    "firstElem",
     "JetSet",
     "addElement",
     "isDerivedFrom",
@@ -558,12 +564,15 @@ Jet = new Type of HashTable;
 jetObject := method();
 
 -- jetObject.parent is currently black box
+-- issue: probably parent will change in future, but 
+-- we are stuck to 4 parameters to a method in M2, so how to pass the black box (to a BlackBoxJet)?
 
 jetObject( Thing, Thing, Thing, ZZ) := Jet=>(parent, point, value, jetLength)->
 (
       jetObj := new HashTable from { ("value",value),
                                      ("jetLength",jetLength),                                   
                                      ("parent",parent),
+                                     ("blackBox",parent),
                                      ("point",point),
                                    };
     jetObj = newClass (Jet, jetObj);
@@ -596,7 +605,7 @@ TEST ///
     bbI = blackBoxIdeal I;
     point = matrix{{3,6_Fp}}
     bbI.isZeroAt(point)
-    j = jetAt(bbI,point,3)
+    j = bbI.jetAt(point,3)
     assert(length j == 3)
 ///
 
@@ -797,6 +806,16 @@ TEST ///
 
 
 
+
+-- introduce a new type representing a parameter space.
+
+BlackBoxParameterSpace = new Type of  MutableHashTable;
+
+
+
+
+
+
 -- deduceNumGenerators():
 --
 --   for an (ideal) blackbox, determine the number of   generators (or equations). This is possible in case 
@@ -806,7 +825,10 @@ TEST ///
 --        the generators can be determined easily by #(gens ideal I)
 --   todo: what should the user do, if deduceNumGenerators() fails? 
 --
-deduceNumGenerators := (blackBox)->
+
+deduceNumGenerators  = method();
+
+deduceNumGenerators (BlackBoxParameterSpace) := ZZ => (blackBox)->
 (
     bblog.debug(" enter deduceNumGenerators ") ;
 
@@ -852,15 +874,18 @@ deduceNumGenerators := (blackBox)->
 );
 
 
-testDeduceNumGenerators=()->
+testDeduceNumGenerators = ()->
 (
-    blackBoxDummy := new MutableHashTable;
+    x := symbol x;
+    R := ZZ[x];
+    blackBoxDummy := blackBoxParameterSpace(R);
     blackBoxDummy.hasPointProperty = (propertyName)->
     (
         if propertyName==="valuesAt" then return true;
         return false;
     );
-    blackBoxDummy.valuesAt= (point)-> ( return matrix {{1,2,3,4,5}} );
+    
+    blackBoxDummy.valuesAt = (point)-> ( return matrix {{1,2,3,4,5}} );
     
     blackBoxDummy.coefficientRing = ZZ;
     blackBoxDummy.numVariables = 5;
@@ -889,6 +914,8 @@ dropDegreeInfo (Matrix) := Matrix=> (mat)->
 );
 
 
+deduceJacobianAt = method();
+
 -- deduceJacobianAt()
 --
 -- Constructs a jacobian at a point supposing that the blackBox implements evaluation at a point.
@@ -898,7 +925,7 @@ dropDegreeInfo (Matrix) := Matrix=> (mat)->
 -- 
 -- Remark: this stuff is very hard to debug because of the try clauses in the black box.
 --
-deduceJacobianAt = ( blackBox, point )->
+deduceJacobianAt (BlackBoxParameterSpace, Matrix) := ZZ=> ( blackBox, point )->
 (
   
     --valuesAt := null; numGenerators := null;
@@ -962,8 +989,8 @@ testDeduceJacobianAt = ()->
 
     -- ideal of a plane and a line that intersect at the origin
     I := ideal (x*z,y*z);
-
-    blackBoxDummy := new MutableHashTable;
+     
+    blackBoxDummy := blackBoxParameterSpace(R);
 
     point := matrix{{1_R,1_R,0_R}};
 
@@ -1000,18 +1027,8 @@ TEST ///
 ///
 
 
--- introduce a new type representing a parameter space.
-
-BlackBoxParameterSpace = new Type of  MutableHashTable;
-
-
-
 
 -- question: what is a (succeeded) jet of length 1 at a singular point??
-
-
-
-
 
 
 -- jetAtWithInfoResultFunction
@@ -1068,6 +1085,10 @@ jetAtWithInfoResult ( Jet, Nothing ) := HashTable => (bestJet, failedJetLength)-
 
 
 
+
+
+
+
 -- continueJetWithInfo()
 --
 -- Ccontinues a given jet up to a requested jetLength (if possible)
@@ -1077,8 +1098,10 @@ jetAtWithInfoResult ( Jet, Nothing ) := HashTable => (bestJet, failedJetLength)-
 --
 continueJetWithInfo = method();
 
-continueJetWithInfo( BlackBoxParameterSpace, Jet, ZZ ) := HashTable => ( blackBox,  jet, jetLength )  ->
+continueJetWithInfo( Jet, ZZ ) := HashTable => (   jet, jetLength )  ->
 (  
+    blackBox := jet#"blackBox";
+    
     assert ( 0 == blackBox.valuesAt(jet#"value") );
     assert ( jetLength >= 0 );
     assert ( jetLength >= length jet );  
@@ -1195,7 +1218,7 @@ myValuesAt = (p) -> (  return gens sub(I,p);  );
 
 bb = blackBoxIdealFromEvaluation(R, myValuesAt)
 
-jetStats = jetStatsAt(bb,origin,2,10)
+jetStats = bb.jetStatsAt(origin,2,10)
 
 jetsL1 = jetStats#"jetSets"#1
 jetL1 = first jetsL1#"jets"
@@ -1206,7 +1229,7 @@ assert (epsRng#"epsPrecision"==1)
 -- check that we are in R[eps]/eps^2 for precision 1 jet
 assert (ideal epsRng == ideal (first gens last epsRng.baseRings)^2)
 
-jetL2 = jetAt(bb,p1,2)
+jetL2 = bb.jetAt(p1,2)
 valuesL2 =  bb.valuesAt(jetL2#"value")
 assert (0 == valuesL2)
 epsRng = ring valuesL2;
@@ -1214,7 +1237,7 @@ assert (epsRng#"epsPrecision"==2)
 -- check that we are in R[eps]/eps^3 for precision 2 jet
 assert (ideal epsRng == ideal (first gens last epsRng.baseRings)^3)
 
-jetL0 = jetAt(bb,p1,0)
+jetL0 = bb.jetAt(p1,0)
 assert (jetL0#"value" == sub(p1,ring jetL0#"value") )
 
 ///
@@ -1279,7 +1302,7 @@ jetAtWithInfo( BlackBoxParameterSpace, Matrix, ZZ ) := HashTable => ( blackBox, 
         return  jetAtWithInfoResult(localJetObject, failedJetLength);
     );
     
-    return continueJetWithInfo(blackBox, localJetObject, jetLength);
+    return continueJetWithInfo(localJetObject, jetLength);
 );
 
 
@@ -1318,9 +1341,9 @@ jetAtOrException( BlackBoxParameterSpace, Matrix, ZZ) := Jet => ( blackBox,  poi
 --
 continueJetOrException = method();
 
-continueJetOrException( BlackBoxParameterSpace, Jet, ZZ) := Jet => ( blackBox,  jet, jetLength )  ->
+continueJetOrException( Jet, ZZ) := Jet => ( jet, jetLength )  ->
 (
-    jetResult  := continueJetWithInfo ( blackBox,  jet, jetLength);      
+    jetResult  := continueJetWithInfo ( jet, jetLength);      
     
     if (jetResult#"jet"=== null) then 
     (
@@ -1357,10 +1380,10 @@ jetAtOrNull( BlackBoxParameterSpace, Matrix, ZZ) := Jet => ( blackBox,  point, j
 --
 --
 continueJetOrNull = method();
-continueJetOrNull( BlackBoxParameterSpace, Jet, ZZ) := Jet => ( blackBox,  jet, jetLength )  ->
+continueJetOrNull( Jet, ZZ) := Jet => (  jet, jetLength )  ->
 (
     
-    jetResult  := continueJetWithInfo ( blackBox,  jet, jetLength);      
+    jetResult  := continueJetWithInfo (  jet, jetLength);      
     
     return jetResult#"jet";
 );
@@ -1447,35 +1470,133 @@ jetStatsAt( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := HashTable => ( blackBox, 
 );
 
 
---
---
---
-isCertainlySingularAt = method();
-isCertainlySingularAt( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials ) ->
+JetAtCalculator = new Type of  HashTable;
+BasicJetAtCalculator = new Type of  JetAtCalculator; 
+
+basicJetAtCalculator = ()->
 (
-    if ( numTrials<1 ) then error "isCertainlySingularAt: expected numTrials >=1 ";
+    jetAtCalculator := new MutableHashTable;
     
-    for i in 1..numTrials do
-    (
-        jetOrError := catch jetAt( blackBox,  point, jetLength);
-        if isDerivedFrom(jetOrError,SingularPointException) then 
-        (
-            return true;
-        );
-        if not isDerivedFrom(jetOrError, Jet) then 
-        (
-            throw jetOrError; -- it is a different error 
-        );
-    );
-    return false;
+    jetAtCalculator#"jetAt" = jetAt;
+    jetAtCalculator#"jetAtOrNull" = jetAtOrNull;
+    jetAtCalculator#"jetAtOrException" = jetAtOrException;
+    
+    jetAtCalculator#"continueJet" = continueJet;
+    jetAtCalculator#"continueJetOrException" = continueJetOrException;
+    jetAtCalculator#"continueJetOrNull" = continueJetOrNull;
+
+    jetAtCalculator#"jetAtWithInfo" = jetAtWithInfo;
+    jetAtCalculator#"continueJetWithInfo" = continueJetWithInfo;
+    
+    jetAtCalculator#"jetStatsAt" = jetStatsAt;
+    
+    
+    jetAtCalculator.jetAt = jetAt;
+    jetAtCalculator.jetAtOrNull = jetAtOrNull;
+    jetAtCalculator.jetAtOrException = jetAtOrException;
+    
+    jetAtCalculator.continueJet = continueJet;
+    jetAtCalculator.continueJetOrException = continueJetOrException;
+    jetAtCalculator.continueJetOrNull = continueJetOrNull;
+
+    jetAtCalculator.jetAtWithInfo = jetAtWithInfo;
+    jetAtCalculator.continueJetWithInfo = continueJetWithInfo;
+    
+    jetAtCalculator.jetStatsAt = jetStatsAt;
+    
+    
+    
+    jetAtCalculator = newClass(BasicJetAtCalculator,jetAtCalculator);
+    
+    return jetAtCalculator;    
+)
+
+
+
+
+
+
+SmoothnessTester = new Type of  HashTable;
+
+new SmoothnessTester from Thing := ( E, thing) -> 
+(
+    error "creating SmoothnessTester from  type " | toString E | " not implemented ";
 );
 
+BasicSmoothnessTester = new Type of  HashTable;
 
 
-
-isCertainlySingularAt( BlackBoxParameterSpace, Matrix, HashTable) := MutableHashTable => ( blackBox,  point, options ) ->
+new BasicSmoothnessTester from Thing := ( E, thing) -> 
 (
-    return isCertainlySingularAt(blackBox, point, options.precision, options.numTrials);
+    error "creating BasicSmoothnessTester from  type " | toString E | " not implemented ";
+);
+
+new BasicSmoothnessTester from JetAtCalculator := ( E, jetAtCalculator) -> 
+(
+ 
+    localSmoothnessTester := new MutableHashTable;
+    --
+    --
+    --
+    localSmoothnessTester#"isCertainlySingularAt" = method();
+    localSmoothnessTester#"isCertainlySingularAt"( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := MutableHashTable => ( blackBox,  point, jetLength, numTrials ) ->
+    (
+        if ( numTrials<1 ) then error "isCertainlySingularAt: expected numTrials >=1 ";
+        
+        for i in 1..numTrials do
+        (
+            jetOrError := catch jetAtCalculator.jetAt( blackBox,  point, jetLength);
+            if isDerivedFrom(jetOrError,SingularPointException) then 
+            (
+                return true;
+            );
+            if not isDerivedFrom(jetOrError, Jet) then 
+            (
+                throw jetOrError; -- it is a different error 
+            );
+        );
+        return false;
+    );
+    
+    localSmoothnessTester#"isCertainlySingularAt"( BlackBoxParameterSpace, Matrix, HashTable) := MutableHashTable => ( blackBox,  point, options ) ->
+    (
+        return localSmoothnessTester.isCertainlySingularAt(blackBox, point, options.precision, options.numTrials);
+    );    
+    
+    localSmoothnessTester.isCertainlySingularAt = localSmoothnessTester#"isCertainlySingularAt";
+   
+   
+   
+    localSmoothnessTester#"isProbablySmoothAt"  = method();
+
+
+    localSmoothnessTester#"isProbablySmoothAt" ( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := MutableHashTable  =>
+        ( blackBox,  point, jetLength, numTrials ) ->
+    (
+            return not localSmoothnessTester.isCertainlySingularAt( blackBox,  point,  jetLength, numTrials );
+    );
+    
+    
+    localSmoothnessTester#"isProbablySmoothAt"( BlackBoxParameterSpace, Matrix, HashTable) := MutableHashTable => ( blackBox,  point, options ) ->
+    (
+        return not localSmoothnessTester.isCertainlySingularAt(blackBox, point, options.precision, options.numTrials);
+    );
+    
+    localSmoothnessTester.isProbablySmoothAt =  localSmoothnessTester#"isProbablySmoothAt";
+    
+    
+    localSmoothnessTester#"setJetAtCalculator" = (jetAtCalculatorP)->
+    (
+        jetAtCalculator = jetAtCalculatorP;
+    );
+    
+    localSmoothnessTester.setJetAtCalculator = localSmoothnessTester#"setJetAtCalculator";    
+    
+    localSmoothnessTester = newClass(SmoothnessTester, localSmoothnessTester);
+    
+    
+  
+    return localSmoothnessTester;
 );
 
 
@@ -1500,6 +1621,8 @@ keysWithoutSymbols(HashTable) := List => (bb)->
     );
     return keylistResult;
 )
+
+
 
 
 
@@ -1609,12 +1732,6 @@ net (JetSet) := Net => (jetSet)->
 );
 
  
-maximalConditions = method();
-maximalConditions( JetSet ) := ZZ => (jetSet)->
-(
-    return 1+sum apply(jetSet#"jets", jet->length jet);
-)
-
 
 -- how to hide compatible?
 compatible = method();
@@ -1689,10 +1806,10 @@ TEST ///
     point = matrix{{0_QQ, 0_QQ}};
     point2 = matrix{{0, 1_K}};
     
-    jet =  jetAt(bbI,point,1)
+    jet =  bbI.jetAt(point,1)
     
     --locus jet
-    jet2 =  jetAt(bbI,point,1)   
+    jet2 =  bbI.jetAt(point,1)   
     
     compatible(jet,jet2) 
     
@@ -1705,7 +1822,7 @@ TEST ///
     
     joinJetSets(jetSet,jetSet);    
     
-    jet3 := jetAt(bbI,point2,1)
+    jet3 := bbI.jetAt(point2,1)
     
     try (addElement(jetSet,jet3)) then (error ("adding incompatible jet should fail"))  else()
     
@@ -1774,6 +1891,8 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
     blackBox := new MutableHashTable;
     
     blackBox = newClass(resultType, blackBox);
+    
+    jetAtCalculator := basicJetAtCalculator();
     
     blackBox.withChecks = true;
     
@@ -2007,10 +2126,104 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
         -- parameter is called differently to the symbol 'isZeroAt', otherwise it seems we could get the wrong value...
         setPointProperty("isZeroAt" , pIsZeroAt );
     );
+    
+    
    
-    localJetAt := jetAt;
-    localJetStatsAt := jetStatsAt;
-    localContinueJet := continueJet;
+    
+    
+    smoothnessTester := new BasicSmoothnessTester from jetAtCalculator;
+    
+    
+    connectSmoothnessTester := ()->
+    (
+        localIsCertainlySingularAtWrapper  := ( point )  ->
+        (
+            return smoothnessTester.isCertainlySingularAt( blackBox,  point, singularTestOptions );
+        );
+        print("here");
+        setPointProperty("isCertainlySingularAt" , localIsCertainlySingularAtWrapper );
+
+        
+        localIsProbablySmoothAtWrapper  := ( point )  ->
+        (
+            return not smoothnessTester.isCertainlySingularAt( blackBox,  point, singularTestOptions );
+        );
+        print("here2");
+        setPointProperty("isProbablySmoothAt" , localIsProbablySmoothAtWrapper );
+    );
+    
+    
+    blackBox#"setSmoothnessTester" = (smoothnessTesterP)->
+    (
+        smoothnessTester = smoothnessTesterP;
+        connectSmoothnessTester();
+    );   
+    blackBox.setSmoothnessTester =  blackBox#"setSmoothnessTester";
+    
+    
+    connectJetAtCalculator := ()->
+    (
+        blackBox#"jetAt" = (point, jetLength)->
+        (
+            return jetAtCalculator.jetAt(blackBox, point, jetLength);
+        );
+        blackBox.jetAt = blackBox#"jetAt";     
+        
+        
+        blackBox#"jetAtOrException" = (point, jetLength)->
+        (
+            return jetAtCalculator.jetAtOrException(blackBox, point, jetLength);
+        );
+        blackBox.jetAtOrException = blackBox#"jetAtOrException";     
+        
+        
+        blackBox#"jetAtOrNull" = (point, jetLength)->
+        (
+            return jetAtCalculator.jetAtOrNull(blackBox, point, jetLength);
+        );
+        blackBox.jetAtOrNull = blackBox#"jetAtOrNull";     
+        
+        
+        blackBox#"jetAtWithInfo" = (point, jetLength)->
+        (
+            return jetAtCalculator.jetAtWithInfo(blackBox, point, jetLength);
+        );        
+        blackBox.jetAtWithInfo = blackBox#"jetAtWithInfo";   
+        
+        
+        blackBox#"continueJet" = jetAtCalculator.continueJet;
+        blackBox.continueJet = blackBox#"continueJet";   
+        
+        
+        blackBox#"continueJetOrException" = jetAtCalculator.continueJetOrException;
+        blackBox.continueJetOrException = blackBox#"continueJetOrException"; 
+        
+        
+        blackBox#"continueJetOrNull" =  jetAtCalculator.continueJetOrNull;    
+        blackBox.continueJetOrNull = blackBox#"continueJetOrNull"; 
+        
+        
+        blackBox#"continueJetWithInfo" =jetAtCalculator.continueJetWithInfo;
+        blackBox.continueJetWithInfo = blackBox#"continueJetWithInfo";    
+        
+        
+        blackBox#"jetStatsAt" = (point, jetLength, numTrials)->
+        (
+            return jetAtCalculator.jetStatsAt(blackBox, point, jetLength,numTrials);
+        );
+        blackBox.jetStatsAt = blackBox#"jetStatsAt";    
+    );
+    
+    blackBox#"setJetAtCalculator" = (jetAtCalculatorP)->
+    (
+        jetAtCalculator = jetAtCalculatorP;
+        connectJetAtCalculator();
+        smoothnessTester.setJetAtCalculator(jetAtCalculator); 
+        -- alternatively to 'smoothnessTester.setJetAtCalculator' we pass a 'getJetAtCalculator()'
+        -- to SmoothnessTester constructor (dependency injection?)
+    );     
+    blackBox.setJetAtCalculator = blackBox#"setJetAtCalculator";
+    
     
     -- setJacobianAt():
     -- 
@@ -2034,46 +2247,12 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
         localRankJacobianAt := (  point)->
         (
             return  rank blackBox.jacobianAt(point) ;
-        );
-
-        localIsCertainlySingularAtWrapper  := ( point )  ->
-        (
-            return isCertainlySingularAt( blackBox,  point, singularTestOptions );
-        );
-
-        setPointProperty("isCertainlySingularAt" , localIsCertainlySingularAtWrapper );
-
-        localIsProbablySmoothAtWrapper  := ( point )  ->
-        (
-            return not isCertainlySingularAt( blackBox,  point, singularTestOptions );
-        );
-
-        setPointProperty("isProbablySmoothAt" , localIsProbablySmoothAtWrapper );
-
+        );     
 
         setPointProperty( "rankJacobianAt" , localRankJacobianAt );
-    
-        blackBox#"jetAt" = (point, jetLength)->
-        (
-            return localJetAt(blackBox, point, jetLength);
-        );
         
-        blackBox.jetAt = blackBox#"jetAt";     
-        
-        blackBox#"jetStatsAt" = (point, jetLength)->
-        (
-            return jetStatsAt(blackBox, point, jetLength);
-        );
-        
-        blackBox.jetStatsAt = blackBox#"jetStatsAt";    
-        
-         blackBox#"continueJet" = (jet, jetLength)->
-        (
-            return jetStatsAt(blackBox, jet, jetLength);
-        );
-        
-        blackBox.continueJet = blackBox#"continueJet";    
-        
+        connectJetAtCalculator();
+        connectSmoothnessTester();                   
     );
 
     
@@ -2084,9 +2263,10 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
         (
             localIsCertainlySingularWrapper  := (  point )  ->
             (
-                return isCertainlySingularAt( blackBox,  point, singularTestOptions );
+                return smoothnessTester.isCertainlySingularAt( blackBox,  point, singularTestOptions );
             );
 
+            
             if blackBox.hasPointProperty("isCertainlySingularAt") then 
             (
                 blackBox.updatePointProperty("isCertainlySingularAt", localIsCertainlySingularWrapper)
@@ -2095,11 +2275,14 @@ blackBoxParameterSpaceInternal( Type, ZZ, Ring  ) := HashTable => ( resultType, 
             (
                 blackBox.registerPointProperty("isCertainlySingularAt", localIsCertainlySingularWrapper);
             );
+            
+            
             localIsProbablySmoothWrapper  := (  point )  ->
             (
-                return not isCertainlySingularAt( blackBox,  point, singularTestOptions );
+                return smoothnessTester.isProbablySmoothAt( blackBox,  point, singularTestOptions );
             );
 
+            
             if blackBox.hasPointProperty("isProbablySmoothAt") then 
             (
                 blackBox.updatePointProperty("isProbablySmoothAt", localIsProbablySmoothWrapper)
@@ -3584,7 +3767,7 @@ doc ///
           bbI.isZeroAt(pointNotOnCurve)
           catch bbI.isCertainlySingularAt(pointNotOnCurve)
           wantedJetLength = 1
-          catch jetAt(bbI,pointNotOnCurve,wantedJetLength)
+          catch bbI.jetAt(pointNotOnCurve,wantedJetLength)
     SeeAlso
        setSingularityTestOptions
        jetAt
@@ -3642,7 +3825,7 @@ doc ///
         Text
           We now look for a jet:
         Example
-          j = jetAt(bbI,point,3)
+          j = bbI.jetAt(point,3)
         Text
           The defining equations of the ideal indeed vanish on the jet:
         Example
@@ -3652,9 +3835,9 @@ doc ///
           but not long ones.
         Example
           origin = matrix{{0,0_Fp}}
-          catch jetAt(bbI,origin,1)  
-          catch jetAt(bbI,origin,2)  
-          catch jetAt(bbI,origin,3)  
+          catch bbI.jetAt(origin,1)  
+          catch bbI.jetAt(origin,2)  
+          catch bbI.jetAt(origin,3)  
         Text
           Notice that one has to use the catch/throw mechanism
           to obtain readable error messages. 
@@ -3718,11 +3901,11 @@ doc ///
 doc ///
     Key
         continueJetOrException
-        (continueJetOrException, BlackBoxParameterSpace,Jet,ZZ)
+        (continueJetOrException,Jet,ZZ)
     Headline
         increases the length of a given jet on a variety defined by a black box
     Usage   
-        continueJetOrException(bb,jet,length)
+        continueJetOrException(jet,length)
     Inputs  
         bb: BlackBoxIdeal
              THIS SHOULD NOT BE NECESSARY!
@@ -3761,18 +3944,18 @@ doc ///
         Text
           We now look for a jet:
         Example
-          j = jetAt(bbI,point,3)
+          j = bbI.jetAt(point,3)
         Text
           Now we increase the length of the jet
         Example
-          continueJetOrException(bbI,j,4)
+          continueJetOrException(j,4)
         Text
           At the origin the cuspidal cubic is singular. Short jets can be found,
           but not long ones.
         Example
           origin = matrix{{0,0_Fp}}
-          j = jetAt(bbI,origin,1)  
-          catch continueJetOrException(bbI,j,3)
+          j = bbI.jetAt(origin,1)  
+          catch bbI.continueJetOrException(j,3)
         Text
           Notice that one has to use the catch/throw mechanism
           to obtain readable error messages. 
@@ -3824,16 +4007,16 @@ doc ///
           but not long ones.
         Example
           origin = matrix{{0,0_Fp}}
-          catch jetAt(bbCusp,origin,3)  
+          catch bbCusp.jetAt(origin,3)  
         Text
           Lets check how often this happens:
         Example
-          jetStatsAt(bbCusp,origin,10,5^3)
+          bbCusp.jetStatsAt(origin,10,5^3)
         Text
           Now lets do the same for a node:
         Example
           bbNode = blackBoxIdeal ideal(x*y);
-          jetStatsAt(bbNode,origin,10,5^3)
+          bbNode.jetStatsAt(origin,10,5^3)
         Text
           Notice that the statistics is significantly different
           form the cusp example. Possibly some help in 
@@ -3879,9 +4062,9 @@ doc ///
         Text
           Here are some jets of different length at this point:
         Example
-          j0 = jetAt(bbCusp,pointOnCusp,0)
-          j1 = continueJet(bbCusp,j0,1)      
-          j2 = continueJet(bbCusp,j1,2)
+          j0 = bbCusp.jetAt(pointOnCusp,0)
+          j1 = bbCusp.continueJet(j0,1)      
+          j2 = bbCusp.continueJet(j1,2)
         Text
           indeed:
         Example
@@ -4499,7 +4682,7 @@ doc ///
        Text
           The length of a jet can be increased:
        Example
-          j3 = continueJet(bbI,j,3)    
+          j3 = continueJet(j,3)    
        Text
           Jets can only be reliably created in smooth
           points of a variety (by a variant of Newtons method).
@@ -4522,7 +4705,7 @@ doc ///
           long enough, a longer jet can be found (lying on one
           of the branches at the origin):
        Example        
-          jetStatsAt(bbI,singularPoint,3,200) 
+          bbI.jetStatsAt(singularPoint,3,200) 
     Caveat
     SeeAlso
 ///
@@ -4548,7 +4731,7 @@ doc ///
           Lets make a jet at a smooth point:
        Example
           smoothPoint = matrix{{1,1_K}}
-          j = jetAt(bbCusp,smoothPoint,3)
+          j = bbCusp.jetAt(smoothPoint,3)
        Text
           We now make a JetSet containing one Element:
        Example
@@ -4557,14 +4740,14 @@ doc ///
           We add another jet to this collection:
        Example
           size js
-          addElement(js,jetAt(bbCusp,smoothPoint,3)) 
+          addElement(js,bbCusp.jetAt(smoothPoint,3)) 
           size js
        Text
           Lets now consider a differnent point on 
           the cuspidal cubic:
        Example
           otherSmoothPoint = matrix{{8,4_K}}
-          otherJet = jetAt(bbCusp,otherSmoothPoint,3)
+          otherJet = bbCusp.jetAt(otherSmoothPoint,3)
        Text
           This jet can not be added to our JetSet, because
           the jet starts at a different point.
@@ -4602,9 +4785,9 @@ doc ///
           We collect some jets starting at this point
           in a JetSet:
         Example
-          js = new JetSet from jetAt(bbCusp,smoothPoint,2)
+          js = new JetSet from bbCusp.jetAt(smoothPoint,2)
           size js
-          addElement(js,jetAt(bbCusp,smoothPoint,2))
+          addElement(js, bbCusp.jetAt(smoothPoint,2))
           size js
  ///
  
@@ -4638,7 +4821,7 @@ doc ///
           Lets make a jet at a smooth point:
        Example
           smoothPoint = matrix{{1,1_K}}
-          j = jetAt(bbCusp,smoothPoint,3)
+          j = bbCusp.jetAt(smoothPoint,3)
        Text
           We now make a JetSet containing one Element:
        Example
@@ -4647,7 +4830,7 @@ doc ///
           We add another jet to this collection:
        Example
           size js
-          addElement(js,jetAt(bbCusp,smoothPoint,3)) 
+          addElement(js,bbCusp.jetAt(smoothPoint,3)) 
           size js
     Caveat
     SeeAlso
@@ -4828,7 +5011,7 @@ TEST ///
 
     bb.valuesAt(P)
     bb.isZeroAt(P)
-    jetAt(bb,P,1)
+    bb.jetAt(P,1)
 ///
 
 TEST ///
@@ -4920,14 +5103,14 @@ TEST ///
     point = matrix{{1_QQ, 1_QQ}};
 
     -- not on black box throws error
-    jetOrError = catch jetAt(bbI,point,1)
+    jetOrError = catch bbI.jetAt(point,1)
     assert (class jetOrError === PointNotOnBlackBox)
     
     point = matrix{{0_QQ, 0_QQ}};
-    jet =  jetAt(bbI,point,1)    
+    jet =  bbI.jetAt(point,1)    
     assert(jet =!= null)
     assert(length jet == 1)
-    jet =  jetAt(bbI,point,0)
+    jet =  bbI.jetAt(point,0)
     assert(length jet == 0)
 ///
 
@@ -4942,8 +5125,8 @@ TEST ///
 -- at least there should be a comment note inside this package.
 -- 
 undocumented { 
-    (isCertainlySingularAt, BlackBoxParameterSpace,Matrix,HashTable),
-    (isCertainlySingularAt, BlackBoxParameterSpace, Matrix, ZZ, ZZ),
+    --(isCertainlySingularAt, BlackBoxParameterSpace,Matrix,HashTable),
+    --(isCertainlySingularAt, BlackBoxParameterSpace, Matrix, ZZ, ZZ),
     setJetLengthHeuristic,
     setMonomialDegreeHeuristic,
     setName,   
@@ -5000,7 +5183,7 @@ undocumented {
     componentNamesInUse,
     jetSet,
     
-    maximalConditions,    
+   
     "InterpolatedComponent ? InterpolatedComponent", -- implemented comparison by name for sorting purposes. probably not a good idea, since the order holds for the names but not for the ideals !!
     -- purpose of overriding new from Thing is to disallow arbitrary HashTables as objects
     (NewFromMethod, JetSet, Thing),
@@ -5014,9 +5197,16 @@ undocumented {
     (NewFromMethod, InterpolatedComponent, Thing),
     (NewFromMethod, InterpolationMonomialDegreeHeuristic, Thing),
     (NewFromMethod, MapHelper, Matrix),
+    (NewFromMethod, BasicJetAtCalculator, Thing),
+    (NewFromMethod, JetAtCalculator, Thing),
+    (NewFromMethod, BasicSmoothnessTester, Thing),
+    (NewFromMethod, SmoothnessTester, Thing),
     transformedAnswer,       --internal
     createInterpolatedIdeal, --internal
-    --deduceNumGenerators      --internal
+    (deduceNumGenerators,BlackBoxParameterSpace),      --internal
+    (deduceJacobianAt, BlackBoxParameterSpace, Matrix),
+    renameComponent,
+    
 } 
 
 
@@ -5073,16 +5263,7 @@ Symbol ? String := (str,symb)->
 --
 --
 
--- jetAtWrapper currently deprecated !
--- options makes more sense for trials (=1)
-jetAtWrapper = method( Options=>{"jetLength" =>4, "trials"=>5} );
-
-jetAtWrapper( BlackBoxParameterSpace, Matrix )  := MutableHashTable => opts -> ( blackBox,  point )  ->
-(
-    return jetAt( blackBox,  point, opts#"jetLenth", opts#"trials");
-);
-
-
+ 
 
 -- need test for randomIterator (for fixed error : to less trials  )
 --@TO2{jetAt,"jet"}@ computations at a point independently of the ideal representation. \break \break 
@@ -5164,6 +5345,12 @@ InterpolatedComponent: parent is JetSet
 Jet: parent is Point ? (or black box and point)
 
 
+maximalConditions = method();
+maximalConditions( JetSet ) := ZZ => (jetSet)->
+(
+    return 1+sum apply(jetSet#"jets", jet->length jet);
+)
+
 
 
 worstJetAt = method();
@@ -5215,7 +5402,4 @@ bestJetAt( BlackBoxParameterSpace, Matrix, ZZ, ZZ) := Jet  => ( blackBox,  point
     );
     return bestJet;
 );
---locus  (JetSet) := Thing => (jetSet )->
---(
---    return locus firstElem jetSet;
---);
+
