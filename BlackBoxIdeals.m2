@@ -4702,6 +4702,10 @@ doc ///
           line = ideal (x,y);
           conic = ideal (w,x^2+y^2-z^2);
           bbI = blackBoxIdeal intersect(line,conic);
+       Text 
+          To get reproducible results we set the random seed:
+       Example
+          setRandomSeed(42); 
        Text
           Consider the following two points:
        Example
