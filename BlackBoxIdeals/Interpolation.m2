@@ -8,6 +8,9 @@ BlackBoxInterpolator = new Type of HashTable;
 
 OnComponentAnswerStrategy = new Type of HashTable;
 
+
+
+
 NullIfNotSmooth = new Type of OnComponentAnswerStrategy;
 ExceptionIfNotSmooth = new Type of OnComponentAnswerStrategy;
 SmoothnessInfoWithAnswerPair = new Type of OnComponentAnswerStrategy;
@@ -228,16 +231,10 @@ interpolate (Matrix, List) := Ideal => (mons, jetList) ->
     return I;
 )
 
+ 
 
--- interpolateBB()
---
--- find all polynomials of degree smallerEqual than maxDegree containing the component of BB containing the point
--- 
--- this is the most basic simple minded implementation where only one very long jet is considered.
---
-
-createInterpolatedIdeal = method();
-createInterpolatedIdeal( Ideal, ZZ, Thing, BlackBoxParameterSpace ) := InterpolatedComponent => 
+createInterpolatedComponent = method();
+createInterpolatedComponent( Ideal, ZZ, Thing, BlackBoxParameterSpace ) := InterpolatedComponent => 
                        (I,maxDegree, jetset, blackBox)->
 (
 
@@ -297,10 +294,10 @@ createInterpolatedIdeal( Ideal, ZZ, Thing, BlackBoxParameterSpace ) := Interpola
     return result;
 );
 
-createInterpolatedIdeal( Ideal, ZZ, String ) := InterpolatedComponent => 
+createInterpolatedComponent( Ideal, ZZ, String ) := InterpolatedComponent => 
                        (I,maxDegree,  description)->
 (
-    return createInterpolatedIdeal (I,maxDegree, null, description);
+    return createInterpolatedComponent (I,maxDegree, null, description);
 );
 
 ideal ( InterpolatedComponent) := Ideal => (ii)->
@@ -315,8 +312,8 @@ TEST ///
     I = ideal (x*y)
     bb = new BlackBoxIdeal from I
     p = matrix {{1,0_QQ}}
-    jetset = new JetSet from jetAt(bb,p,1)
-    II = createInterpolatedIdeal(I, 1, jetset, bb)
+    jetset = new JetSet from bb.jetAt(p,1)
+    II = createInterpolatedComponent(I, 1, jetset, bb)
     ideal II 
 ///
 
@@ -758,9 +755,14 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
                 localAnswerStrategy = plainTextSmoothnessInfoWithAnswerPair();
         );
     );
+    
     simpleInterpolator.onComponentAnswerStrategies = ()->
     ( 
-        return {NullIfNotSmooth,ExceptionIfNotSmooth,SmoothnessInfoWithAnswerPair,PlainTextSmoothnessInfoWithAnswerPair};
+        return {    NullIfNotSmooth,
+                    ExceptionIfNotSmooth,
+                    SmoothnessInfoWithAnswerPair,
+                    PlainTextSmoothnessInfoWithAnswerPair
+                };
     );
     
     simpleInterpolator.setOnComponentAnswerStrategy (OnComponentAnswerStrategy) := Nothing ->(answerStrategy)->
@@ -991,56 +993,24 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
     (
         if (sub( componentIdeal,point)!=0) then return false;
         
-        bblog.debug ("enter simpleInterpolator.sameComponentAt");
         if not (jets#?point) then
         (        
             -- we have no cached jets for the given point => compute jets
-            jets#point = jetAtOrNull( blackBox ,point, sameComponentPrecisionParam);                        
+            jets#point = blackBox.jetAt( point, sameComponentPrecisionParam);                        
             -- here we could also update statistic if the jet succeeded or not...
         );
-        jetP := jets#point;  
-        
-        if (jetP === null) then
-        (
-            bblog.debug ("leave 1 simpleInterpolator.sameComponentAt");
-            errorMessage:= {"errorMessage"=>"jets not succeeded. Point "|  toString point | "is not smooth?";};
-            throw new SingularPointException from errorMessage
-        );
-
-        if jetP#"jetLength" < sameComponentPrecisionParam then 
+       
+        if length jets#point  < sameComponentPrecisionParam then 
         (
             -- we have cashed jets, but they are too short.. => compute jets of requested length
             -- improvement/optimisation: start from existing jet and enlarge it.
-            jets#point = continueJet( blackBox ,jetP, sameComponentPrecisionParam);
-            jetP = jets#point;  
+            jets#point = blackBox.continueJet( jets#point, sameComponentPrecisionParam);
         );
-
-        --if jetP#"succeeded" then 
-        if (jetP =!= null) then
-        (
-            -- check if the point is on the component or not
-            -- print "succeeded";            
-            -- testing throw new SingularPointException from {"errorMessage"=>"jets not succeeded. Point is not smooth?";};
-            bblog.debug ("leave 3 simpleInterpolator.sameComponentAt");
-            bblog.debug ("sub( componentIdeal, jetP#'value' ) = " | toString ( componentIdeal, jetP#"value" ) );
-            
-            -- cut jet  to asked precision:
-            bblog.debug (" jetP.value = " | toString  jetP#"value" );
-            bblog.debug (" ring jetP.value = " | toString  ring jetP#"value" );
-           
-            destEpsRng := getEpsRing(coefficientRing ring jetP#"value", sameComponentPrecisionParam);
-            truncatedJetValue := sub( jetP#"value", destEpsRng );
-            
-            
-            --return (0 == sub( componentIdeal, jetP#"value" ));
-            return (0 == sub( componentIdeal, truncatedJetValue ));
-        )
-        else
-        (
-            bblog.debug ("leave 2 simpleInterpolator.sameComponentAt");
-            throw new SingularPointException from {"errorMessage"=>"jets not succeeded. Point is not smooth?";};
-        );
-
+        jetP := jets#point;
+        
+        destEpsRng := getEpsRing(coefficientRing ring jetP#"value", sameComponentPrecisionParam);
+        truncatedJetValue := sub( jetP#"value", destEpsRng );                    
+        return (0 == sub( componentIdeal, truncatedJetValue ));
     );
         
     -- TODO: hide sameComponentAt !     
@@ -1099,7 +1069,7 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
         bareIdeal:= interpolate(mons,{jetPimage});
     
         jetSet := new JetSet from jetP;
-        interpolatedIdeal := createInterpolatedIdeal(bareIdeal, monomialMaxDegree, jetSet, blackBox);
+        interpolatedIdeal := createInterpolatedComponent(bareIdeal, monomialMaxDegree, jetSet, blackBox);
         return interpolatedIdeal;
     );
 
@@ -1717,7 +1687,7 @@ doc ///
             and a jet of lenght 3 starting at this point and
             lying on the variety described by the black box ideal
         Example
-            j = jetAt(bb,point,4)     
+            j = bb.jetAt(point,4)     
         Text
             \break
             Now find linear polynomials containing this jet:
@@ -1732,7 +1702,6 @@ doc ///
        number of monomials). This is done by @TO interpolateAt @. 
    SeeAlso
        interpolateAt
-       createInterpolatedIdeal
 ///
 
 
@@ -1795,5 +1764,5 @@ doc ///
         time is used when producing the jets)
     SeeAlso
         interpolate
-        createInterpolatedIdeal    
+        createInterpolatedComponent    
 ///
