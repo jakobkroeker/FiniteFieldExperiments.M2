@@ -115,7 +115,7 @@ idealBlackBoxesProtect = ()->
     protect withChecks;
     protect enableChecks;
     protect disableChecks;
-    protect interpolateComponents;
+ 
     protect jacobianAt;
     protect rankJacobianAt;
     protect valuesAt;
@@ -206,7 +206,7 @@ idealBlackBoxesExport = ()->
     exportMutable("disableChecks");
     exportMutable("withChecks");  
    
-    exportMutable("interpolateComponents");
+ 
  
     exportMutable("eps");
     exportMutable("jacobianAt");
