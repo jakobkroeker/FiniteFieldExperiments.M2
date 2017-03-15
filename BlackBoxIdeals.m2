@@ -115,7 +115,6 @@ idealBlackBoxesProtect = ()->
     protect withChecks;
     protect enableChecks;
     protect disableChecks;
- 
     protect jacobianAt;
     protect rankJacobianAt;
     protect valuesAt;
@@ -162,9 +161,9 @@ idealBlackBoxesExport = ()->
     exportMutable("interpolateComponentAt");
     exportMutable("interpolateComponentsAt");
     exportMutable("interpolatedComponentsAt");
-    exportMutable("interpolatedComponents");
     exportMutable("interpolatedComponentNames");
-    exportMutable("interpolatedComponentByName");        
+    exportMutable("interpolatedComponentByName");
+    exportMutable("interpolatedComponents");        
     --exportMutable("reset");
     exportMutable("setOnComponentPrecision");
     exportMutable("resetInterpolation");
@@ -205,8 +204,6 @@ idealBlackBoxesExport = ()->
     exportMutable("enableChecks");
     exportMutable("disableChecks");
     exportMutable("withChecks");  
-   
- 
  
     exportMutable("eps");
     exportMutable("jacobianAt");
@@ -3461,9 +3458,7 @@ doc ///
             can be found. For a quick start look at the ?????-Tutorial.
 
     Caveat
-            Currently adding properties to the blackBox with more than one parameter (point) is not implemented (e.g. jet computation ). \break
-            Also not done yet is the implementation of the {\tt Observable } interface for the various black boxes ({\tt FiniteFieldExperiment } which will be  {\tt Observers }) \break
-            Finally, the package is probably not threadsafe.
+            The package is probably not threadsafe.
          
          
 ///
@@ -4697,7 +4692,7 @@ doc ///
           As an example consider the union of a line and
           a plane conic in IP^3:      
        Example
-          K = ZZ/7
+          K = ZZ/101
           R = K[x,y,z,w]      
           line = ideal (x,y);
           conic = ideal (w,x^2+y^2-z^2);
@@ -4805,8 +4800,6 @@ doc ///
        Example
           bbI.interpolatedComponentNamesAt(pointOnLineAndPlane)
        Text
-          THIS DOES NOT WORK AS EXPECTED!!! 
-          
           Even though we did not need the conic equation
           for the classification of points, lets still
           recover it for the sake of completeness
@@ -5055,8 +5048,26 @@ undocumented {
     smoothnessInfoWithAnswerPair,
     plainTextSmoothnessInfoWithAnswerPair,
     (monomialBasisSize ,ZZ, ZZ , Ring),
-    (createInterpolatedComponent),
-    "createInterpolatedComponent"
+    componentByName,
+    componentNames,
+    componentNamesAt,
+    componentsAt,
+    JetAtCalculator,
+    MapHelper,
+    SmoothnessTester,
+    createInterpolatedComponent,
+    isDerivedFrom,
+    monomialBasisSize,
+    setBlackBoxLogLevel,
+    continueJetWithInfo,
+    jetAtWithInfo,
+    onComponentAnswerStrategies,
+    onComponentAnswerStrategy,
+    setOnComponentAnswerStrategy,
+    onComponentAnswerStrategy,
+    setInterpolator,
+    setJetAtCalculator,
+    setSmoothnessTester
 } 
 
 
