@@ -5062,7 +5062,6 @@ undocumented {
     continueJetWithInfo,
     jetAtWithInfo,
     onComponentAnswerStrategies,
-    onComponentAnswerStrategy,
     setOnComponentAnswerStrategy,
     onComponentAnswerStrategy,
     setInterpolator,
