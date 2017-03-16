@@ -140,6 +140,7 @@ FiniteFieldExperimentsProtect = ()->
 
 FiniteFieldExperimentsExport  = ()->
 (
+    exportMutable("interpolateComponents");
     exportMutable("getPoint");
     exportMutable("reset");
     exportMutable("setPosition");

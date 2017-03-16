@@ -205,7 +205,7 @@ idealBlackBoxesExport = ()->
     exportMutable("enableChecks");
     exportMutable("disableChecks");
     exportMutable("withChecks");  
-    
+ 
     exportMutable("eps");
     exportMutable("jacobianAt");
     exportMutable("rankJacobianAt");
@@ -5711,7 +5711,6 @@ undocumented {
     continueJetWithInfo,
     jetAtWithInfo,
     onComponentAnswerStrategies,
-    onComponentAnswerStrategy,
     setOnComponentAnswerStrategy,
     onComponentAnswerStrategy,
     setInterpolator,
