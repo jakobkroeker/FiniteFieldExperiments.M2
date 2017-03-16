@@ -5409,10 +5409,12 @@ doc ///
         checks if a point is probably on a given component
     Usage   
         bb.isOnInterplatedComponent(name,point)        
+        bb.isOnInterplatedComponent(interpolatedComponent,point)        
     Inputs 
         bb: BlackBoxIdeal 
         name: String
            of an interpolated component of bb
+        interpolatedComponent: InterpolatedComponent
         point: Matrix
            coordinates of a point in the parameter space of the BlackBoxIdeal
     Outputs
@@ -5464,19 +5466,189 @@ doc ///
           (Usually such
           points are found using a FiniteFieldExperiment):
        Example
-          pointOnLine = matrix{{0,1,1,2_K}}
-          pointOnCubic = matrix{{1,1,1,0_K}}
-          pointOnLineAndPlane = matrix{{0,1,1,0_K}}
+          pointOnLine = matrix{{0,1,1,2_K}};
+          pointOnCubic = matrix{{1,1,1,0_K}};
+          pointOnLineAndPlane = matrix{{0,1,1,0_K}};
           bbI.isZeroAt(pointOnLine)
           bbI.isZeroAt(pointOnCubic)
           bbI.isZeroAt(pointOnLineAndPlane)
        Text
           Lets now recover the linear equation of cuspidal cubic
           via interpolation:
+       Example
+          bbI.interpolateComponentAt(pointOnCubic,1)
+       Text
+          We can now ask, which of our points lie on
+          this component:
+       Example
+          bbI.isOnInterpolatedComponent("c1",pointOnCubic)
+          bbI.isOnInterpolatedComponent("c1",pointOnLine)
+          bbI.isOnInterpolatedComponent("c1",pointOnLineAndPlane)
+       Text
+          The last result is somewhat surprising, since all
+          interpolated equations of "c1" do vanish on
+          the point:
+       Example
+          Ic1 = ideal bbI.interpolatedComponentByName("c1")
+          sub(Ic1,pointOnLineAndPlane)
+       Text
+          The reason for this unexpected (but correct) answer
+          is, that the test is done with jets rather than
+          points.
+          For illustration of the idea we do this
+          explicitly once:
+       Example
+          j = bbI.jetAt(pointOnLineAndPlane,2)
+          sub(Ic1,j)
+       Text
+          We see that the interpolated equation of the
+          second component does NOT vanish on the jet. 
+          Geometrically this is plausible: 
+          
+          The jet 
+          will lie on the variety defined by the BlackBoxIdeal.
+          Since the starting point is smooth and lies
+          on the line, the jet will also lie on the line.
+          One can visualise this as a small curve segment
+          starting at the point and lying on the line. 
+          The plane will intersect the line in the 
+          point, but the jet will stick out of the plane.
+          Therefore the equation of the plane will not
+          vanish on the jet.
+          
+          With this trick one can correctly classify points
+          with high probability as soon as one has ONE equation
+          for each component that contains no other components
+          (but may intersect other components). This
+          can save a lot of time.
+
+          The length of the jet used in this algorithm
+          can be changed:
+       Example
+          bbI.onComponentPrecision()
+          bbI.setOnComponentPrecision(0)
+          bbI.onComponentPrecision()
+       Text
+          Here precision 0 means that we only use points,
+          and precision 1 means that we look also at
+          tangent vectors. 
+          
+          With precision 0 the above trick does not work,
+          and we get a different answer for our point 
+          on the intersection of line and plane
+       Example
+          bbI.isOnInterpolatedComponent("c1",pointOnLineAndPlane)
+       Text
+          Remember that "true" only means "probably on the component"
+          while "false" means "certainly not on the component".
+          
+          If we the point we are interested in is not smooth,
+          the algorithm is not guaranteed to work.
+       Example
+          singularPoint = matrix{{0,0,1,0_K}};   
+          bbI.isCertainlySingularAt(singularPoint)
+          bbI.setOnComponentPrecision(2)
+          catch bbI.isOnInterpolatedComponent("c1",singularPoint)
+       Text
+          !!! At the moment of this writing no Exception was raised !!!
+          If we return to a smaller precision the algorithm 
+          works again, because even in singular points very small
+          jets can be found:
+       Example
+          bbI.setOnComponentPrecision(1)
+          bbI.isOnInterpolatedComponent("c1",singularPoint)
+       Text
+          This should not be seen as feature, but as a
+          weakness of the algorithm. If for example a point
+          is on the intersection of 2 components a
+          length 1 jet can always be found, but in mayority 
+          of cases the algorithm will say that the point
+          is on neither of the two components. Geometrically
+          this makes sense: 
+          
+          Let for example P be a point on the 
+          transversal intersection of two smooth curves. Then
+          the tangent space of the union of the two cures 
+          is the span of the two tangent spaces of each
+          of the individual curves. The algorithm will
+          pic a random tangent vector inside this span,
+          but this will usually not be tangent to 
+          either of the individual curves.
     Caveat
     SeeAlso
        interpolatedComponentsAt
        interpolatedComponentNamesAt
+       onComponentPrecision
+       setOnComponentPrecision
+///
+
+doc ///
+    Key
+        onComponentPrecision
+    Headline
+        the length of the jets used for determining component membership
+    Usage   
+        bb.onComponentPrecision()        
+    Inputs 
+        bb: BlackBoxIdeal 
+    Outputs
+        : ZZ
+           the length of jets used in @TO isOnInterpolatedComponent @
+    Description
+       Text
+          Displays the length of jets currently used
+          in @TO isOnInterpolatedComponent @.
+          
+          For a discussion of how this number influcences
+          the behavior of @TO isOnInterpolatedComponent @,
+          see the end of the documentation of  
+          @TO isOnInterpolatedComponent @.
+       Example
+          K = ZZ/101
+          R = K[x,y,z,w]      
+          bbI = blackBoxIdeal ideal(x,y);
+          bbI.onComponentPrecision()
+          bbI.setOnComponentPrecision(3)
+          bbI.onComponentPrecision()
+    Caveat
+    SeeAlso
+       interpolatedComponentsAt
+       interpolatedComponentNamesAt
+       isOnInterpolatedComponent
+       setOnComponentPrecision
+///
+
+doc ///
+    Key
+        setOnComponentPrecision
+    Headline
+        changes the length of the jets used for determining component membership
+    Usage   
+        bb.setOnComponentPrecision()        
+    Inputs 
+        bb: BlackBoxIdeal 
+    Description
+       Text
+          Changes the length of jets used
+          in @TO isOnInterpolatedComponent @.
+          
+          For a discussion of how this number influcences
+          the behavior of @TO isOnInterpolatedComponent @,
+          see the end of the documentation of  
+          @TO isOnInterpolatedComponent @.
+       Example
+          K = ZZ/101
+          R = K[x,y,z,w]      
+          bbI = blackBoxIdeal ideal(x,y);
+          bbI.onComponentPrecision()
+          bbI.setOnComponentPrecision(3)
+          bbI.onComponentPrecision()
+    Caveat
+    SeeAlso
+       interpolatedComponentsAt
+       interpolatedComponentNamesAt
+       isOnInterpolatedComponent
+       onComponentPrecision
 ///
 
 
