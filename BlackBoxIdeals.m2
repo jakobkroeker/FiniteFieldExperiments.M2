@@ -3427,6 +3427,109 @@ doc ///
 
 doc ///
     Key
+        "Variety of Complexes"
+    Headline
+        use a blackBoxIdeal to study a space of complexes
+    Description
+        Text
+            A black box parameter space is used to implement a parameter spaces
+            with its universal families in a pointwise fashion.
+            A black box ideal is used if in addition the equations
+            of some interesting subvariety of such an parameter space
+            are known.
+            
+            Let us build the parameter space of complexes of the
+            form 
+            
+            $K^1 \to K^2 \to K^2$
+
+            We work in charateristic 5.            
+        Example    
+            K = ZZ/5
+        Text
+            Our complexes will be represented as points
+            in K^6, the first 2 coordinates are the
+            entries of the 1 x 2 matrix (A) and the last
+            4 coordinates are the entries of the 2 x 2 matrix
+            (B).
+        Example
+            testPoint = matrix{{1,2,3,4,5,6_K}};
+            matrixAat = (point) -> matrix{{point_0_0,point_1_0}};
+            matrixAat(testPoint)            
+            matrixBat = (point) -> matrix{{point_2_0,point_3_0},{point_4_0,point_5_0}}
+            matrixBat(testPoint)
+        Text
+            A and B define a complex if AB=0.
+        Example
+            ABat = (point) -> matrixAat(point)*matrixBat(point);
+            ABat(testPoint)
+        Text
+            Notice that the test point does not correspond
+            to a complex. Notice also that ABat defines
+            the equations for the variety of complexes
+            implicitly - i.e. we can evaluate the
+            equations at every point even though no
+            polynomials are given (this is a trivial example.
+            explicit equation could be given easily. But in
+            more involved circumstances an implicit description
+            might be more accessible than a direct one.)
+        
+            Nevertheless, lets now make a BlackBoxIdeal from this 
+            evaluation algorithm. 
+        Example
+            R = K[a_0,a_1,b_0,b_1,b_2,b_3] 
+            bb = blackBoxIdealFromEvaluation(R,ABat);
+        Text
+            The coordinate ring of the ambient space 
+            is given, such that the package nows which
+            variables to use later for interpolation.
+            
+            Lets find some points on the variety of complexes
+            (usually this is done by a FiniteFieldExperiment)
+        Example
+            randomPoints = apply(100,i->random(K^1,K^6));
+            interestingPoints = select(randomPoints,point->0==ABat(point)); 
+            #interestingPoints
+        Text
+            We can now try to find components of the 
+            variety of complexes by interpolation
+            at the found points.
+        Example
+            bb.interpolateComponentsAt(interestingPoints,2)
+        Text
+            Indeed we find two components. One where A=0 and
+            the other one where det B=0 and A is in the kernel
+            of B.
+            
+            From this calculation we do not know wether
+            we found all components. Much more (albeit heuristic)
+            information can be obtained with a FiniteFieldExperiment.
+            See the documentation there for an extented version 
+            of this example.
+            
+            As a check we can 
+            look at the explicit ideal of the variety of
+            complexes and do an irreducible decompositon
+            of this ideal with the usual algorithms:
+        Example
+            I = ideal bb
+            decompose I
+        Text
+            We see, that we had indeed found all components. 
+            
+            The interpolation algorithm excells if one has
+            a quick evaluation procedure for the
+            equations of an ideal, while the explicit
+            equations are long and complicated. 
+            
+            In the case where explicit equations are 
+            used for the interpolation, the interpolation
+            is usually slower that the
+            use of "decompose". 
+///
+
+doc ///
+    Key
         BlackBoxIdeals
     Headline
           black boxes for implicitly given ideals
@@ -3456,7 +3559,8 @@ doc ///
             heuristic estimates on the number and codimension
             of its reduced components can be obtained. If one
             is lucky, even equations for the different components
-            can be found. For a quick start look at the ?????-Tutorial.
+            can be found. For a quick start look at the 
+            @TO "Variety of Complexes" @-tutorial.
 
     Caveat
             The package is probably not threadsafe.
