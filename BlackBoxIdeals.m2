@@ -4194,6 +4194,7 @@ doc ///
     Key
         "attributes"
         "numVariables"
+        "numGenerators"
     Headline
         list the attributes of a black box 
     Usage   
@@ -5423,8 +5424,10 @@ doc ///
        Text
           If this function returns "true" it is probable,
           but not certain that it contains the point. If it
-          returns "false" the point is guaranteed 
-          not to contain the point. 
+          returns "false" it is certain that the point is
+          either not on the component or that the point is singular
+          on the variety defined by the BlackBoxIdeal. The second
+          case can also occur if not Exception is raised. 
           
           Notice that the test wether some point is on 
           a component uses not only the interpolated equations,
@@ -5540,9 +5543,9 @@ doc ///
           bbI.isOnInterpolatedComponent("c1",pointOnLineAndPlane)
        Text
           Remember that "true" only means "probably on the component"
-          while "false" means "certainly not on the component".
+          while "false" means "not on the component or not smooth".
           
-          If we the point we are interested in is not smooth,
+          If the point we are interested in is not smooth,
           the algorithm is not guaranteed to work.
        Example
           singularPoint = matrix{{0,0,1,0_K}};   
@@ -5551,6 +5554,7 @@ doc ///
           catch bbI.isOnInterpolatedComponent("c1",singularPoint)
        Text
           !!! At the moment of this writing no Exception was raised !!!
+ 
           If we return to a smaller precision the algorithm 
           works again, because even in singular points very small
           jets can be found:
@@ -5581,6 +5585,7 @@ doc ///
        onComponentPrecision
        setOnComponentPrecision
 ///
+
 
 doc ///
     Key
@@ -5649,6 +5654,150 @@ doc ///
        interpolatedComponentNamesAt
        isOnInterpolatedComponent
        onComponentPrecision
+///
+
+doc ///
+    Key
+        renameInterpolatedComponent
+    Headline
+        changes the name of an interpolated component
+    Usage   
+        bb.renameInterpolatedComponent(oldName,newName)        
+    Inputs 
+        bb: BlackBoxIdeal 
+        oldName: String
+           the current name of an interpolated component
+        newName: String
+           the new name of this interpolated component
+    Description
+       Text
+          Every interpolated component of a variety
+          defined by a BlackBoxIdeal is automatically
+          given a name "cxxx" with "xxx" a number.
+          
+          Sometimes it is useful to change these
+          generic names to something more readable         
+          
+          Consider for example the union of a plane conic
+          an a line in IP^3:
+       Example
+          K = ZZ/101
+          R = K[x,y,z,w]      
+          line = ideal (x,y);
+          conic = ideal (w,x^2+y^2-x*z);
+          bbI = blackBoxIdeal intersect(line,conic);
+       Text
+          We pick some points:
+       Example
+          pointOnLine = matrix{{0,0,1,2_K}}
+          pointOnConic = matrix{{1,1,2,0_K}}
+          bbI.isZeroAt(pointOnLine)
+          bbI.isZeroAt(pointOnConic)
+       Text
+          Lets now recover the linear equations of the components
+          via interpolation:
+       Example   
+          bbI.interpolateComponentsAt({pointOnLine,pointOnConic},2)
+       Text
+          We can now look at the list of names and change one of them
+       Example
+          bbI.interpolatedComponentNames()
+          bbI.renameInterpolatedComponent("c2","conic")
+          bbI.interpolatedComponentNames()
+          bbI.interpolatedComponentByName("conic")
+    SeeAlso
+      interpolatedComponentNames
+///
+
+doc ///
+    Key
+        resetInterpolation
+    Headline
+        erases all interpolated components
+    Usage   
+        bb.resetInterpolation()      
+    Inputs 
+        bb: BlackBoxIdeal 
+    Description
+       Text
+          Sometimes one wants to restart the interpolation
+          process from scratch (for example when testing
+          code)
+      
+          Consider for example the union of a plane conic
+          an a line in IP^3:
+       Example
+          K = ZZ/101
+          R = K[x,y,z,w]      
+          line = ideal (x,y);
+          conic = ideal (w,x^2+y^2-x*z);
+          bbI = blackBoxIdeal intersect(line,conic);
+       Text
+          We pick some points:
+       Example
+          pointOnLine = matrix{{0,0,1,2_K}}
+          pointOnConic = matrix{{1,1,2,0_K}}
+          bbI.isZeroAt(pointOnLine)
+          bbI.isZeroAt(pointOnConic)
+       Text
+          Lets now start the interpolation:
+       Example   
+          bbI.interpolatedComponentNames()
+          bbI.interpolateComponentsAt({pointOnLine,pointOnConic},1)
+          bbI.interpolatedComponentNames()
+       Text
+          Now erase the results:
+       Example
+          bbI.interpolatedComponentNames()
+          bbI.resetInterpolation()
+          bbI.interpolatedComponentNames()
+          bbI.interpolatedComponents()
+///
+
+doc ///
+    Key
+        refineInterpolation
+    Headline
+        increases the maximal interpolation degree for all interpolated components
+    Usage   
+        bb.refineInterpolation()      
+    Inputs 
+        bb: BlackBoxIdeal 
+    Description
+       Text
+          Often it is useful to do the interpolation
+          degree by degree. (for example until a classification of
+          points into irreducible components becomes
+          possible.). 
+      
+          Consider for example the union of a plane conic
+          an a line in IP^3:
+       Example
+          K = ZZ/101
+          R = K[x,y,z,w]      
+          line = ideal (x,y);
+          conic = ideal (w,x^2+y^2-x*z);
+          bbI = blackBoxIdeal intersect(line,conic);
+       Text
+          We pick some points:
+       Example
+          pointOnLine = matrix{{0,0,1,2_K}};
+          pointOnConic = matrix{{1,1,2,0_K}};
+          bbI.isZeroAt(pointOnLine)
+          bbI.isZeroAt(pointOnConic)
+       Text
+          Lets now start the interpolation:
+       Example   
+          bbI.interpolateComponentsAt({pointOnLine,pointOnConic},1)
+       Text
+          Notice that "maxdegree" is 1 for both interpolated compoenents.
+          
+          Now increase the degree of interpolated equations:
+       Example
+          bbI.refineInterpolation()
+          bbI.resetInterpolation()
+       Text
+          Notice that "maxdegree" is now 2 for both interpolated components.
 ///
 
 
