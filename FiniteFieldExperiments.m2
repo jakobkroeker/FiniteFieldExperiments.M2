@@ -38,7 +38,7 @@ export {
   "observedValue",
   "realizedValue",
   "realizedProperty",
-  "realizedPointProperties",
+  "pointPropertyTupleValues",
   "interpolatedIdeals",
   "bareIdeals",
   "estimateDecomposition", 
@@ -87,6 +87,7 @@ FiniteFieldExperimentsProtect = ()->
 
     protect coefficientRingCardinality;
     protect pointLists;
+    protect pointsByPropertyValues;
     protect pointsByKey;
     protect countData;
     protect setIsInteresting;
@@ -140,6 +141,8 @@ FiniteFieldExperimentsProtect = ()->
 
 FiniteFieldExperimentsExport  = ()->
 (
+    exportMutable("observedPropertyTuples");
+    exportMutable("observedPropertyTuple");
     exportMutable("interpolateComponents");
     exportMutable("getPoint");
     exportMutable("reset");
@@ -173,6 +176,7 @@ FiniteFieldExperimentsExport  = ()->
 
     exportMutable("coefficientRingCardinality");
     exportMutable("pointLists");
+    exportMutable("pointsByPropertyValues");
     exportMutable("pointsByKey");
 
     exportMutable("countData");
@@ -397,64 +401,23 @@ new PointData from HashTable := (ancestorType, pointData)->(
 
 
 --------------------------------------------------------------------------------------------------------------
----- observedValues, realizedValues realizedProperties and realizedPointProperties do the same. Choose the preferred naming!
+---- observedValues, realizedValues realizedProperties and pointPropertyTupleValues do the same. Choose the preferred naming!
 --------------------------------------------------------------------------------------------------------------
-observedValues = method();
-observedValues (Experiment) := Thing => (experiment)->
+
+observedPropertyTuples = method();
+observedPropertyTuples (Experiment) := Thing => (experiment)->
 (
-    return experiment.observedValues();
-);
-
-
-realizedValues = method();
-realizedValues (Experiment) := Thing => (experiment)->
-(
-    return experiment.realizedValues();
-);
-
-
-realizedProperties = method();
-realizedProperties (Experiment) := Thing => (experiment)->
-(
-    return experiment.realizedProperties();
-);
-
-
-realizedPointProperties = method();
-realizedPointProperties (Experiment) := Thing => (experiment)->
-(
-    return experiment.realizedPointProperties();
+    return experiment.observedPropertyTuples();
 );
 
 --------------------------------------------------------------------------------------------------------------
----- realizedValue, realizedProperty realizedPointProperty do the same. Choose the preferred naming 
+---- realizedValue, realizedProperty realizedPointProperty , observedPropertyTuple do the same. Choose the preferred naming 
 --------------------------------------------------------------------------------------------------------------
-realizedValue = method();
-realizedValue (Experiment,ZZ) := Thing => (experiment,pos)->
+observedPropertyTuple = method();
+observedPropertyTuple (Experiment,ZZ) := Thing => (experiment,pos)->
 (
-    return experiment.realizedValue(pos);
+    return experiment.observedPropertyTuple(pos);
 );
-
-
-realizedProperty = method();
-realizedProperty (Experiment,ZZ) := Thing => (experiment,pos)->
-(
-    return experiment.realizedProperty(pos);
-);
-
-
-realizedPointProperty = method();
-realizedPointProperty (Experiment, ZZ) := Thing => (experiment,pos)->
-(
-    return experiment.realizedPointProperty(pos);
-);
-
-
-
---------------------------------------------------------------------------------------------------------------
----- realizedValue, realizedProperty realizedPointProperty do the same. Choose the preferred naming 
---------------------------------------------------------------------------------------------------------------
-
 
 
 -- return the statistics for the watched properties : as Counts (derived from Tally)
@@ -846,7 +809,7 @@ doc ///
            Create an iterator over random points using a given random point generator \break
            See also PointIterator.
         Example
-           weakPointGenerator := ()-> (if odd random(ZZ) then  random(QQ^1,QQ^3) );
+           weakPointGenerator := ()-> (if odd random(ZZ) then random(QQ^1,QQ^3) );
            pointIterator = createRandomPointIterator(weakPointGenerator);
         Text
            now we are able to generate random points by calling next():
@@ -1903,6 +1866,11 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
 
     experiment.pointsByKey = (key)->
     (
+        return  experimentData.pointsByPropertyValues(key);
+    );
+    
+    experiment.pointsByPropertyValues = (key)->
+    (
         if not (experimentData.pointData)#?key then 
             error "invalid key";
         return  (experimentData.pointData)#key;
@@ -1921,8 +1889,8 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
         return new Counts from apply( experiment.pointKeys(), key->( key=> #(experimentData.pointData)#key ) );
     );
     
-    
-    experiment.realizedPointProperties = ()->
+    -- or observedPointPropertySetValues, observedPropertyTupleValues
+    experiment.observedPropertyTuples = ()->
     (
         return keys experimentData.pointData;
     );
@@ -1932,21 +1900,19 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
     experiment.pointKeys = ()->
     (
         print("--warning: .pointKeys() is deprecated. use .realizedProperties()");
-        return experiment.realizedPointProperties();
+        return experiment.observedPropertyTuples();
     );
     
-    experiment.realizedProperties = experiment.realizedPointProperties;    
-    experiment.realizedValues = experiment.realizedPointProperties;
-    experiment.observedValues = experiment.realizedPointProperties;
-    
-    experiment.realizedProperty = method();
-    experiment.realizedProperty (ZZ) := Thing =>(index)->
+    -- (JK) we do not need this one.
+    experiment.observedPropertyTuple = method();
+    experiment.observedPropertyTuple (ZZ) := Thing =>(index)->
     (
-        propertyvalues := experiment.realizedProperties();
+        propertyvalues := experiment.observedPropertyTuples();
         if ( (index<0) or (index>= #propertyvalues) ) then error "invalid point position ";
         return propertyvalues#index;
     );
     
+    -- (JK) we do not need this one.
     experiment.pointKey = method();
     experiment.pointKey(ZZ) := Thing => (index)->
     (
@@ -1956,9 +1922,9 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
     
    
     
-    experiment.realizedValue = realizedProperty;    
-    experiment.observedValue = realizedProperty;    
-    experiment.realizedPointProperty = realizedProperty;
+    --experiment.realizedValue = realizedProperty;    
+    --experiment.observedValue = realizedProperty;    
+    --experiment.realizedPointProperty = realizedProperty;
 
    
 
@@ -2345,7 +2311,7 @@ doc ///
            Points with a particular set of properties can be selected
            like this:
         Example
-           e.pointsByKey({2})
+           e.pointsByPropertyValues({2})
         Text
            Since one always finds many points found on components of low
            codimension it is not useful to remember all of them. The experiment
@@ -2595,7 +2561,7 @@ doc ///
            e.run(100)          
            e.collectedCount()
            e.pointLists()
-           e.pointsByKey({2})
+           e.pointsByPropertyValues({2})
            e.pointsPerComponent()
         Text
            \break Notice that the number of collected points can be larger than
@@ -2606,7 +2572,7 @@ doc ///
            points are collected. 
    SeeAlso
           pointLists
-          pointsByKey
+          pointsByPropertyValues
           pointsPerComponent
           setPointsPerComponent             
 ///
@@ -2956,7 +2922,7 @@ doc ///
         setPointsPerComponent
         collectedCount
         pointLists
-        pointsByKey
+        pointsByPropertyValues
 ///
 
 doc ///
@@ -3015,21 +2981,21 @@ doc ///
            The brackets used in this example are NOT redundant. Better
            readable is the following syntax
         Example
-           e.pointsByKey({2})
+           e.pointsByPropertyValues({2})
    SeeAlso
         pointsPerComponent
         setPointsPerComponent
         collectedCount        
-        pointsByKey
+        pointsByPropertyValues
 ///        
 
 doc ///
    Key
-        "pointsByKey"
+        "pointsByPropertyValues"
    Headline
         the points an experiment has collected for a particular set of properties
    Usage   
-        e.pointsByKey(key)
+        e.pointsByPropertyValues(key)
    Inputs  
         e:Experiment 
             an Experiment
@@ -3076,7 +3042,7 @@ doc ///
         Text
            \break The points for a particular set of properites:
         Example
-           e.pointsByKey({2})
+           e.pointsByPropertyValues({2})
    SeeAlso
         pointsPerComponent
         setPointsPerComponent
@@ -3155,7 +3121,7 @@ doc ///
         pointsPerComponent
         collectedCount
         pointLists
-        pointsByKey
+        pointsByPropertyValues
 ///
 
 doc ///
@@ -3241,12 +3207,12 @@ doc ///
            We now want to look at the collected point with special
            betti tableaus
         Example
-           e.pointKeys()
-           e.pointKey(0)
-           e.pointsByKey e.pointKey(0)
+           e.observedPropertyTuples()
+           e.observedPropertyTuple(0)
+           e.pointsByPropertyValues e.observedPropertyTuple(0)
    SeeAlso
         pointLists
-        pointsByKey
+        pointsByPropertyValues
         collectedCount
         pointsPerComponent
         setPointsPerComponent
@@ -3313,7 +3279,7 @@ doc ///
            for each combination of properties
         Example
            e.pointLists()
-           e.pointsByKey({2})
+           e.pointsByPropertyValues({2})
            e.collectedCount()
         Text
            Notice that the experiment has not collected all points it
@@ -3322,7 +3288,7 @@ doc ///
        trials
        watchedProperties
        pointLists
-       pointsByKey
+       pointsByPropertyValues
        collectedCount
 ///                 
          
@@ -3997,7 +3963,7 @@ doc ///
             at some examples the experiment has collected for us:
         Example
             e.collectedCount()            
-            e.pointsByKey({2})
+            e.pointsByPropertyValues({2})
         Text
             The experiment does not save all points it encounters, since
             this would quickly lead to memory problems. Rather it tries to
@@ -4009,11 +3975,11 @@ doc ///
             more detail. One idea might be to look at the support 
             of the singular locus:
         Example
-            apply(e.pointsByKey({2}),i->radical (bbC#"singularLocusAt")(i))
+            apply(e.pointsByPropertyValues({2}),i->radical (bbC#"singularLocusAt")(i))
         Text
             or maybe the degrees of the support:
         Example
-            apply(e.pointsByKey({2}),i->degree radical (bbC#"singularLocusAt")(i))
+            apply(e.pointsByPropertyValues({2}),i->degree radical (bbC#"singularLocusAt")(i))
         Text
             It seems that about half of the points have support in one point
             and the other half has support in 2 points. So half have 2 nodal
