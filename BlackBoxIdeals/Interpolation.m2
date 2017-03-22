@@ -725,10 +725,13 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
         componentNamePrefix = namePrefix;
     );
     
+    interpolationJets := new MutableHashTable;
+     
     simpleInterpolator.resetInterpolation = ()->
     (
          componentCandidatesDictionary = new MutableHashTable;
-         jets = new MutableHashTable;
+         jets = new MutableHashTable; --sameComponentJets;
+         interpolationJets = new MutableHashTable;
          nextComponentId = 0;
     );
     
@@ -1045,7 +1048,41 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
 
     interpolateAt := method();
 
+    
+   
+    
     -- todo: another interpolateAt variant: pass jet(s) as parameter.
+    
+    cachedInterpolationJetAt := (point, targetJetLength)->
+    (
+      
+        if not (interpolationJets#?point) then
+        (        
+            -- we have no cached jets for the given point => compute jets
+            interpolationJets#point = blackBox.jetAt( point, targetJetLength);                        
+            -- here we could also update statistic if the jet succeeded or not...
+        );
+       
+        if length interpolationJets#point  < targetJetLength then 
+        (
+            -- we have cashed jets, but they are too short.. => compute jets of requested length
+            -- improvement/optimisation: start from existing jet and enlarge it.
+            interpolationJets#point = blackBox.continueJet( interpolationJets#point, targetJetLength);
+        );        
+        
+        --jetP := blackBox.jetAt(point,targetJetLength);        
+        jetP := interpolationJets#point;
+        
+        if (length interpolationJets#point  > targetJetLength) then
+        (
+            -- shorten the jet if necessary:
+            destEpsRng := getEpsRing(coefficientRing ring jetP#"value", targetJetLength);
+            truncatedJetValue := sub( jetP#"value", destEpsRng );              
+            truncatedJet := jetObject(jetP#"parent", jetP#"point", truncatedJetValue, targetJetLength);
+            jetP = truncatedJet;
+        );
+        return jetP;
+    );
 
     interpolateAt( Matrix, ZZ, ZZ, MapHelper) := InterpolatedComponent =>
                 (point,monomialMaxDegree,targetJetLength, mmap) -> 
@@ -1059,14 +1096,19 @@ createSimpleInterpolator (BlackBoxParameterSpace) := BlackBoxInterpolator => (bl
         -- print target Jet length at debug level?
         bblog.debug("interpolateAt targetJetLength : " |targetJetLength | " at " |toString point |" (monomialDegree="| toString monomialMaxDegree );
         
-        jetP := blackBox.jetAt(point,targetJetLength);        
+         
+        
+        --jetP := blackBox.jetAt(point,targetJetLength);        
+        jetP := cachedInterpolationJetAt(point,targetJetLength);
+        
+        
         -- !!!this heuristic must be tested!!!
         -- Test: see if interpolated polynomials are in at least one
         -- irreducible component of the BlackBoxIdeal.
         jetPimage :=  (mmap#"valueAtJet")(jetP);
         --print ("jetPimage");
         --print (jetPimage);
-        bareIdeal:= interpolate(mons,{jetPimage});
+        bareIdeal := interpolate(mons,{jetPimage});
     
         jetSet := new JetSet from jetP;
         interpolatedIdeal := createInterpolatedComponent(bareIdeal, monomialMaxDegree, jetSet, blackBox);

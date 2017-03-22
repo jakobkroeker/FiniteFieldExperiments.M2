@@ -24,6 +24,8 @@ needsPackage "M2Logging";
 
 
 export { 
+    "Error",
+    "Exception",
     "SmoothnessTester",
     "JetAtCalculator",
     "setJetAtCalculator",
@@ -274,7 +276,9 @@ TEST ///
 ------------------------------------------------
 -- EXCEPTIONS
 ------------------------------------------------
-SingularPointException = new Type of HashTable;
+Error = new Type of HashTable;
+Exception = new Type of HashTable;
+SingularPointException = new Type of Exception;
 
 
 singularPointException = ()->
@@ -282,7 +286,7 @@ singularPointException = ()->
     return new SingularPointException from {}
 )
 
-PointNotOnBlackBox = new Type of HashTable;
+PointNotOnBlackBox = new Type of Exception;
 
 ------------------------------------------------
 -- END EXCEPTIONS
@@ -553,7 +557,7 @@ testTensoredClearCoeffDenominators =()->
 
 Jet = new Type of HashTable;
 
-jetObject := method();
+jetObject = method();
 
 -- jetObject.parent is currently black box
 -- issue: probably parent will change in future, but 

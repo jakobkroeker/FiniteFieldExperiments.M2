@@ -31,13 +31,7 @@ export {
   "sortedCounts",
   "richPoints",
   "pointsWithProperties",
-  "stats",
-  "observedValues",
-  "realizedValues",
-  "realizedProperties",
-  "observedValue",
-  "realizedValue",
-  "realizedProperty",
+  "stats",  
   "pointPropertyTupleValues",
   "interpolatedIdeals",
   "bareIdeals",
@@ -69,7 +63,7 @@ FiniteFieldExperimentsProtect = ()->
     protect pointKey;
     protect setPointIterator;
     protect setPointGenerator;
-    protect printInterpolatedIdeals;
+ 
     protect clearWatchedProperties;
     protect testDebug;
     protect next;
@@ -82,8 +76,8 @@ FiniteFieldExperimentsProtect = ()->
     --protect points;
     protect trials;
     protect smoothPoints;
-    protect createAllInterpolatedIdeals;
-    protect interpolatedIdealKeys;
+  
+ 
 
     protect coefficientRingCardinality;
     protect pointLists;
@@ -156,7 +150,7 @@ FiniteFieldExperimentsExport  = ()->
     exportMutable("pointKey");
     exportMutable("setPointIterator");
     exportMutable("setPointGenerator");
-    exportMutable("printInterpolatedIdeals");
+ 
     exportMutable("membershipPrecision");
     exportMutable("setMembershipPrecision");
 
@@ -171,8 +165,8 @@ FiniteFieldExperimentsExport  = ()->
     exportMutable("points");
     exportMutable("trials");
  
-    exportMutable("createAllInterpolatedIdeals");
-    exportMutable("interpolatedIdealKeys");
+   
+ 
 
     exportMutable("coefficientRingCardinality");
     exportMutable("pointLists");
@@ -228,6 +222,7 @@ FiniteFieldExperimentsExport  = ()->
     exportMutable("createExperimentData");
 );
 
+
 undocumented {
 propertyList,              --internal variable
 propertyName,              --internal variable
@@ -262,6 +257,8 @@ update,              --intern
 updateExperiment,    -- newFeature not ready.
 FFELogger,            -- internal for debug.
 --watchedProperties,   -- replace with watchedProperties
+stratificationIntervalView,
+InterpolatedImage
 }
 
 
@@ -1629,6 +1626,29 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
         --experimentData.propertyList = newWatchedList;
     );
 
+    
+    catchedPointProperty := (propertyName, point)->
+    (
+        try
+        (
+            resultOrException := catch (blackBoxIdeal.pointProperty(propertyName))(point);
+            if isDerivedFrom(resultOrException, Exception) then
+            (
+                return class resultOrException;
+            )
+            else
+            (
+                return resultOrException;
+            );
+        )
+        then
+        (
+        )
+        else
+        (
+            return Error;
+        );        
+    );
 
     setWatchedPropertiesInternal := (propListToObserve)->
     ( 
@@ -1640,7 +1660,8 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
         experimentData.propertyList=propListToObserve;
         propertiesAt = (point)->
         ( 
-            apply( experimentData.propertyList, propertyName->( (blackBoxIdeal.pointProperty(propertyName))(point) ) )  
+            --apply( experimentData.propertyList, propertyName->( (blackBoxIdeal.pointProperty(propertyName))(point) ) )
+            apply( experimentData.propertyList, propertyName->( catchedPointProperty(propertyName,point) ) )  
         );   
     );
 
@@ -1866,7 +1887,7 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
 
     experiment.pointsByKey = (key)->
     (
-        return  experimentData.pointsByPropertyValues(key);
+        return  experiment.pointsByPropertyValues(key);
     );
     
     experiment.pointsByPropertyValues = (key)->
@@ -1917,16 +1938,10 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
     experiment.pointKey(ZZ) := Thing => (index)->
     (
        print("--warning: .pointKey() is deprecated. use .realizedProperty()");
-       return experiment.realizedProperty(index); 
+       return experiment.observedPropertyTuple(index); 
     );
     
-   
     
-    --experiment.realizedValue = realizedProperty;    
-    --experiment.observedValue = realizedProperty;    
-    --experiment.realizedPointProperty = realizedProperty;
-
-   
 
    --init part:
 
@@ -2006,6 +2021,29 @@ new Experiment from BlackBoxParameterSpace := (E, pBlackBox) ->
     -- return new HashTable from experiment; 
 );
 
+
+TEST ///
+   -- test that exceptions and Errors as point Properties are catched:
+   
+    K = ZZ/5;
+    R = K[x,y,z];
+    I = ideal (x*z,y*z);
+    bb = blackBoxIdeal I;
+
+    rankAllways5At = (point) -> 5;
+    bb.rpp("exception",(p)->throw new Exception);
+
+    e = new Experiment from bb;
+    e.watchProperty("exception");
+    bb.rpp("err",(p)->error("error during computation"));
+    e.watchProperty("err");
+    setRandomSeed (42);
+    e.run(10)
+
+    firstTuple= e.observedPropertyTuple(0);
+    assert(firstTuple#1 === Exception);
+    assert(firstTuple#2 === Error);
+///
 TEST ///
 
     rng = QQ[x];
@@ -2093,18 +2131,7 @@ doc ///
 ///
 
 
-doc ///
-   Key
-        InterpolatedImage
-   Headline
-        blabla
-   Description
-        Text
-                interpolatedIdealKeys 
-                InterpolationImage 
-                isOnComponent 
-                printInterpolatedIdeals 
-///
+ 
 
 doc ///
    Key
@@ -2144,7 +2171,7 @@ doc ///
         "Experiment example"
         "run Experiment"
         estimateDecomposition
-        createAllInterpolatedIdeals        
+                 
        
 ///
 
@@ -4050,6 +4077,9 @@ doc ///
             E_7 Dynkin diagramm. (see the Chapter on singularities of cubic surfaces in
             Dolgachev's Book "Topics in Classical Algebraic Geometry"). 
 ///
+
+
+
 
 end
 ---

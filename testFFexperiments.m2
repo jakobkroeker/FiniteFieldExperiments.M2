@@ -45,17 +45,17 @@ bbI.knownPointPropertiesAsSymbols()
 -- {jacobianAt, rankJacobianAt, isZeroAt, valuesAt, bareJacobianAt}
 
 
-print bbI.knownMethods()
--- { knownMethods, knownAttributes, pointProperties, 
---   knownPointPropertiesAsSymbols, hasPointProperty, pointProperty, 
+print bbI.memberMethods()
+-- { memberMethods, attributes, pointProperties, 
+--   pointPropertiesAsSymbols, hasPointProperty, pointProperty, 
 --   registerPointProperty, updatePointProperty }
 
-print bbI.knownAttributes()
+print bbI.attributes()
 -- {ideal, jacobian, numVariables, type, unknowns, 
 --  ring, equations, coefficientRing}
-bbI.type       	    -- BlackBoxIdeal
-bbI.unknowns 	    -- {x, y, z}
-bbI.equations	    -- | xz yz |
+--bbI.type               -- BlackBoxIdeal
+--bbI.unknowns         -- {x, y, z}
+--bbI.equations        -- | xz yz |
 bbI.ideal           -- ideal (x*z, y*z)
 bbI.ring            -- R
 bbI.coefficientRing -- K
@@ -66,7 +66,7 @@ bbI.jacobian
 -- | 0 z |
 -- | x y |
 
-apply(bbI.knownAttributes(),attribute->print (bbI#attribute))
+apply(bbI.attributes(),attribute->print (bbI#attribute))
 
 
 assert (2== bbI.rankJacobianAt(matrix{{0,0,1_K}}))
@@ -183,24 +183,27 @@ estimateDecomposition(e)
 
 maxDeg = 2
 mons = matrix {flatten apply(maxDeg+1,i->flatten entries basis(i,R))}
-
+bbI.setSingularityTestOptions(20,1);
 decomposeResult := apply(keys e.pointLists(),k->(
-	  L = e.pointsByKey(k);
-     	  unique flatten apply(unique L,P->(
-	  	    rank bbI.jacobianAt(P);
-	  	    time jetP = jetAtOrNull(bbI,P,20,1);
-	  	    if (not jetP===null) then 
-		    if not isCertainlySingularAt(bbI,P,20,1) then
-	  	    {interpolate(mons,{jetP})}
-	  	    ))
-     	  ))
+      L = e.pointsByKey(k);
+           unique flatten apply(unique L,P->(
+              rank bbI.jacobianAt(P);
+              time jetPOrException = catch bbI.jetAt(P,20);             
+              if not isDerivedFrom(jetPOrException, SingularPointException) then 
+              if not bbI.isCertainlySingularAt(P) then
+              {interpolate(mons,{jetPOrException})}
+              ))
+           ))
 decomposeResult
+bbI.resetInterpolation()
+time bbI.interpolateComponentsAt( e.points(), maxDeg)
+
 assert(decomposeResult==={{null}, {ideal(z)}, {ideal (y, x)}});
 
 -- better: 
 --    0) empty ideal list
 --    1) for each point make a short jet (eg. length 10) and check if it is contained
--- 	 in any of the ideals in the list 
+--      in any of the ideals in the list 
 --    2) if not, make a very long jet, interpolate, add ideal to list
 --
 -- even better: make several long, but not very long, jets by some heuristic
