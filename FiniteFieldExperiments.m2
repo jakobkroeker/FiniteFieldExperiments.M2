@@ -3,10 +3,10 @@
 newPackage(
      "FiniteFieldExperiments",
      Version => "0.2", 
-     Date => "17.02.2017",
+     Date => "24.03.2017",
      Authors => {{
                  Name => "Hans-Christian Graf v. Bothmer", 
-           Email => "bothmer@math.uni-hannover.de", 
+           Email => "hans.christian.v.bothmer@math.uni-hamburg.de", 
            HomePage => "http://www.crcg.de/wiki/Bothmer"},
            { Name => "Jakob Kroeker", 
            Email => "jakobkroeker.academic@spaceship-earth.net", 

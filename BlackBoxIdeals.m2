@@ -1,13 +1,13 @@
 newPackage(
      "BlackBoxIdeals",
-     Version => "0.2", 
-     Date => "23.02.2017",
+     Version => "1.0", 
+     Date => "24.03.2017",
      Authors => {{
            Name => "Jakob Kroeker", 
            Email => "jakobkroeker.academic@spaceship-earth.net", 
            HomePage => "http://www.crcg.de/wiki/User:Kroeker"},{
            Name => "Hans-Christian Graf v. Bothmer", 
-           Email => "bothmer@math.uni-hannover.de", 
+           Email => "hans.christian.v.bothmer@math.uni-hamburg.de", 
            HomePage => "http://www.crcg.de/wiki/Bothmer"}    
       },
      Configuration => {},
