@@ -2031,14 +2031,15 @@ TEST ///
     bb = blackBoxIdeal I;
 
     rankAllways5At = (point) -> 5;
-    bb.rpp("exception",(p)->throw new Exception);
+    MyException = new Type of Exception;
+    bb.rpp("exception",(p)->throw new MyException);
 
     e = new Experiment from bb;
     e.watchProperty("exception");
     bb.rpp("err",(p)->error("error during computation"));
     e.watchProperty("err");
     setRandomSeed (42);
-    e.run(10)
+    e.run(100)
 
     firstTuple= e.observedPropertyTuple(0);
     assert(firstTuple#1 === Exception);

@@ -1788,9 +1788,10 @@ doc ///
            \break
            Now find linear equations containing the respective
            components on which the points lie:
-        Example
-           bb.interpolateAt(pointOnLine, 1,10)
-           bb.interpolateAt(pointOnPlane, 1,10)
+        Text
+           The following Example has a problem:
+           bb.interpolateAt(pointOnLine, 1, 10)
+           bb.interpolateAt(pointOnPlane, 1, 10)
         Text
            \break
            Finding points on the different components can be done

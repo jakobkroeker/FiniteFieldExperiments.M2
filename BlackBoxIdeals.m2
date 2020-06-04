@@ -443,6 +443,9 @@ clearCoeffDenominators (Ideal)  :=  Ideal =>  (IdealWithRationalCoeffs)->
     return sub(ideal modgens,dstrng );
 )
 
+needsPackage "SimpleDoc";
+needsPackage "Text";
+
 
 doc ///
     Key
@@ -619,8 +622,8 @@ sub (Ideal, Jet ) := Thing =>(I,jet)->
 idealBlackBoxesExport(); -- export the symbols to make the package work 
 
 
-needsPackage "SimpleDoc";
-needsPackage "Text";
+--needsPackage "SimpleDoc";
+--needsPackage "Text";
 
 
 BlackBoxLogger = Logger("BlackBoxIdeals");
