@@ -1,0 +1,431 @@
+\documentclass[12pt,a4paper]{amsart}       
+\usepackage{german,amsmath,amssymb,latexsym,amsfonts}   
+\usepackage{graphicx}              %                
+\usepackage{enumerate}
+%\setlength{\topmargin}{-1cm} 
+%\setlength{\textheight}{23.5cm} 
+%\setlength{\textwidth}{20cm}
+%\setlength{\evensidemargin}{-4mm}  
+%\setlength{\oddsidemargin}{-4mm}  
+
+%\setlength{\mathsurround}{2pt}
+%\setlength{\parindent}{0mm}
+%\setlength{\parskip}{3mm}
+
+\usepackage[left=1.5in,top=1in,right=1.5in,bottom=1in]{geometry}
+
+\usepackage{graphicx}
+\usepackage{color}
+
+\usepackage[all]{xy}
+
+ \renewcommand{\thesubsection}{\thesection.\alph{subsection}}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem*{expectation}{Expectation}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{problem}[theorem]{Problem}
+
+
+% Separate numbering for Theorem statements in the introduction
+\newtheorem{theoremintro}{Theorem}
+\newcommand{\theHtheoremintro}{\Alph{theoremintro}}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{notation}[theorem]{Notation}
+
+%\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+
+\newcommand{\residue}{\partial}
+\newcommand{\divisor}{\mathrm{div}}
+\newcommand{\Brtwo}{{}_2\mathrm{Br}}
+\newcommand{\Pictwo}{{}_2\mathrm{Pic}}
+
+\newcommand{\isom}{\cong}
+\newcommand{\isomto}{\simto}
+\newcommand{\isometry}{\cong}
+
+\newcommand{\FF}{\mathbb F}
+\newcommand{\ZZ}{\mathbb Z}
+\renewcommand{\AA}{\mathbb A}
+\newcommand{\CC}{\mathbb C}
+\newcommand{\PP}{\mathbb P}
+\newcommand{\QQ}{\mathbb Q}
+\newcommand{\Gm}{\mathbb{G}_{\mathrm{m}}}
+%\newcommand{\T}{\mathbb{T}}
+
+\DeclareMathOperator{\AAut}{\mathbf{Aut}}
+\DeclareMathOperator{\Aut}{\mathrm{Aut}}
+\DeclareMathOperator{\Br}{\mathrm{Br}}
+\DeclareMathOperator{\Isom}{\mathrm{Isom}}
+\DeclareMathOperator{\IIsom}{\Group{Isom}}
+\DeclareMathOperator{\PPic}{\sheaf{P}\!\mathit{ic}}
+\DeclareMathOperator{\Pic}{\mathrm{Pic}}
+\DeclareMathOperator{\rk}{\mathrm{rk}}
+\DeclareMathOperator{\SSpec}{\mathbf{Spec}}
+\DeclareMathOperator{\Spec}{\mathrm{Spec}}
+\DeclareMathOperator{\EExt}{\sheaf{E}\!\mathit{xt}}
+\DeclareMathOperator{\Ext}{\mathrm{Ext}}
+\DeclareMathOperator{\coker}{\mathrm{coker}}
+\DeclareMathOperator{\Mor}{Mor}
+\DeclareMathOperator{\codim}{codim}
+
+\newcommand{\inv}{^{-1}}
+\newcommand{\sep}{^{\mathrm{s}}}
+\newcommand{\mult}{^{\times}}
+\newcommand{\dual}{^{\vee}}
+\newcommand{\tensor}{\otimes}
+\newcommand{\bslash}{\smallsetminus}
+\newcommand{\mapto}[1]{\xrightarrow{#1}}
+\newcommand{\ol}[1]{\overline{#1}}
+\newcommand{\ul}[1]{\underline{#1}}
+\newcommand{\wt}[1]{\widetilde{#1}}
+\newcommand{\et}{\mathrm{\acute{e}t}}
+
+\newcommand{\linedef}[1]{\textsl{#1}}
+\newcommand{\Het}{H_{\et}}
+\newcommand{\ur}{\mathrm{nr}}
+%\newcommand{\ur}{\mathrm{ur}}
+\newcommand{\Hur}{H_{\ur}}
+\newcommand{\merk}{\mathrm{r}}
+\newcommand{\Hr}{H_{\merk}}
+\newcommand{\Pfister}[1]{\ll\!{#1}\gg}
+\newcommand{\quadform}[1]{<\! #1 \!>}
+\newcommand{\Local}{\mathsf{Local}}
+\newcommand{\Ab}{\mathsf{Ab}}
+\newcommand{\Var}{\mathsf{Var}}
+\newcommand{\Frac}{\mathrm{Frac}}
+\newcommand{\im}{\mathrm{im}}
+\newcommand{\CH}{\mathrm{CH}}
+\newcommand{\CM}{\mathsf{CM}}
+\newcommand{\res}{\mathrm{res}}
+\newcommand{\cores}{\mathrm{cor}}
+\newcommand{\ord}{\mathrm{ord}}
+\newcommand{\Norm}{\mathrm{N}}
+\newcommand{\vp}{\varphi}
+\newcommand{\Hom}{\mathrm{Hom}}
+\newcommand{\id}{\mathrm{id}}
+
+\newcommand\WHY{{\color{red}\textsf{WHY?}}~}
+
+%\renewcommand{\labelenumi}{\it\alph{enumi})}
+\renewcommand\theenumi{\it\alph{enumi}}
+\renewcommand\labelenumi{\theenumi)}
+
+\usepackage[backref=page]{hyperref}
+
+
+
+\begin{document}
+
+\title{Finite Field Experiments}
+
+\author{Jakob Kr\"oker}
+\author{Mike Stillmann}
+\author{Hans-Christian v.\,Bothmer}
+
+\maketitle
+
+\section{introduction}
+
+This article describes the packages {\tt BlackBoxParameterSpaces} {\color{red} (rename Package)} and
+ {\tt FiniteFieldExperiments} that are mostly used together, but the first one can also be used alone for some applications.
+
+The purpose of these packages is to study moduli spaces or more generally parameter spaces $X$ together with their universal families. This study comes in two flavours:
+
+\begin{enumerate}[(a)]
+\item The first situation is one, in which one has a unirational parametrisation 
+\[
+	\phi \colon \AA^n \to X
+\]
+of some parameter space. In this situation one is often interested in the stratification of $X$ by some property of the parametrised objects. Our running example for this type of question is the stratification of the space of cubic surfaces in $\PP^3$ by singularity type. Here $X$ is represented by a {\tt BlackBoxParameterSpace}.
+
+\item In the second situation $X$ is given as a subvariety of some larger unirational moduli space
+\[
+	X \subset \AA^n.
+\]
+Here one is interested in the components of $X$ and their moduli interpretation. Our running example in this case is the variety of complexes. Here $X$ is represented by a {\tt BlackBoxIdeal}.
+\end{enumerate}
+
+In both cases the study of $X$ is done over a finite field by looking at a large number random points in $\AA^n$. Since we are over a finite field, we have some non zero chance of finding points in interesting strata (in the first situation) or on interesting components (in the second case). Moreover the statistics of such a finite field experiment contain non trivial heuristic information about the stratification (in the first case) or the irreducible components of $X$ (in the second situation). The interesting points and the statistical information generated are collected in an object of type {\tt FiniteFieldExperiment}.
+
+In our implementation the package {\tt BlackBoxParameterSpaces} contains the tools to set up a parameter space $X$ as above together with its universal family, so that it can be used in a finite field experiment. It also provides some black-box-algorithms that still work if instead of the equations of $X \subset \AA^n$ only an algorithm to evaluate the equations is given. To explain the difference between an equation and an evaluation algorithm we look at the example of determinants.
+
+The package {\tt FiniteFieldExperiments} contains the tools to run a finite field experiment, collect the results and interpret the statistical information gathered. 
+
+People familiar with the idea of finite field experiments will notice that a specialised package for this type of study is not strictly necessary. The advantage of our implementation to such people is:
+\begin{enumerate}[(a)]
+\item The automatic bookkeeping during a finite field experiment: The algorithms provided will use heuristic methods to store interesting points while forgetting uninteresting ones. At the same time they will collect the stochastic information generated by the experiment. 
+\item The possibility of continuing an experiment: If an experiment is run with a few points first, and then with increasingly more points, the algorithms will collect and combine the information found in all runs. 
+\item The black-box-Algorithms 
+\end{enumerate}
+For novices, the structured way of setting up a finite field experiment with this package, in particular the {\tt xxxAt}-notation seems to help to get into the philosophy of this type of study. 
+
+\
+
+{\color{red} (put references to Frank and Tonoli here)}
+
+\
+
+%%%%%%%%%%%%%%%%%%%%%
+\section{Black-Box-Parameter spaces}
+%%%%%%%%%%%%%%%%%%%%%
+\label{sBlackBoxParameterSpace}
+
+A {\tt BlackBoxParameterSpace} represents an unirational parameter space
+\[
+	\AA^n \to X
+\]
+together with its universal family. While the parameter space $\AA^n$ itself is trivial, the interesting information lies in the objects that are parametrized by this space. In this package these objects and their properties are modelled by {\tt pointProperties}. Any function that depends only on the coordinated of a point $P \in \AA^n$ can be a point property. Points are modelled by row vectors over a field, while 
+point properties are functions that take a matrix as input and can have any type as output. We use the convention that the name of a point property is of the form {\tt xxxAt}, because it computes a property of the prametrised object {\sl at} a given point. Point properties need to be registered in a black box parameter space so they can later be used by a finite field experiment. 
+
+\begin{itemize}
+\item {\tt blackBoxParameterSpace} - make a new {\tt BlackBoxParameterSpace}
+\item {\tt registerPointProperty} or {\tt rpp} - register a new {\tt pointProperty}
+\item {\tt updatePointProperty} or {\tt upp} - change an existing {\tt pointProperty}
+\item {\tt pointProperties} - list the pointProperties of a black box
+\item {\tt hasPointPropery} - check whether a point property is defined
+\end{itemize}
+
+As a running example we study the stratification of the space of cubic surfaces by singularity type. 
+
+\
+
+{\color{red} (put the definition of the blackbox in the example of cubic surfaces here)}
+
+\
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Finite field experiments with a Black-Box-Parameter space}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+In a {\tt FiniteFieldExperiment} we take a {\tt BlackBoxParameterSpace} and evaluate some of its {\tt pointProperties} at a large number of random points. If we work over a finite field, we will find points on interesting strata with a small but positive probability. Furthermore the number of points found in each stratum gives heuristic information about the codimension of each stratum.
+
+Let's first explain the heuristic reasoning used in this package. Let's assume we work over a finite field $\FF_q$ with $q$ elements. If $f \in \FF_q[x_1,\dots,x_n]$ is a polynomial, and $x \in \AA^n$ is a point, then
+\[
+	f(x) \in \FF_q
+\]
+For most polynomials each of the $q$ possible values of $f(P)$ occurs with approximately the same probability. Therefore 
+\[
+	f(x) = 0
+\]
+occurs with probability about $1/q$, so we expect about $q^{n-1}$ points on a hypersurface in $\AA^n$, and this value does not depend on the degree of the hypersurface. A much more sophisticated analysis of the situation is described by the Weil-Conjectures 
+
+\
+
+{\color{red} put some version of the Weil-Conjecture here.}
+
+\
+
+So in a first order approximation we have
+\[
+	|X(\FF_q) | \approx q^{\dim X}.
+\]
+If $X \subset \AA^n$ and we choose random points in $\AA^n$ then the probability of finding a point on $X$ is approximately
+\[
+	P(x \in X) = \frac{|X(\FF_q)|}{q^n} \approx q^{\dim X - n} = q^{-\codim X}.
+\]
+Taking logarithms we get
+\[
+	- \log_q P(x \in X) \approx \codim X.
+\]
+
+\begin{itemize}
+\item {\tt new FiniteFieldExperiment from BlackBoxParameterSpace}
+\item {\tt watchProperty} - select a {\tt pointProperty} from the Black box to be evaluated at random points
+\item {\tt watchedProperites} - a list of currently evaluated point properties
+\item {\tt run} - evaluate the watched properties at an additional number of points
+\item {\tt trials} - the number of point evaluated so far
+\item {\tt counts} - the number of points found on each stratum
+\item {\tt estimatedCodimension} - estimate the codimension of each stratum using the heuristic explained above
+\item {\tt pointsByKey} - a list of points on a given stratum. 
+\item {\tt tryProperty} -  evaluate a new point property on the points found so far.
+\item {\tt clear} - erase all points and statistics.
+\item {\color{red} possibly:} {\tt load} and {\tt save}.
+\end{itemize}
+
+Returning to the cubic surfaces of the preceding section we set up a finite field experiment:
+
+
+\
+
+{\color{red} (put the finite field experiment in the example of cubic surfaces here)}
+
+\
+
+\section{Black-Box-Ideals}
+
+A {\tt BlackBoxIdeal} represents a parameter space 
+\[
+	X \subset \AA^n
+\]
+that is a subvariety of an unirational parameter space as in Section \ref{sBlackBoxParameterSpace}.
+
+Let us assume for now, that the equations defining $X$ are known. We discuss the BlackBox-Part of this implementation later in Section \ref{sBlackBox}.
+
+In this situation some useful {\tt pointProperties} can always be defined: 
+
+\begin{itemize}
+\item {\tt isZeroAt} - true when all equations of $X$ vanish at the given point.
+\item {\tt valuesAt} - returns the values of the equations of $X$ at the given point.
+\item {\tt jacobianAt} - evaluates the derivatives of the equations of $X$ at the given point.
+\item {\tt rankJacobianAt} - returns the rank of the Jacobian matrix of $X$ at the given point. This is also the codimension of the tangent space of $X$ at the given point.
+\item {\tt isCertainlySingularAt} - tries to prove that $X$ is singular at the given point. Returns wether such a proof was found.
+\item {\tt isProbablySmoothAt} - true if {\tt isCertainlySingular} is false. 
+\end{itemize}
+
+As a running example we study the variety $X$ of complexes
+\[
+	K^2 \xrightarrow{A} K^2 \xrightarrow{B} K.
+\]
+It is the variety defined by the equation $AB = 0$ in the space of all pairs of matrices $(A,B) \in \AA^6$.
+
+\
+
+{\color{red} (put the definition of the blackbox in the example of the variety of complexes here)}
+
+\
+
+
+
+\section{Finite Field Experiments with a Black-Box-Ideal}
+
+If we run a {\tt FiniteFieldExperiment} with a {\tt BlackBoxIdeal}  defining $X$ we are interested in the decomposition of $X$ into irreducible components. Ideally we would like to find {\tt pointProperties} that distinguish these components from each other. The statistics produced by a finite field experiment can help to guide this search. 
+
+Let's explain how we can obtain heuristic information on the number and codimension of the components of $X$. If we work with {\tt BlackBoxIdeals} this information is much more precise than for the stratification of a {\tt BlackBox\-ParameterSpace}, since we have access to the tangent space of $X$ at each point $x \in X$ via the Jacobian matrix. 
+
+More precisely let $X = X_1 \cup \dots \cup X_n$ where $X_i$ is the union of all components of $X$ that have codimension $i$. If $c_i$ is the number of components of $X_i$ and $\dim X_i \ge 1$ we know from the Weil conjectures that
+\[
+	\frac{|X_i(\FF_q) |}{q^n} \approx c_i q^{-i}.
+\]
+From this it follows that
+\[
+	P(x \in X_i) \cdot q^i \approx c_i.
+\]
+Now we estimate the probability $P(x \in X_i)$ of finding a point on the union of codimension $i$ components by looking at the probability of finding a point with a codimension $i$ tangent space:
+\[
+	P(x \in X_i) \approx P(x \, | \, \codim T_{X,x} = i )
+\]
+This gives us a heuristic estimate for the number of components of $X$ in each codimension.
+
+In this approximation all smooth points of $X$ are counted in the correct codimension, but singular points will miscounted in a smaller codimension. If $X$ is reduced, the set of singular points is of codimension at least $1$ so presumably there are a lot more smooth points than singular ones, and this miscounting does not matter too much. If one worries that this might be a problem, one can run {\tt tryProperty} with {\tt isProbablySmoothAt} to see wether most of the found points $x \in  X$ are indeed smooth. 
+
+Let's now do this for our variety of complexes
+
+\
+
+{\color{red} (put the finite field experiment in the example of cubic surfaces here)}
+
+\
+
+
+%%%%%%%%%%%%%%%%%
+\section{Jets and Interpolation}
+%%%%%%%%%%%%%%%%%
+
+Sometimes the equations of a parameter space $X \subset \AA^n$ are not known explicitly, but only an algorithm to evaluate them is given. An example might be that $X$ is defined by the vanishing of a determinant of a matrix  of polynomials $M$. While it is easy to evaluate $M$ at a point and then compute the determinant, it is sometimes very time and space consuming to compute the determinant of $M$ first and then evaluate at a point.
+
+\
+
+{\color{red} (some matrix example illustrating this)}
+
+\
+
+In this situation one can still compute the derivatives of the equations of $X$ in a specific point by evaluating over the ring $K[\epsilon]/\epsilon^2$, i.e. we use
+\[
+	f(x + \epsilon v) = f(x) + \epsilon f'_v(x)
+\]
+where $f_v$ is the derivative of $f$ in the direction of $v$. This gives a way of defining {\tt jacobianAt} even when only an evaluation algorithm is known. If
+\[
+	f(x + \epsilon v) = 0
+\]
+we call $x + \epsilon v$ a {\sl tangent vector} of $X$ at $x$.
+
+One can go further along this way, by evaluating the equations over the ring $K[\epsilon]/\epsilon^{d+1}$. 
+We call $j = x + \epsilon x_1 + \dots \epsilon^d x_d \in K[\epsilon]/\epsilon^{d+1}]$ a jet of length $d$ starting at $x$. 
+If all equations of $X$ vanish on $j$ we say that $j$ lies on $X$. Geometrically $j$ denotes a small curve germ on $X$ starting at $x$.
+
+Now, if $x \in X$ is a smooth point, then a jet $j$ of arbitrary length $d$ starting at $x$ can be found by a variant of newtons method. All of this can be done only with an evaluation method for the equations of $X$. 
+
+\begin{itemize}
+\item {\tt Jet} - a type for handling jets.
+\item {\tt epsRing} - get a ring with $\epsilon^d = 0$.
+\item {\tt jetAt} - compute a random jet stating at a given point
+\item {\tt continueJet} - increase the length of a given jet.
+\item {\tt length} - the length of a jet.
+\item {\tt substitute(Ideal,Jet)} - evaluate the generators of an ideal at the jet
+\end{itemize}
+
+Sometimes it is useful to consider a set of jets starting at the same point. It is usually faster to compute many short jets instead of one long jet at a given point. {\color{red} (so far this is used nowhere)}
+
+\begin{itemize}
+\item {\tt JetSet} - a type for handling a set of jets starting at the same point.
+\item {\tt new JetSet from Jet} - make a one element JetSet.
+\item {\tt size(JetSet)} - the number of Jets in a JetSet.
+\item {\tt addElement} - adds a Jet to a JetSet.
+\end{itemize}
+
+The first application of this is a heuristic test for smoothness. For a given point $x \in X$ we try to construct a jet of length $d$ on $X$ starting at $x$. If this fails, $X$ must be singular at $x$. If we succeed $X$ is probably smooth at $x$. For large $d$ the probability of a wrong answer will get arbitrarily small. 
+
+\begin{itemize}
+\item {\tt isCertainlySingularAt} - heuristic test of smoothness
+\item {\tt isProbablySmoothAt} - heuristic test of smoothness
+\item {\tt singularityTestOptions} - show current parameters for singularity test
+\item {\tt setSingularityTestOptions} - change how singularities are detected
+\end{itemize}
+
+The second application of jets is finding equations that contain a given component of $X$. For this let $x \in X$ be a smooth point and $X' \subset X$ be the component of $X$ that contains $x$. In this situation every equation in the ideal of $X'$ must vanish on all jets $j$ that lie on $X$ and start at $x$. This is so because the computation of jets sees only the local geometry of $X$ and therefore each jet on $X$ must also lie on $X'$ (and not on other components). If we want to find the equations of $X'$ that involve a certain list of monomials. If $r$ is the length of this list, we find a jet $j$ of length $d \ge r$ and interpolate. For $d$ large and $j$ general enough the only polynomials that vanish on $j$ are those that also vanish on $X'$.
+
+\begin{itemize}
+\item {\tt InterpolatedComponent} - a type for handling partial information about irreducible components
+\item {\tt interpolate} - find polynomials containing a given Jet or JetSet
+\item {\tt interpolateComponentAt} - interpolate equations for the component of a variety defined by a BlackBoxIdeal at a given point. The BlackBox will add this component to its list of known components.
+\item {\tt interpolateComponentsAt}  - {\color{red} depreciate or rename}
+\item {\tt interpolatedComponentByName} - select an interpolated component of a given BlackBoxIdeal
+\item {\tt renameInterpolatedComponent} - change the name of an interpolated component
+\item {\tt refineInterpolation} - increases the maximal interpolation degree for all interpolated components of a BlackBoxIdeal.
+\item {\tt resetInterpolation} - erases all interpolated components of a BlackBoxIdeal.
+\end{itemize}
+
+
+The last application of jets is a method to detect on which component of $X$ a given point $x \in X$ lies. 
+With the interpolation scheme above one is never sure wether one has found all equations of a component $X' \subset X$, but for the component membership test using jets it is not necessary to now all equations:
+
+Assume that we know only one polynomial $f$ that vanishes on a component $X'$ of $X$. Lets furthermore assume that we have a point $x \in X$ such that $f(x) = 0$. We know want to know, wether $x$ lies on $X'$ or on some other component $X''$. To check this we compute a random jet $j$ on $X$ starting at $x$. If $X' = X''$ then $j$ lies on $X'$ and we have $f(j) = 0$. If $X' \not= X''$ and $f$ does not vanish on all of $X''$ then $f$ vanishes on a divisor $D \subset X''$ and $x \in D$.  In this situation $j$ will lie on $X''$, but, if it is general enough, it will not lie on $D$. Therefore $f(j) \not=0$ in this case. 
+
+\begin{itemize}
+\item {\tt isOnInterpolatedComponent} - checks wether a point is probably on a given component
+\item {\tt onComponentPrecision} - the length of the jets used for determining component membership
+\item {\tt setOnComponentPrecision} - changes the length of the jets used for determining component membership
+\item {\tt interpolatedComponentsAt} - lists all components that could possibly contain a given point
+\item {\tt interpolatedComponentNamesAt} -- lists the names of all components that could possibly contain a given point
+\end{itemize}
+
+The ideas of this section are modelled on the concept of witness points in numerical algebraic geometry \cite{??}.
+
+Let's look at an example of all of this. Let $X$ be the union of a line, a plane conic and a plane cubic where the conic and the cubic lie in the same plane, but the line does not. 
+
+\
+
+{\color{red} (put the interpolation example here)}
+
+\
+
+%%%%%%%%%%%%%%%
+\section{Handling Errors {\color{red} (??)}}
+%%%%%%%%%%%%%%%
+
+\
+
+{\color{red} (explain how the throw/catch mechanism is used in a FiniteFieldExperiment?)}
+
+\
+
+\end{document}
